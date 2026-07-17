@@ -22,10 +22,18 @@ router.get("/api/audit-trail/user-logs/:userId", async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const filter = { username: { $regex: `^${username}$`, $options: 'i' } };
     if (actionType) filter.action = actionType;
-    if (fromDate || toDate) {
+    if ((fromDate && fromDate !== "") || (toDate && toDate !== "")) {
       filter.timestamp = {};
-      if (fromDate) filter.timestamp.$gte = new Date(fromDate);
-      if (toDate) filter.timestamp.$lte = new Date(toDate);
+      if (fromDate && fromDate !== "") {
+        const from = new Date(fromDate);
+        from.setHours(0, 0, 0, 0);
+        filter.timestamp.$gte = from;
+      }
+      if (toDate && toDate !== "") {
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59, 999);
+        filter.timestamp.$lte = to;
+      }
     }
 
     const auditTrail = await AuditTrailModel.find(filter)
@@ -75,7 +83,7 @@ router.get("/api/audit-trail/all-users-with-activity", async (req, res) => {
           lastActivity: { $max: "$timestamp" },
         },
       },
-      { $sort: { _id: 1 } },
+      { $sort: { lastActivity: -1 } },
     ]);
 
     // Fetch all users from the user model WITH PROJECTION to reduce payload
@@ -177,10 +185,18 @@ router.get("/api/audit-trail/user/:username", async (req, res) => {
     if (documentType) filter.documentType = documentType;
 
     // Date range filter
-    if (fromDate || toDate) {
+    if ((fromDate && fromDate !== "") || (toDate && toDate !== "")) {
       filter.timestamp = {};
-      if (fromDate) filter.timestamp.$gte = new Date(fromDate);
-      if (toDate) filter.timestamp.$lte = new Date(toDate);
+      if (fromDate && fromDate !== "") {
+        const from = new Date(fromDate);
+        from.setHours(0, 0, 0, 0);
+        filter.timestamp.$gte = from;
+      }
+      if (toDate && toDate !== "") {
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59, 999);
+        filter.timestamp.$lte = to;
+      }
     }
 
     const auditTrail = await AuditTrailModel.find(filter)
@@ -270,42 +286,28 @@ router.get("/api/audit-trail", async (req, res) => {
     if (ipAddress) filter.ipAddress = { $regex: ipAddress, $options: 'i' };
     if (search) filter.job_no = { $regex: search, $options: 'i' };
 
-    // Date range filter: default to current date if not provided
-    const dateFilter = {};
-    let adjustedToDate = toDate;
-    if (fromDate && toDate) {
-      const from = new Date(fromDate);
-      const to = new Date(toDate);
+    // Date range filter
+    if ((fromDate && fromDate !== "") || (toDate && toDate !== "")) {
+      const dateFilter = {};
+      dateFilter.timestamp = {};
+      if (fromDate && fromDate !== "") {
+        const from = new Date(fromDate);
+        from.setHours(0, 0, 0, 0);
+        dateFilter.timestamp.$gte = from;
+      }
+      if (toDate && toDate !== "") {
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59, 999);
+        dateFilter.timestamp.$lte = to;
+      }
 
-      // If fromDate is after toDate, return error
-      if (from > to) {
+      if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) {
         return res.status(400).json({
           message: "Invalid time range: fromDate must be before or equal to toDate"
         });
       }
 
-      // If fromDate and toDate are the same day, increment toDate by 1 day
-      if (
-        from.getFullYear() === to.getFullYear() &&
-        from.getMonth() === to.getMonth() &&
-        from.getDate() === to.getDate()
-      ) {
-        to.setDate(to.getDate() + 1);
-        adjustedToDate = to.toISOString().slice(0, 10);
-      }
-    }
-
-    if (fromDate || toDate) {
-      dateFilter.timestamp = {};
-      if (fromDate) dateFilter.timestamp.$gte = new Date(fromDate);
-      if (adjustedToDate) dateFilter.timestamp.$lte = new Date(adjustedToDate);
       Object.assign(filter, dateFilter); // Apply date filter to the main filter
-    } else {
-      // Default: current date 00:00 to 23:59:59.999
-      const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-      filter.timestamp = { $gte: start, $lte: end };
     }
 
     // Fetch audit trail data with pagination
@@ -341,35 +343,23 @@ router.get("/api/audit-trail/stats", async (req, res) => {
     // If no filters are applied (no fromDate, toDate, username), show stats for all time
     const noFilters = !fromDate && !toDate && !username;
     const dateFilter = {};
-    let adjustedToDate = toDate;
     if (!noFilters) {
-      if (fromDate && toDate) {
-        const from = new Date(fromDate);
-        const to = new Date(toDate);
-        // If fromDate is after toDate, return error
-        if (from > to) {
+      if ((fromDate && fromDate !== "") || (toDate && toDate !== "")) {
+        dateFilter.timestamp = {};
+        if (fromDate && fromDate !== "") {
+          const from = new Date(fromDate);
+          from.setHours(0, 0, 0, 0);
+          dateFilter.timestamp.$gte = from;
+        }
+        if (toDate && toDate !== "") {
+          const to = new Date(toDate);
+          to.setHours(23, 59, 59, 999);
+          dateFilter.timestamp.$lte = to;
+        }
+
+        if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) {
           return res.status(400).json({ message: "Invalid time range: fromDate must be before or equal to toDate" });
         }
-        // If fromDate and toDate are the same day, increment toDate by 1 day
-        if (
-          from.getFullYear() === to.getFullYear() &&
-          from.getMonth() === to.getMonth() &&
-          from.getDate() === to.getDate()
-        ) {
-          to.setDate(to.getDate() + 1);
-          adjustedToDate = to.toISOString().slice(0, 10);
-        }
-      }
-      if (fromDate || toDate) {
-        dateFilter.timestamp = {};
-        if (fromDate) dateFilter.timestamp.$gte = new Date(fromDate);
-        if (adjustedToDate) dateFilter.timestamp.$lte = new Date(adjustedToDate);
-      } else {
-        // Default: current date 00:00 to 23:59
-        const now = new Date();
-        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-        const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-        dateFilter.timestamp = { $gte: start, $lte: end };
       }
       // Add username filter if provided
       if (username) {
@@ -560,10 +550,18 @@ router.get("/api/audit-trail/all-active-users", async (req, res) => {
     const filter = {};
 
     // Date range filter
-    if (fromDate || toDate) {
+    if ((fromDate && fromDate !== "") || (toDate && toDate !== "")) {
       filter.timestamp = {};
-      if (fromDate) filter.timestamp.$gte = new Date(fromDate);
-      if (toDate) filter.timestamp.$lte = new Date(toDate);
+      if (fromDate && fromDate !== "") {
+        const from = new Date(fromDate);
+        from.setHours(0, 0, 0, 0);
+        filter.timestamp.$gte = from;
+      }
+      if (toDate && toDate !== "") {
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59, 999);
+        filter.timestamp.$lte = to;
+      }
     }
 
     // Username filter (partial match)
@@ -739,10 +737,18 @@ router.get("/api/audit-trail/top-users", async (req, res) => {
     const filter = {};
 
     // Date range filter
-    if (fromDate || toDate) {
+    if ((fromDate && fromDate !== "") || (toDate && toDate !== "")) {
       filter.timestamp = {};
-      if (fromDate) filter.timestamp.$gte = new Date(fromDate);
-      if (toDate) filter.timestamp.$lte = new Date(toDate);
+      if (fromDate && fromDate !== "") {
+        const from = new Date(fromDate);
+        from.setHours(0, 0, 0, 0);
+        filter.timestamp.$gte = from;
+      }
+      if (toDate && toDate !== "") {
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59, 999);
+        filter.timestamp.$lte = to;
+      }
     }
 
     // Username filter (partial match)

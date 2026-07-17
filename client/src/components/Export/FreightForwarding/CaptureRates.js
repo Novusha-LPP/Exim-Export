@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { Dialog, DialogTitle, DialogContent, IconButton } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import CreateFreightEnquiry from "./CreateFreightEnquiry";
 import FreightQuotation from "./FreightQuotation";
 
@@ -67,45 +69,48 @@ const s = {
 
 function CaptureRates({ enquiry, onUpdate, forwarders }) {
   const [showAdd, setShowAdd] = useState(false);
+  const [historicalRates, setHistoricalRates] = useState([]);
+  const [showHistoricalDialog, setShowHistoricalDialog] = useState(false);
+  const [historicalLoading, setHistoricalLoading] = useState(false);
 
   const handleHistoricalFreight = async () => {
+    const pol = enquiry.port_of_loading;
+    const pod = enquiry.port_of_destination;
+
+    if (!pol || !pod) {
+      alert("Please ensure POL and POD are present in enquiry details");
+      return;
+    }
+
+    setHistoricalLoading(true);
+    setShowHistoricalDialog(true);
+
     try {
-      const pol = enquiry.port_of_loading;
-      const pod = enquiry.port_of_destination;
-
-      if (!pol || !pod) {
-        alert("Please ensure POL and POD are present in enquiry details");
-        return;
-      }
-
       const res = await axios.get(`${import.meta.env.VITE_API_STRING}/export-dsr/historical-freight`, {
         params: { pol, pod }
       });
 
-      if (res.data.success && res.data.data.length > 0) {
-        const hist = res.data.data[0]; 
-        let amount = Number(hist.amount);
-        let currency = hist.currency || "INR";
-        let exchangeRate = Number(hist.exchangeRate || 1);
-
-        if (currency !== "INR") {
-          amount = amount * exchangeRate;
-        }
-
-        const next = [...newRate.shipping_line_rates];
-        const idx = next.findIndex(r => r.charge_name === "Ocean Freight");
-        if (idx !== -1) {
-          next[idx].amount = Math.round(amount);
-          setNewRate({ ...newRate, shipping_line_rates: next });
-          alert(`Fetched historical freight: ₹${Math.round(amount)} (from Job ${hist.jobNo})`);
-        }
+      if (res.data.success) {
+        setHistoricalRates(res.data.data || []);
       } else {
-        alert("No historical freight found for this POL/POD in last 2 months");
+        setHistoricalRates([]);
       }
     } catch (error) {
       console.error("Error fetching historical freight:", error);
-      alert("Failed to fetch historical freight");
+      setHistoricalRates([]);
+    } finally {
+      setHistoricalLoading(false);
     }
+  };
+
+  const handleUseHistoricalRate = (rate) => {
+    const next = [...newRate.shipping_line_rates];
+    const idx = next.findIndex(r => r.charge_name === "Ocean Freight");
+    if (idx !== -1) {
+      next[idx].amount = rate.amountINR;
+      setNewRate({ ...newRate, shipping_line_rates: next });
+    }
+    setShowHistoricalDialog(false);
   };
 
   const handleAddCharge = (category) => {
@@ -258,6 +263,7 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
         enquiry={enquiry}
         selectedRate={selectedRateForQuote}
         onBack={() => setSelectedRateForQuote(null)}
+        onUpdate={onUpdate}
       />
     );
   }
@@ -537,6 +543,135 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
           </table>
         </div>
       </div>
+
+      {/* Historical Rates Popup Dialog */}
+      <Dialog
+        open={showHistoricalDialog}
+        onClose={() => setShowHistoricalDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "6px",
+            border: "1px solid #cbd5e1",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            backgroundColor: "#19448a",
+            color: "#fff",
+            padding: "12px 20px",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "0.3px" }}>
+              Historical Freight Rates
+            </div>
+            <div style={{ fontSize: "11px", fontWeight: 400, opacity: 0.85, marginTop: "2px" }}>
+              {enquiry.port_of_loading} → {enquiry.port_of_destination} • Last 6 months
+            </div>
+          </div>
+          <IconButton onClick={() => setShowHistoricalDialog(false)} sx={{ color: "#fff", p: 0.5 }}>
+            <CloseIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ padding: "0 !important" }}>
+          {historicalLoading ? (
+            <div style={{ padding: "40px", textAlign: "center", color: "#64748b", fontSize: "13px" }}>
+              Loading historical rates...
+            </div>
+          ) : historicalRates.length === 0 ? (
+            <div style={{ padding: "40px", textAlign: "center", color: "#64748b", fontSize: "13px" }}>
+              <div style={{ fontSize: "28px", marginBottom: "8px" }}>📭</div>
+              No historical freight rates found for this route in the last 6 months.
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12.5px" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
+                    <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Job No</th>
+                    <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Date</th>
+                    <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Currency</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Amount (USD)</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Amount (INR)</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Ex. Rate</th>
+                    <th style={{ textAlign: "center", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.3px" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historicalRates.map((rate, idx) => {
+                    const dateStr = rate.date
+                      ? (typeof rate.date === "string" ? rate.date : new Date(rate.date).toLocaleDateString("en-GB"))
+                      : "-";
+                    return (
+                      <tr
+                        key={idx}
+                        style={{
+                          borderBottom: "1px solid #e2e8f0",
+                          transition: "background-color 0.15s",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                      >
+                        <td style={{ padding: "10px 16px", fontWeight: 700, color: "#16408f" }}>
+                          {rate.jobNo}
+                        </td>
+                        <td style={{ padding: "10px 16px", color: "#334155" }}>
+                          {dateStr}
+                        </td>
+                        <td style={{ padding: "10px 16px" }}>
+                          <span style={{
+                            fontSize: "10px", fontWeight: 700, padding: "2px 6px",
+                            borderRadius: "3px", backgroundColor: "#eff6ff",
+                            color: "#1e40af", border: "1px solid #bfdbfe"
+                          }}>
+                            {rate.currency || "INR"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "#0f766e" }}>
+                          ${rate.amountUSD?.toLocaleString() || "-"}
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 700, color: "#1e293b" }}>
+                          ₹{rate.amountINR?.toLocaleString() || "-"}
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "#64748b", fontSize: "11px" }}>
+                          {rate.exchangeRate || "-"}
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "center" }}>
+                          <button
+                            onClick={() => handleUseHistoricalRate(rate)}
+                            style={{
+                              padding: "5px 14px",
+                              backgroundColor: "#16408f",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: "3px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              transition: "all 0.15s",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#19448a")}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#16408f")}
+                          >
+                            Use ₹{rate.amountINR?.toLocaleString()}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

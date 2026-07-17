@@ -1019,10 +1019,13 @@ function FreightForwardingJobDetail() {
 
             {/* Logistics Details */}
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-              <Grid item xs={12} md={3} sm={6}>
+              <Grid item xs={12} md={2} sm={4}>
                 {renderDateInputBox("ETA (Dest)", "eta_date")}
               </Grid>
-              <Grid item xs={12} md={3} sm={6}>
+              <Grid item xs={12} md={2} sm={4}>
+                {renderDateInputBox("Cut off Date", "cut_off_date")}
+              </Grid>
+              <Grid item xs={12} md={2} sm={4}>
                 {renderDateInputBox("Final Arrival Date", "arrival_date")}
               </Grid>
               <Grid item xs={12} md={6} sm={12}>
@@ -1621,7 +1624,7 @@ function FreightForwardingJobDetail() {
 
         {/* Tab panel: Charges */}
         <TabPanel value={activeTab} index={1}>
-          <ChargesTab job={data} formik={formik} isEditable={isEditable} />
+          <ChargesTab job={data} formik={formik} isEditable={isEditable || (formik.values?.send_for_billing && isLocked)} />
         </TabPanel>
 
         {/* Footer actions */}

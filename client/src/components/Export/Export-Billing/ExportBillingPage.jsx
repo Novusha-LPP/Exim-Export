@@ -26,6 +26,8 @@ import {
   CircularProgress,
   Tooltip,
   Typography,
+  FormControl,
+  Select,
 } from "@mui/material";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import CloseIcon from "@mui/icons-material/Close";
@@ -82,7 +84,6 @@ const PAYMENT_TABS = [
   { key: "payment-completed", label: "Payment Completed" },
   { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
-  { key: "general-jobs", label: "Gen/Freight Jobs" },
 ];
 
 const PURCHASE_TABS = [
@@ -92,7 +93,6 @@ const PURCHASE_TABS = [
   { key: "purchase-book-completed", label: "Purchase Book Completed" },
   { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
-  { key: "general-jobs", label: "Gen/Freight Jobs" },
 ];
 
 function getCurrentFinancialYear() {
@@ -463,7 +463,7 @@ const EditableBillingPair = ({
     borderRadius: '4px',
     outline: 'none',
     fontFamily: 'inherit',
-    width: '90px',
+    width: '80px',
     height: '26px',
     boxSizing: 'border-box',
     transition: 'all 0.15s ease',
@@ -1504,7 +1504,7 @@ function ExportBillingPage() {
           branch: selectedBranch || "",
           year: selectedYear || "",
           unresolvedOnly: showUnresolvedOnly,
-          jobTypeFilter: activeTab === "general-jobs" ? jobTypeFilter : "",
+          jobTypeFilter: "",
         },
         headers: {
           username: user?.username || "",
@@ -1554,7 +1554,7 @@ function ExportBillingPage() {
           branch: selectedBranch || "",
           year: selectedYear || "",
           unresolvedOnly: showUnresolvedOnly,
-          jobTypeFilter: activeTab === "general-jobs" ? jobTypeFilter : "",
+          jobTypeFilter: "",
           startDate: downloadStartDate,
           endDate: downloadEndDate,
         },
@@ -1697,9 +1697,85 @@ function ExportBillingPage() {
 
 
   const columns = useMemo(() => {
+    const billingDocsCol = {
+      header: "Billing Docs",
+      size: 110,
+      Cell: ({ row }) => {
+        const docList = row.original.billingDocsSentUpload || [];
+        const docDate = row.original.billingDocsSentDt || "";
+
+        // Helper to get filename or short name from URL
+        const getDocLabel = (url, index) => {
+          try {
+            const decoded = decodeURIComponent(url);
+            const fileName = decoded.substring(decoded.lastIndexOf('/') + 1);
+            if (fileName.length > 25) {
+              return `${fileName.substring(0, 22)}...`;
+            }
+            return fileName || `Doc ${index + 1}`;
+          } catch (e) {
+            return `Doc ${index + 1}`;
+          }
+        };
+
+        if (docList.length === 0 && !docDate) {
+          return <div style={{ color: "#94a3b8", fontStyle: "italic", fontSize: "11px" }}>No Docs</div>;
+        }
+
+        return (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, py: 0.5 }}>
+            {docDate && (
+              <Typography sx={{ fontSize: "10.5px", fontWeight: 600, color: "#475569" }}>
+                Sent: {docDate}
+              </Typography>
+            )}
+            {docList.length > 0 ? (
+              <FormControl size="small" fullWidth sx={{ minWidth: 110 }}>
+                <Select
+                  value=""
+                  displayEmpty
+                  onChange={(e) => {
+                    const url = e.target.value;
+                    if (url) {
+                      window.open(url, "_blank");
+                    }
+                  }}
+                  sx={{
+                    height: 24,
+                    fontSize: "10.5px",
+                    fontWeight: 500,
+                    "& .MuiSelect-select": {
+                      py: 0,
+                      px: 1,
+                      display: "flex",
+                      alignItems: "center"
+                    }
+                  }}
+                  renderValue={() => `View Docs (${docList.length})`}
+                >
+                  <MenuItem disabled value="" sx={{ fontSize: "11px" }}>
+                    Select Document to Open
+                  </MenuItem>
+                  {docList.map((url, idx) => (
+                    <MenuItem key={idx} value={url} sx={{ fontSize: "11px" }}>
+                      {getDocLabel(url, idx)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <Typography sx={{ fontSize: "10px", color: "#64748b", fontStyle: "italic" }}>
+                No Doc files
+              </Typography>
+            )}
+          </Box>
+        );
+      }
+    };
+
     const billingDetailsEditable = {
       header: "Billing Details",
-      size: 280,
+      size: 220,
       Cell: ({ row }) => (
         <EditableBillingPair
           key={`${row.original.job_no}-billing_details`}
@@ -1721,7 +1797,7 @@ function ExportBillingPage() {
       {
         accessorKey: "job_no",
         header: "Job No",
-        size: 180,
+        size: 130,
         Cell: ({ row }) => (
           <JobNoCell
             row={row.original}
@@ -1734,7 +1810,7 @@ function ExportBillingPage() {
       {
         accessorKey: "exporter",
         header: "Exporter",
-        size: 180,
+        size: 130,
         Cell: ({ row }) => (
           <Box sx={{ py: 0.5 }}>
             <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '11px' }}>
@@ -1746,10 +1822,10 @@ function ExportBillingPage() {
           </Box>
         ),
       },
-      ...((activeTab === "billing-pending" || activeTab === "club-jobs" || activeTab === "general-jobs") ? [billingDetailsEditable] : []),
+      ...((activeTab === "billing-pending" || activeTab === "club-jobs") ? [billingDetailsEditable] : []),
       {
         header: "Queries",
-        size: 80,
+        size: 60,
         Cell: ({ row }) => {
           const job = row.original;
           const getJobStatus = (jNo) => jobQueriesStatus[jNo] || {};
@@ -1974,7 +2050,7 @@ function ExportBillingPage() {
         },
         {
           header: "Billing Details",
-          size: 260,
+          size: 200,
           Cell: ({ row }) => (
             <Box
               sx={{
@@ -2017,24 +2093,25 @@ function ExportBillingPage() {
         {
           accessorKey: "send_for_billing_date",
           header: "Sent to Billing Date",
-          size: 150,
+          size: 110,
           Cell: ({ row }) => (
             <div style={{ fontWeight: "600", color: "#4b5563" }}>
               {formatDate(row.original.send_for_billing_date)}
             </div>
           ),
         },
+        billingDocsCol,
         {
           accessorKey: "charge_heads",
           header: "Charge Heads",
-          size: 220,
+          size: 110,
           Cell: ({ cell }) => renderChipList(cell.getValue(), "default", 2),
         },
         ...commonEnd,
       ];
     }
 
-    const showSentToBillingDate = activeTab === "billing-pending" || activeTab === "club-jobs" || activeTab === "general-jobs";
+    const showSentToBillingDate = activeTab === "billing-pending" || activeTab === "club-jobs";
 
     const refLabel = showSentToBillingDate
       ? "Sent to Billing Date"
@@ -2045,7 +2122,7 @@ function ExportBillingPage() {
         ? "send_for_billing_date"
         : (workMode === "purchase-book" ? "purchase_book_nos" : "payment_request_nos"),
       header: refLabel,
-      size: showSentToBillingDate ? 150 : 200,
+      size: showSentToBillingDate ? 110 : 140,
       Cell: ({ row }) => {
         if (showSentToBillingDate) {
           const val = row.original.send_for_billing_date;
@@ -2075,36 +2152,38 @@ function ExportBillingPage() {
     if (activeTab === "purchase-book-requested") {
       const result = [...commonStart];
       result.splice(insertIndex, 0, refCol); // Insert beside Queries
+      result.splice(insertIndex + 1, 0, billingDocsCol); // Insert beside Queries
       return [...result, ...commonEnd];
     }
 
     const finalColumns = [...commonStart];
     finalColumns.splice(insertIndex, 0, refCol); // Insert beside Queries
+    finalColumns.splice(insertIndex + 1, 0, billingDocsCol); // Insert beside Queries
 
     return [
       ...finalColumns,
       {
         accessorKey: "container_summary",
         header: "Container No",
-        size: 220,
+        size: 140,
         Cell: ({ cell }) => renderChipList(cell.getValue(), "default", 2),
       },
       {
         accessorKey: "supplier_invoice_nos",
         header: workMode === "purchase-book" ? "Supplier Inv No" : "Invoice No",
-        size: 160,
+        size: 110,
         Cell: ({ cell }) => renderChipList(cell.getValue(), "default", 1),
       },
       {
         accessorKey: "charge_heads",
         header: "Charges",
-        size: 150,
+        size: 110,
         Cell: ({ cell }) => renderChipList(cell.getValue(), "default", 1),
       },
       {
         accessorKey: activeTab.includes("completed") ? "billing_date" : "handover_date",
         header: activeTab.includes("completed") ? "Completed On" : "Requested On",
-        size: 110,
+        size: 90,
         Cell: ({ row }) =>
           formatDate(
             activeTab.includes("completed")
@@ -2202,25 +2281,7 @@ function ExportBillingPage() {
             REPORTS HUB
           </Button>
 
-          {activeTab === "general-jobs" && (
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<OpenInNewIcon sx={{ fontSize: '14px' }} />}
-              onClick={handleCreateGeneralJob}
-              sx={{
-                fontWeight: 700,
-                textTransform: "none",
-                borderRadius: "4px",
-                height: 28,
-                fontSize: '11px',
-                backgroundColor: "#2563eb",
-                "&:hover": { backgroundColor: "#1d4ed8", boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }
-              }}
-            >
-              Create Job
-            </Button>
-          )}
+
         </Box>
       </Box>
 
@@ -2247,18 +2308,46 @@ function ExportBillingPage() {
           sx: {
             maxHeight: "72vh",
             border: "1px solid #cbd5e1",
-            borderRadius: "4px"
+            borderRadius: "4px",
+            overflowX: "hidden"
           }
         }}
+        displayColumnDefOptions={{
+          'mrt-row-expand': {
+            size: 10,
+          }
+        }}
+        muiExpandButtonProps={{
+          size: 'small',
+          sx: {
+            p: 0,
+            minWidth: '18px',
+            width: '18px',
+            height: '18px',
+            color: '#64748b',
+            '&.Mui-disabled': { color: '#94a3b8', opacity: 0.7 },
+            '& .MuiSvgIcon-root': { fontSize: '16px' },
+          }
+        }}
+        // muiExpandAllButtonProps={{
+        //   size: 'small',
+        //   sx: {
+        //     p: 0,
+        //     minWidth: '18px',
+        //     width: '18px',
+        //     height: '18px',
+        //     '& .MuiSvgIcon-root': { fontSize: '16px' },
+        //        color: '#fff !important'
+        //   }
+        // }}
         muiTableHeadCellProps={{
           sx: {
             py: 0.8,
             px: 1,
             fontSize: '12px',
             fontWeight: 700,
-            backgroundColor: "#19448aff",
+            background: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
             color: "#fff",
-            borderBottom: '1px solid #334155',
             '& .Mui-TableHeadCell-Content': { justifyContent: 'space-between' },
             '& .Mui-TableHeadCell-Content-Labels': { color: '#fff' },
             '& .Mui-TableHeadCell-Content-Wrapper': { color: '#fff' },
@@ -2349,7 +2438,7 @@ function ExportBillingPage() {
               SelectProps={{ displayEmpty: true }}
             >
               <MenuItem value="" sx={{ fontSize: '11px' }}>All Branches</MenuItem>
-              {["AMD", "GIM", "BRD", "HAZ", "COK"].map((br) => (
+              {["AMD", "GIM", "BRD", "HAZ", "COK", "GEN", "FREIGHT"].map((br) => (
                 <MenuItem key={br} value={br} sx={{ fontSize: '11px' }}>
                   {br}
                 </MenuItem>
@@ -2387,37 +2476,7 @@ function ExportBillingPage() {
               ))}
             </TextField>
 
-            {activeTab === "general-jobs" && (
-              <TextField
-                select
-                size="small"
-                value={jobTypeFilter}
-                onChange={(e) => {
-                  setJobTypeFilter(e.target.value);
-                  setPage(1);
-                }}
-                sx={{
-                  width: 120,
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: jobTypeFilter !== "all" ? '#3b82f6' : '#cbd5e1'
-                  }
-                }}
-                InputProps={{
-                  sx: {
-                    height: 28,
-                    fontSize: '11px',
-                    backgroundColor: jobTypeFilter !== "all" ? '#eff6ff' : '#f9fafb',
-                    color: jobTypeFilter !== "all" ? '#1e40af' : 'inherit',
-                    fontWeight: jobTypeFilter !== "all" ? 600 : 'normal'
-                  }
-                }}
-                SelectProps={{ displayEmpty: true }}
-              >
-                <MenuItem value="all" sx={{ fontSize: '11px' }}>All Types</MenuItem>
-                <MenuItem value="gen" sx={{ fontSize: '11px' }}>Gen Jobs</MenuItem>
-                <MenuItem value="freight" sx={{ fontSize: '11px' }}>Freight Jobs</MenuItem>
-              </TextField>
-            )}
+
 
 
             <TextField

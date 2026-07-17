@@ -61,13 +61,15 @@ const BANKS = [
 
 const s = {
   headerCell: {
-    backgroundColor: "#1e3a8a",
+    background: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
     color: "#fff",
     fontWeight: 700,
     fontSize: "12px",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
-    py: 1.5,
+    padding: "10px 12px",
+    borderBottom: "2px solid #0f172a",
+    borderRight: "1px solid rgba(255, 255, 255, 0.15)",
   },
   card: {
     borderRadius: "12px",

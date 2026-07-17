@@ -35,7 +35,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  TextField
 } from "@mui/material";
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -97,6 +98,8 @@ const DetailedReport = () => {
   const open = Boolean(anchorEl);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState("AMD");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [countryFilter, setCountryFilter] = useState("");
 
   const activeColumns = reportType === 'adminFreight' ? adminFreightColumns : clearanceColumns;
 
@@ -174,12 +177,67 @@ const DetailedReport = () => {
   const isLclJob = (row) => String(row?.consignment_type || "").toUpperCase() === "LCL";
 
   const detailedRows = useMemo(() => {
-    return processedData;
+    let rows = [...processedData];
+    if (countryFilter) {
+      const targetCountry = countryFilter.trim().toUpperCase();
+      rows = rows.filter((row) => {
+        let rowCountry = row.country || row.discharge_country || "";
+        if (rowCountry.includes(")")) {
+          rowCountry = rowCountry.substring(rowCountry.indexOf(")") + 1).trim();
+        }
+        return rowCountry.toUpperCase().trim() === targetCountry;
+      });
+    }
+    if (searchQuery) {
+      const needle = searchQuery.toLowerCase().trim();
+      rows = rows.filter((row) => {
+        const jobNo = String(row.job_no || "").toLowerCase();
+        const exporter = String(row.exporter || "").toLowerCase();
+        const commodity = String(row.commodity || "").toLowerCase();
+        const sbNo = String(row.sb_no || "").toLowerCase();
+        const location = String(row.location || "").toLowerCase();
+        const pol = String(row.pol || "").toLowerCase();
+        const pod = String(row.pod || "").toLowerCase();
+        const remarks = String(row.remarks || "").toLowerCase();
+        const containers = Array.isArray(row.containerNumbers)
+          ? row.containerNumbers.map(c => String(c).toLowerCase()).join(" ")
+          : String(row.containerNumbers || "").toLowerCase();
+
+        return (
+          jobNo.includes(needle) ||
+          exporter.includes(needle) ||
+          commodity.includes(needle) ||
+          sbNo.includes(needle) ||
+          location.includes(needle) ||
+          pol.includes(needle) ||
+          pod.includes(needle) ||
+          remarks.includes(needle) ||
+          containers.includes(needle)
+        );
+      });
+    }
+    return rows;
+  }, [processedData, countryFilter, searchQuery]);
+
+  const countryOptions = useMemo(() => {
+    const countries = new Set();
+    processedData.forEach((row) => {
+      let rowCountry = row.country || row.discharge_country || "";
+      if (rowCountry) {
+        if (rowCountry.includes(")")) {
+          rowCountry = rowCountry.substring(rowCountry.indexOf(")") + 1).trim();
+        }
+        if (rowCountry) {
+          countries.add(rowCountry.toUpperCase().trim());
+        }
+      }
+    });
+    return Array.from(countries).sort();
   }, [processedData]);
 
   const lclJobCount = useMemo(() => {
-    return processedData.filter((row) => isLclJob(row)).length;
-  }, [processedData]);
+    return detailedRows.filter((row) => isLclJob(row)).length;
+  }, [detailedRows]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -238,7 +296,7 @@ const DetailedReport = () => {
   const generateSummaryData = () => {
     const locationGroups = {};
 
-    processedData.forEach(row => {
+    detailedRows.forEach(row => {
       const location = row.location || 'Unknown';
       if (!locationGroups[location]) {
         locationGroups[location] = {
@@ -277,7 +335,7 @@ const DetailedReport = () => {
   // Generate summary for dialog (with LCL row)
   const generateSummaryRows = () => {
     const summaryData = {};
-    processedData.forEach(row => {
+    detailedRows.forEach(row => {
       const location = row.location || 'Unknown';
       const consignmentType = (row.consignment_type || '').toUpperCase();
       const sizeInfo = row.noOfContrSize || '';
@@ -313,7 +371,7 @@ const DetailedReport = () => {
 
   const generateExporterSummaryRows = () => {
     const summaryData = {};
-    processedData.forEach(row => {
+    detailedRows.forEach(row => {
       const exporter = row.exporter || 'Unknown';
       const consignmentType = (row.consignment_type || '').toUpperCase();
       const sizeInfo = row.noOfContrSize || '';
@@ -851,7 +909,7 @@ const DetailedReport = () => {
               variant="outlined"
               startIcon={<TableViewIcon fontSize="small" sx={{ color: '#1976d2' }} />}
               onClick={() => setSummaryOpen(true)}
-              disabled={loading || processedData.length === 0}
+              disabled={loading || detailedRows.length === 0}
               size="small"
               sx={{
                 fontWeight: 'bold',
@@ -1106,6 +1164,50 @@ const DetailedReport = () => {
         </Box>
       </Box>
 
+      {/* Search and Country Filters */}
+      {processedData.length > 0 && (
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            marginBottom: 2,
+            padding: 1.5,
+            backgroundColor: "white",
+            borderRadius: 1,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+            border: "1px solid #cbd5e1",
+            alignItems: "center",
+            flexWrap: "wrap"
+          }}
+        >
+          <TextField
+            size="small"
+            label="Search Report"
+            variant="outlined"
+            placeholder="Search by Job No, Exporter, Commodity, Container, SB No..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{ flex: 1, minWidth: 250 }}
+          />
+
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Country</InputLabel>
+            <Select
+              value={countryFilter}
+              onChange={(e) => setCountryFilter(e.target.value)}
+              label="Country"
+            >
+              <MenuItem value="">All Countries</MenuItem>
+              {countryOptions.map((country) => (
+                <MenuItem key={country} value={country}>
+                  {country}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      )}
+
       {error && (
         <Alert severity="error" sx={{ marginBottom: 2 }}>
           {error}
@@ -1181,7 +1283,13 @@ const DetailedReport = () => {
                         ))}
                     </TableRow>
                   ))
-                  : detailedRows.map((row, idx) => (
+                  : detailedRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={activeColumns.filter((col) => !(col.key === 'invoice_value' && !isSrManager)).length} align="center" sx={{ py: 6, fontSize: "0.85rem", color: "text.secondary" }}>
+                        🔍 No records match your search or country filter.
+                      </TableCell>
+                    </TableRow>
+                  ) : detailedRows.map((row, idx) => (
                     <TableRow
                       key={idx}
                       sx={{
@@ -1230,7 +1338,7 @@ const DetailedReport = () => {
       )}
 
       {/* No Data State */}
-      {!loading && detailedRows.length === 0 && (
+      {!loading && processedData.length === 0 && (
         <Card elevation={1} sx={{ padding: 4, textAlign: 'center' }}>
           <Typography variant="h6" color="textSecondary" sx={{ mb: 2 }}>
             No Data Available

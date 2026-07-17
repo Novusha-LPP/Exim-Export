@@ -1,5 +1,6 @@
 import express from "express";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
+import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
 
 const router = express.Router();
 
@@ -518,6 +519,201 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
     console.error("❌ Aggregation error:", error);
     res.status(500).json({
       message: "Server Error while aggregating data.",
+      details: error.message,
+    });
+  }
+});
+
+// Route: /api/report/freight-forwarding-monthly/:year/:month
+router.get("/api/report/freight-forwarding-monthly/:year/:month", async (req, res) => {
+  const { year, month } = req.params;
+  const monthInt = parseInt(month);
+
+  try {
+    const baseMatch = {
+      organization_name: { $ne: null, $ne: "" }
+    };
+
+    const stats = await FreightEnquiryModel.aggregate([
+      {
+        $addFields: {
+          dateObj: {
+            $switch: {
+              branches: [
+                {
+                  case: { $regexMatch: { input: { $toString: { $ifNull: ["$enquiry_date", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
+                  then: { $toDate: "$enquiry_date" },
+                },
+                {
+                  case: { $regexMatch: { input: { $toString: { $ifNull: ["$enquiry_date", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
+                  then: { $dateFromString: { dateString: "$enquiry_date", format: "%d-%m-%Y", onError: null } }
+                },
+              ],
+              default: null,
+            },
+          }
+        }
+      },
+      {
+        $addFields: {
+          enquiryMonth: { $month: "$dateObj" },
+          enquiryYearStr: {
+            $let: {
+              vars: {
+                y: { $year: "$dateObj" },
+                m: { $month: "$dateObj" }
+              },
+              in: {
+                $cond: {
+                  if: { $gte: ["$$m", 4] },
+                  then: {
+                    $concat: [
+                      { $substr: [{ $toString: "$$y" }, 2, 2] },
+                      "-",
+                      { $substr: [{ $toString: { $add: ["$$y", 1] } }, 2, 2] }
+                    ]
+                  },
+                  else: {
+                    $concat: [
+                      { $substr: [{ $toString: { $subtract: ["$$y", 1] } }, 2, 2] },
+                      "-",
+                      { $substr: [{ $toString: "$$y" }, 2, 2] }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $match: {
+          ...baseMatch,
+          enquiryYearStr: year,
+          enquiryMonth: monthInt
+        }
+      },
+      {
+        $group: {
+          _id: "$organization_name",
+          leoCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$documents.leo_copy", null] },
+                    { $ne: ["$documents.leo_copy", ""] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          sbDateCount: {
+            $sum: {
+              $cond: [
+                {
+                  $or: [
+                    { $and: [{ $ne: ["$documents.invoice", null] }, { $ne: ["$documents.invoice", ""] }] },
+                    { $and: [{ $ne: ["$documents.booking_copy", null] }, { $ne: ["$documents.booking_copy", ""] }] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          container20Ft: {
+            $sum: {
+              $cond: [
+                { $regexMatch: { input: { $toLower: { $ifNull: ["$shipment_type", ""] } }, regex: "air" } },
+                0,
+                {
+                  $cond: [
+                    { $regexMatch: { input: { $toLower: { $ifNull: ["$container_size", ""] } }, regex: "20" } },
+                    { $cond: [ { $gt: [{ $size: { $ifNull: ["$containers", []] } }, 0] }, { $size: "$containers" }, 1 ] },
+                    0
+                  ]
+                }
+              ]
+            }
+          },
+          container40Ft: {
+            $sum: {
+              $cond: [
+                { $regexMatch: { input: { $toLower: { $ifNull: ["$shipment_type", ""] } }, regex: "air" } },
+                0,
+                {
+                  $cond: [
+                    { $regexMatch: { input: { $toLower: { $ifNull: ["$container_size", ""] } }, regex: "40" } },
+                    { $cond: [ { $gt: [{ $size: { $ifNull: ["$containers", []] } }, 0] }, { $size: "$containers" }, 1 ] },
+                    0
+                  ]
+                }
+              ]
+            }
+          },
+          airCount: {
+            $sum: {
+              $cond: [
+                { $regexMatch: { input: { $toLower: { $ifNull: ["$shipment_type", ""] } }, regex: "air" } },
+                1,
+                0
+              ]
+            }
+          },
+          lcl20Ft: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$consignment_type", "LCL"] },
+                    { $not: { $regexMatch: { input: { $toLower: { $ifNull: ["$container_size", ""] } }, regex: "40" } } }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          lcl40Ft: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$consignment_type", "LCL"] },
+                    { $regexMatch: { input: { $toLower: { $ifNull: ["$container_size", ""] } }, regex: "40" } }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          exporter: "$_id",
+          leoCount: 1,
+          sbDateCount: 1,
+          container20Ft: 1,
+          container40Ft: 1,
+          airCount: 1,
+          lcl20Ft: 1,
+          lcl40Ft: 1
+        }
+      },
+      { $sort: { exporter: 1 } }
+    ]);
+
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error("❌ Aggregation error for Freight Forwarding:", error);
+    res.status(500).json({
+      message: "Server Error while aggregating Freight Forwarding data.",
       details: error.message,
     });
   }

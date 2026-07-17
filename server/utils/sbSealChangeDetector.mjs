@@ -91,6 +91,95 @@ export function hasContainerSealChanged(oldContainers, newContainers) {
 }
 
 /**
+ * Check if container seal numbers have changed and a seal number was already available (not empty)
+ */
+export function hasAvailableSealChanged(oldContainers, newContainers) {
+  const oldList = Array.isArray(oldContainers) ? oldContainers : [];
+  const newList = Array.isArray(newContainers) ? newContainers : [];
+
+  // Create maps of seal numbers for comparison by containerNo
+  const oldMap = {};
+  oldList.forEach((c) => {
+    if (c.containerNo) {
+      oldMap[norm(c.containerNo)] = {
+        customSealNo: norm(c.customSealNo),
+        shippingLineSealNo: norm(c.shippingLineSealNo),
+        sealNo: norm(c.sealNo)
+      };
+    }
+  });
+
+  const newMap = {};
+  newList.forEach((c) => {
+    if (c.containerNo) {
+      newMap[norm(c.containerNo)] = {
+        customSealNo: norm(c.customSealNo),
+        shippingLineSealNo: norm(c.shippingLineSealNo),
+        sealNo: norm(c.sealNo)
+      };
+    }
+  });
+
+  const oldNos = Object.keys(oldMap);
+
+  for (const no of oldNos) {
+    const oldSeals = oldMap[no];
+    const newSeals = newMap[no];
+    
+    // Check if container seal no is available in old container
+    const oldCustom = oldSeals.customSealNo;
+    const oldShipping = oldSeals.shippingLineSealNo;
+    const oldSeal = oldSeals.sealNo;
+    const hasOldSeal = oldCustom !== "" || oldShipping !== "" || oldSeal !== "";
+
+    if (hasOldSeal && newSeals) {
+      const newCustom = newSeals.customSealNo;
+      const newShipping = newSeals.shippingLineSealNo;
+      const newSeal = newSeals.sealNo;
+      
+      // If the user changed any of the available seals to a different value
+      if (
+        (oldCustom !== "" && oldCustom !== newCustom) ||
+        (oldShipping !== "" && oldShipping !== newShipping) ||
+        (oldSeal !== "" && oldSeal !== newSeal)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // Fallback for index-by-index comparison if container numbers are not specified
+  if (oldNos.length === 0 && Object.keys(newMap).length === 0) {
+    const minLen = Math.min(oldList.length, newList.length);
+    for (let i = 0; i < minLen; i++) {
+      const oldC = oldList[i];
+      const newC = newList[i];
+      if (oldC && newC) {
+        const oldCustom = norm(oldC.customSealNo);
+        const oldShipping = norm(oldC.shippingLineSealNo);
+        const oldSeal = norm(oldC.sealNo);
+        const hasOldSeal = oldCustom !== "" || oldShipping !== "" || oldSeal !== "";
+        
+        if (hasOldSeal) {
+          const newCustom = norm(newC.customSealNo);
+          const newShipping = norm(newC.shippingLineSealNo);
+          const newSeal = norm(newC.sealNo);
+          if (
+            (oldCustom !== "" && oldCustom !== newCustom) ||
+            (oldShipping !== "" && oldShipping !== newShipping) ||
+            (oldSeal !== "" && oldSeal !== newSeal)
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * Get nested value by path
  */
 function getNestedValue(obj, path) {
@@ -141,7 +230,11 @@ export function detectSbOrSealChange(existingJob, incomingUpdates, username) {
   if (!changed && incomingUpdates.containers !== undefined) {
     if (hasContainerSealChanged(existingJob.containers, incomingUpdates.containers)) {
       changed = true;
-      detailMsg = `Container Seal No was updated`;
+      if (hasAvailableSealChanged(existingJob.containers, incomingUpdates.containers)) {
+        detailMsg = `the seal is opened for one day`;
+      } else {
+        detailMsg = `Container Seal No was updated`;
+      }
     }
   }
 
@@ -154,7 +247,11 @@ export function detectSbOrSealChange(existingJob, incomingUpdates, username) {
           const newVal = norm(incomingUpdates[key]);
           if (oldVal !== newVal) {
             changed = true;
-            detailMsg = `Container Seal No was updated`;
+            if (oldVal !== "") {
+              detailMsg = `the seal is opened for one day`;
+            } else {
+              detailMsg = `Container Seal No was updated`;
+            }
             break;
           }
         }

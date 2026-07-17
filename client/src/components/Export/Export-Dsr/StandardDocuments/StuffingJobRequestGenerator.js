@@ -69,7 +69,7 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
         if (isGandhidham) {
           // Cover Ahmedabad address
           doc.setFillColor(255, 255, 255);
-          doc.rect(112, 4, 87, 38, "F");
+          doc.rect(112, 4, 87, 40, "F");
 
           // Draw Gandhidham address
           doc.setTextColor(100, 100, 100); // Grey color
@@ -85,7 +85,11 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
           doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
           doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(0, 0, 0);
+          doc.text("PIC : Balvir Bhai (M) +91 99243 04434", 138, 36.5);
 
+          doc.setFont("helvetica", "normal"); // Reset font style
           doc.setTextColor(0, 0, 0); // Reset color
         }
       } catch (err) {
@@ -227,18 +231,27 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       doc.text(`LINE: ${data.shipping_line_airline || ""}`, 15, yPos);
       yPos += 6;
 
-      // Table 2: Container List in two columns (flowing horizontally)
-      const containerTableBody = [];
-      const numRows = Math.min(11, Math.max(1, Math.ceil(containers.length / 2)));
-      for (let i = 0; i < numRows; i++) {
-        const c1 = containers[2 * i];
-        const c2 = containers[2 * i + 1];
-        containerTableBody.push([
-          String(2 * i + 1),
-          c1 ? c1.containerNo || "" : "",
-          String(2 * i + 2),
-          c2 ? c2.containerNo || "" : "",
-        ]);
+      // Table 2: Detailed Container List
+      const containerTableBody = containers.map((c, i) => {
+        const containerNo = c.containerNo || c.container_number || "";
+        const containerType = c.type || c.containerSize || c.size || "";
+        const contDisplay = containerType ? `${containerNo} (${containerType})` : containerNo;
+
+        const customSeal = c.customSealNo || c.custom_seal || c.sealNo || "";
+        const lineSeal = c.shippingLineSealNo || c.line_seal || "";
+        const sealStr = [customSeal && `Cust: ${customSeal}`, lineSeal && `Line: ${lineSeal}`].filter(Boolean).join("\n") || "";
+
+        return [
+          String(i + 1),
+          contDisplay,
+          c.pkgsStuffed ? `${c.pkgsStuffed} PKGS` : "",
+          c.grossWeight ? `${c.grossWeight} KGS` : "",
+          sealStr
+        ];
+      });
+
+      if (containerTableBody.length === 0) {
+        containerTableBody.push(["", "", "", "", ""]);
       }
 
       doc.autoTable({
@@ -250,7 +263,7 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           textColor: [0, 0, 0],
           font: "helvetica",
           fontSize: 9,
-          cellPadding: 2,
+          cellPadding: 3,
         },
         headStyles: {
           fillColor: [255, 255, 255],
@@ -258,13 +271,12 @@ const StuffingJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           fontStyle: "bold",
           halign: "center",
         },
-        head: [["Sr. No.", "Container Nos.", "Sr. No.", "Container Nos."]],
+        head: [["SR.NO", "CONTAINER NO & TYPE", "NO OF PACKAGES", "GROSS WEIGHT (CONTAINER WISE)", "SEAL (CUSTOM SEAL AND S/L SEAL)"]],
         body: containerTableBody,
         columnStyles: {
-          0: { width: 25, halign: "center" },
-          1: { width: 70 },
-          2: { width: 25, halign: "center" },
-          3: { width: 70 },
+          0: { halign: "center" },
+          2: { halign: "center" },
+          3: { halign: "center" },
         },
       });
 

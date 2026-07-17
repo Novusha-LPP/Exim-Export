@@ -391,6 +391,9 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
           consignment_type: "$consignmentType",
           type_of_sb: "$sb_type", // Comparable to type_of_b_e
           transport_mode: "$transportMode",
+          pol: "$port_of_loading",
+          pod: "$port_of_discharge",
+          country: "$discharge_country",
         },
       },
     ]);

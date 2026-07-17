@@ -247,6 +247,16 @@ function HomePage() {
               <Route path="handover" element={<GenericPulseTV metric="handover" title="HANDOVER" />} />
             </Route>
 
+            {/* Export Analytics (linked from Dashboard's "Operational Analytics" button) */}
+            <Route
+              path="/export-analytics"
+              element={
+                <AnalyticsProvider>
+                  <CombinedDashboard />
+                </AnalyticsProvider>
+              }
+            />
+
             <Route
               path="/export-audit-trail"
               element={

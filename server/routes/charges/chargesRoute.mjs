@@ -396,16 +396,7 @@ router.post('/charges', async (req, res) => {
         const record = await model.findById(parentId);
         if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
 
-        if (parentModule !== 'FreightEnquiry' && record.send_for_billing) {
-            const usernameHeader = req.headers["username"] || req.headers["x-username"];
-            const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
-            const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
-            const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
-
-            if (!isAdmin) {
-                return res.status(403).json({ success: false, message: "This job has been sent for billing. Charges cannot be added." });
-            }
-        }
+        // Permitted charges update when sent for billing
 
         record.charges.push(req.body);
         await record.save();
@@ -434,16 +425,7 @@ router.post('/charges/bulk', async (req, res) => {
         const record = await model.findById(parentId);
         if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
 
-        if (parentModule !== 'FreightEnquiry' && record.send_for_billing) {
-            const usernameHeader = req.headers["username"] || req.headers["x-username"];
-            const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
-            const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
-            const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
-
-            if (!isAdmin) {
-                return res.status(403).json({ success: false, message: "This job has been sent for billing. Charges cannot be added." });
-            }
-        }
+        // Permitted bulk charges update when sent for billing
 
         charges.forEach(chargeData => record.charges.push(chargeData));
         await record.save();
@@ -464,16 +446,7 @@ router.put('/charges/:id', async (req, res) => {
         }
         if (!record) return res.status(404).json({ success: false, message: 'Charge not found' });
 
-        if (record.send_for_billing) {
-            const usernameHeader = req.headers["username"] || req.headers["x-username"];
-            const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
-            const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
-            const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
-
-            if (!isAdmin) {
-                return res.status(403).json({ success: false, message: "This job has been sent for billing. Charges cannot be updated." });
-            }
-        }
+        // Permitted single charge update when sent for billing
 
         const charge = record.charges.id(req.params.id);
 
@@ -640,16 +613,7 @@ router.delete('/charges/:id', async (req, res) => {
         const job = await ExJobModel.findOne({ 'charges._id': req.params.id });
         if (!job) return res.status(404).json({ success: false, message: 'Charge not found' });
 
-        if (job.send_for_billing) {
-            const usernameHeader = req.headers["username"] || req.headers["x-username"];
-            const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
-            const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
-            const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
-
-            if (!isAdmin) {
-                return res.status(403).json({ success: false, message: "This job has been sent for billing. Charges cannot be deleted." });
-            }
-        }
+        // Permitted charge delete when sent for billing
 
         // Block deletion if payment request is approved
         const charge = job.charges.id(req.params.id);

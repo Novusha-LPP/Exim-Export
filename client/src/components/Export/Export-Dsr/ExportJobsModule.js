@@ -614,7 +614,7 @@ function ExportJobsModule() {
             { label: "ESanchit", component: <ESanchitTab formik={formik} isEditable={isEditable} /> },
             {
               label: "Charges",
-              component: <ChargesTab job={data} formik={formik} isEditable={isEditable} />,
+              component: <ChargesTab job={data} formik={formik} isEditable={isEditable || (formik.values.send_for_billing && isLocked)} />,
             },
 
             {

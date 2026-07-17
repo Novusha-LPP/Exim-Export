@@ -1,14 +1,16 @@
 import express from 'express';
 import Port from '../../model/Directorties/Port.js';
+import AirPort from '../../model/Directorties/AirPort.js';
+import SeaPort from '../../model/Directorties/SeaPort.js';
 
 const router = express.Router();
 
-// GET /api/ports - Get all ports
+// GET /api/ports - Get all ports (sea, air, and general ports)
 router.get('/', async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 20,
       search = '',
       country = ''
     } = req.query;
@@ -28,19 +30,45 @@ router.get('/', async (req, res) => {
 
     if (country) query.country = { $regex: country, $options: 'i' };
 
-    const total = await Port.countDocuments(query);
-    const ports = await Port.find(query)
-      .sort({ portCode: 1 })
-      .skip(skip)
-      .limit(limitNum);
+    // Fetch from all collections in parallel
+    const [ports, airPorts, seaPorts] = await Promise.all([
+      Port.find(query).limit(50).lean(),
+      AirPort.find(query).limit(50).lean(),
+      SeaPort ? SeaPort.find(query).limit(50).lean() : []
+    ]);
+
+    // Merge and deduplicate by port code or port name
+    const combined = [...ports, ...airPorts, ...seaPorts];
+    const seen = new Set();
+    const unique = [];
+
+    for (const p of combined) {
+      const code = (p.portCode || p.uneceCode || '').toUpperCase().trim();
+      const name = (p.portName || p.name || '').toUpperCase().trim();
+      const key = code ? `CODE:${code}` : `NAME:${name}`;
+
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        unique.push(p);
+      }
+    }
+
+    // Sort by port code and paginate
+    const sorted = unique.sort((a, b) => {
+      const aCode = a.portCode || a.uneceCode || '';
+      const bCode = b.portCode || b.uneceCode || '';
+      return aCode.localeCompare(bCode);
+    });
+
+    const paginated = sorted.slice(skip, skip + limitNum);
 
     res.json({
       success: true,
-      data: ports,
+      data: paginated,
       pagination: {
         currentPage: pageNum,
-        totalPages: Math.ceil(total / limitNum),
-        totalRecords: total,
+        totalPages: Math.ceil(sorted.length / limitNum),
+        totalRecords: sorted.length,
         perPage: limitNum
       }
     });

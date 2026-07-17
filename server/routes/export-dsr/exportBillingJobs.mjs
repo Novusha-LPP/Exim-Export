@@ -11,8 +11,6 @@ const PAYMENT_TABS = [
   "payment",
   "payment-completed",
   "export-completed-billing",
-  "general-jobs",
-  "General Jobs",
   "club-jobs"
 ];
 
@@ -22,8 +20,6 @@ const PURCHASE_TABS = [
   "purchase-book",
   "purchase-book-completed",
   "export-completed-billing",
-  "general-jobs",
-  "General Jobs",
   "club-jobs"
 ];
 
@@ -256,6 +252,8 @@ function summarizeJob(job) {
     billing_docs_count: Array.isArray(opStatus.billingDocsSentUpload)
       ? opStatus.billingDocsSentUpload.length
       : 0,
+    billingDocsSentUpload: opStatus.billingDocsSentUpload || [],
+    billingDocsSentDt: opStatus.billingDocsSentDt || "",
     agency_bill_date: opStatus.billing_details?.agency_bill_date || "",
     agency_bill_no: opStatus.billing_details?.agency_bill_no || "",
     reimbursement_bill_date: opStatus.billing_details?.reimbursement_bill_date || "",
@@ -537,7 +535,18 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       baseFilter.$and.push({ exporter: { $regex: escapeRegex(String(exporter).trim()), $options: "i" } });
     }
     if (branch) {
-      baseFilter.$and.push({ branch_code: String(branch).trim() });
+      const bStr = String(branch).trim().toUpperCase();
+      if (bStr === "GEN") {
+        baseFilter.$and.push({ isGeneralJob: true });
+      } else if (bStr === "FREIGHT") {
+        baseFilter.$and.push({ job_no: { $regex: "^FF", $options: "i" } });
+      } else {
+        baseFilter.$and.push({
+          branch_code: bStr,
+          isGeneralJob: { $ne: true },
+          job_no: { $not: /^FF/i }
+        });
+      }
     }
 
     if (search) {
@@ -580,12 +589,8 @@ router.get("/api/export-billing-jobs", async (req, res) => {
           { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
         ]
       });
-    } else if (normalizedTab === "general-jobs" || normalizedTab === "general jobs") {
-      baseFilter.$and = baseFilter.$and || [];
-      baseFilter.$and.push({
-        send_for_billing: true
-      });
     }
+
 
     if (baseFilter.$and && baseFilter.$and.length === 0) {
       delete baseFilter.$and;

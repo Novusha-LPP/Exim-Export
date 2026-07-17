@@ -67,6 +67,47 @@ export const rotateImage90Deg = (url) => {
             }
           }
         }
+
+        // Darken the signature color to rich dark blue
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 30) {
+            data[i] = Math.max(0, Math.round(data[i] * 0.3));     // R
+            data[i + 1] = Math.max(0, Math.round(data[i + 1] * 0.3)); // G
+            data[i + 2] = Math.max(80, Math.round(data[i + 2] * 0.9)); // B (keep rich blue)
+          }
+        }
+
+        // Thicken (dilate) the signature lines to make it bold (2px thickness)
+        const width = canvas.width;
+        const height = canvas.height;
+        const alphaCopy = new Uint8Array(width * height);
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            alphaCopy[y * width + x] = data[(y * width + x) * 4 + 3];
+          }
+        }
+
+        for (let y = 2; y < height - 2; y++) {
+          for (let x = 2; x < width - 2; x++) {
+            const idx = (y * width + x) * 4;
+            if (alphaCopy[y * width + x] < 50) {
+              let maxAlpha = 0;
+              for (let dy = -2; dy <= 2; dy++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                  const val = alphaCopy[(y + dy) * width + (x + dx)];
+                  if (val > maxAlpha) maxAlpha = val;
+                }
+              }
+              if (maxAlpha > 50) {
+                data[idx + 3] = maxAlpha;
+                data[idx] = 10;
+                data[idx + 1] = 30;
+                data[idx + 2] = 120;
+              }
+            }
+          }
+        }
+
         ctx.putImageData(imgData, 0, 0);
       } catch (err) {
         console.warn("Background removal failed", err);

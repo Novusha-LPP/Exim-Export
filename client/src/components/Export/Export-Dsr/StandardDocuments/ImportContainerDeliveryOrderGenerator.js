@@ -114,7 +114,7 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
         if (isGandhidham) {
           // Cover Ahmedabad address
           doc.setFillColor(255, 255, 255);
-          doc.rect(112, 4, 87, 38, "F");
+          doc.rect(112, 4, 87, 40, "F");
 
           // Draw Gandhidham address
           doc.setTextColor(100, 100, 100); // Grey color
@@ -130,7 +130,11 @@ const ImportContainerDeliveryOrderGenerator = ({ jobNo, children, onTrackSuccess
           doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
           doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
           doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(0, 0, 0);
+          doc.text("PIC : Balvir Bhai (M) +91 99243 04434", 138, 36.5);
 
+          doc.setFont("helvetica", "normal"); // Reset font style
           doc.setTextColor(0, 0, 0); // Reset color
         }
       } catch (err) {

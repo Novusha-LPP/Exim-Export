@@ -65,6 +65,7 @@ const BufferContainerGateInToCfsGenerator = lazy(() => import("./StandardDocumen
 const CartingJobRequestGenerator = lazy(() => import("./StandardDocuments/CartingJobRequestGenerator"));
 const MovementJobRequestGenerator = lazy(() => import("./StandardDocuments/MovementJobRequestGenerator"));
 const StorageApplicationGenerator = lazy(() => import("./StandardDocuments/StorageApplicationGenerator"));
+const CertificateOfOriginGenerator = lazy(() => import("./StandardDocuments/CertificateOfOriginGenerator"));
 
 import { CUSTOM_HOUSE_OPTIONS, getOptionsForBranch } from "../../common/CustomHouseDropdown";
 import { UserContext } from "../../../contexts/UserContext";
@@ -282,9 +283,10 @@ const s = {
   tableContainer: {
     overflowX: "auto",
     border: "1px solid #ccccccff",
-    borderRadius: "3px",
+    borderRadius: "5px",
     maxHeight: "700px",
     overflowY: "auto",
+
   },
   table: {
     width: "100%",
@@ -292,20 +294,25 @@ const s = {
     borderSpacing: 0,
     fontSize: "11px",
     tableLayout: "auto",
+
   },
   th: {
-    padding: "10px 8px",
-    textAlign: "left",
-    fontWeight: "700",
-    fontSize: "12px",
-    color: "#ffffff",
-    borderBottom: "2px solid rgba(255,255,255,0.1)",
-    borderRight: "1px solid rgba(255,255,255,0.05)",
-    whiteSpace: "normal",
-    wordBreak: "break-word",
-    verticalAlign: "middle",
-    top: 0,
-    zIndex: 10,
+ background: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
+  color: "white",
+  padding: "2px 12px",
+  textAlign: "left",
+  fontWeight: "700",
+  fontSize: "0.75rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  whiteSpace: "nowrap",
+  userSelect: "none",
+  borderBottom: "2px solid #0f172a",
+  borderRight: "1px solid rgba(255, 255, 255, 0.15)",
+  position: "sticky",
+  top: 0,
+  zIndex: 10,
+  fontFamily: "'Inter', sans-serif",
   },
   td: {
     padding: "10px 8px",
@@ -509,6 +516,53 @@ const getContainerSizeLabel = (value) => {
   label = label.replace(/HARD TOP/g, "HT");
   label = label.replace(/REEFER/g, "RF");
   return label;
+};
+
+const getJobScrollAndEgmInfo = (job) => {
+  const dbkInfoList = [];
+  const rosctlInfoList = [];
+
+  if (Array.isArray(job.invoices)) {
+    job.invoices.forEach((inv) => {
+      if (Array.isArray(inv.products)) {
+        inv.products.forEach((prod) => {
+          if (Array.isArray(prod.drawbackDetails)) {
+            prod.drawbackDetails.forEach((dbk) => {
+              if (dbk.drawback_scroll_no) {
+                const exists = dbkInfoList.some(
+                  (item) => item.no === dbk.drawback_scroll_no
+                );
+                if (!exists) {
+                  dbkInfoList.push({
+                    no: dbk.drawback_scroll_no,
+                    date: dbk.drawback_scroll_date,
+                  });
+                }
+              }
+              if (dbk.rosctl_scroll_no) {
+                const exists = rosctlInfoList.some(
+                  (item) => item.no === dbk.rosctl_scroll_no
+                );
+                if (!exists) {
+                  rosctlInfoList.push({
+                    no: dbk.rosctl_scroll_no,
+                    date: dbk.rosctl_scroll_date,
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+
+  return {
+    dbkScrolls: dbkInfoList,
+    rosctlScrolls: rosctlInfoList,
+    egmNo: job.egm_no,
+    egmDate: job.egm_date,
+  };
 };
 
 const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSuccess }) => {
@@ -1092,20 +1146,13 @@ const ExportJobsTable = () => {
   };
 
   const expiringBanners = React.useMemo(() => {
-    if (!directories || directories.length === 0 || !jobs || jobs.length === 0) return [];
-
-    // Get unique exporters in the current jobs list
-    const visibleExporters = new Set(jobs.map(j => (j.exporter || "").trim().toUpperCase()));
+    if (!directories || directories.length === 0) return [];
 
     const banners = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     directories.forEach(dir => {
-      const orgName = (dir.organization || "").trim().toUpperCase();
-      // Only show banner if the exporter is visible in the jobs list
-      if (!visibleExporters.has(orgName)) return;
-
       const validities = dir.selfSealValidity || [];
       validities.forEach(v => {
         if (!v.validityDate || !v.customHouse) return;
@@ -1114,9 +1161,9 @@ const ExportJobsTable = () => {
         validityDate.setHours(0, 0, 0, 0);
 
         const diffTime = validityDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-        if (diffDays >= 0 && diffDays <= 1) {
+        if (diffDays === 5) {
           // Format date for display as dd-MMM-yyyy
           const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           const day = String(validityDate.getDate()).padStart(2, '0');
@@ -1135,7 +1182,7 @@ const ExportJobsTable = () => {
     });
 
     return banners;
-  }, [directories, jobs]);
+  }, [directories]);
 
   const sortedJobs = React.useMemo(() => {
     return [...jobs].sort((a, b) => {
@@ -1795,7 +1842,12 @@ const ExportJobsTable = () => {
           if (job.custom_house) jobNoCol.push(job.custom_house);
           if (job.consignmentType) jobNoCol.push(job.consignmentType);
           rowData["Job No"] = jobNoCol.join("\n");
-          rowData["Exporter"] = job.exporter || "";
+          let expVal = job.exporter || "";
+          const fwdName = job.forwarder || job.operations?.[0]?.statusDetails?.[0]?.forwarderName;
+          if (fwdName) {
+            expVal += `\nFWDR: ${fwdName}`;
+          }
+          rowData["Exporter"] = expVal;
 
           // Column 2: Consignee Name
           let consigneeCol = [];
@@ -1811,6 +1863,15 @@ const ExportJobsTable = () => {
               if (inv.invoiceDate) invCol.push(formatDate(inv.invoiceDate, "dd-MM-yy"));
               if (inv.invoiceValue && inv.currency) invCol.push(`${inv.currency} ${inv.invoiceValue}`);
             });
+          }
+          const bd = job.operations?.[0]?.statusDetails?.[0]?.billing_details;
+          if (bd) {
+            if (bd.agency_bill_no) {
+              invCol.push(`Bill (A): ${bd.agency_bill_no}${bd.agency_bill_date ? ` / ${formatDate(bd.agency_bill_date, "dd-MM-yy")}` : ''}`);
+            }
+            if (bd.reimbursement_bill_no) {
+              invCol.push(`Bill (R): ${bd.reimbursement_bill_no}${bd.reimbursement_bill_date ? ` / ${formatDate(bd.reimbursement_bill_date, "dd-MM-yy")}` : ''}`);
+            }
           }
           rowData["Invoice"] = invCol.join("\n");
 
@@ -2658,6 +2719,7 @@ const ExportJobsTable = () => {
       {
         name: "1. SHIPPING/PORT DOCS",
         files: [
+          { field: "assessmentCopy", title: "ASSESSMENT COPY", source: "status" },
           { field: "leoUpload", title: "LEO", source: "status" },
           { field: "eGatePassUpload", title: "GATE PASS", source: "status" },
           { field: "booking_copy", title: "BOOKING", source: "toplevel" },
@@ -3876,13 +3938,13 @@ const ExportJobsTable = () => {
                         )}
                       </th>
                       <th style={{ ...s.th, width: "18%", minWidth: "170px" }}>Exporter</th>
-                      <th style={{ ...s.th, width: "10%", minWidth: "95px" }}>Invoice</th>
-                      <th style={{ ...s.th, width: "8%", minWidth: "65px" }}>SB No</th>
-                      <th style={{ ...s.th, width: "16%", minWidth: "150px" }}>Port</th>
-                      <th style={{ ...s.th, width: "16%", minWidth: "170px" }}>Container</th>
-                      <th style={{ ...s.th, width: "3%", minWidth: "40px" }}>Handover</th>
-                      <th style={{ ...s.th, width: "4%", minWidth: "60px" }}>Docs</th>
-                      <th style={{ ...s.th, width: "5%", minWidth: "130px", textAlign: "center" }}>Status</th>
+                      <th style={{ ...s.th, width: "11%", minWidth: "105px" }}>Invoice</th>
+                      <th style={{ ...s.th, width: "8%", minWidth: "80px" }}>SB No</th>
+                      <th style={{ ...s.th, width: "13%", minWidth: "130px" }}>Port</th>
+                      <th style={{ ...s.th, width: "12%", minWidth: "140px" }}>Container</th>
+                      <th style={{ ...s.th, width: "8%", minWidth: "90px", textAlign: "center" }}>Handover</th>
+                      <th style={{ ...s.th, width: "7%", minWidth: "80px", textAlign: "center" }}>Docs</th>
+                      <th style={{ ...s.th, width: "9%", minWidth: "120px", textAlign: "center" }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4026,6 +4088,87 @@ const ExportJobsTable = () => {
                               >
                                 {formatDate(job.job_date)}
                               </div>
+                              {(() => {
+                                const { dbkScrolls, rosctlScrolls, egmNo, egmDate } = getJobScrollAndEgmInfo(job);
+                                return (
+                                  <>
+                                    {dbkScrolls.map((dbk, dIdx) => (
+                                      <div
+                                        key={`dbk-${dIdx}`}
+                                        style={{
+                                          marginTop: "4px",
+                                          padding: "2px 6px",
+                                          borderRadius: "4px",
+                                          fontSize: "9px",
+                                          fontWeight: "700",
+                                          color: "#0f766e",
+                                          backgroundColor: "#f0fdfa",
+                                          border: "1px solid #ccfbf1",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          width: "fit-content",
+                                          gap: "3px",
+                                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
+                                          whiteSpace: "nowrap"
+                                        }}
+                                        title="Drawback Scroll No & Date"
+                                      >
+                                        <span style={{ fontSize: "10px" }}>💰</span>
+                                        <span>DBK: {dbk.no} {dbk.date ? `(${formatDate(dbk.date)})` : ""}</span>
+                                      </div>
+                                    ))}
+                                    {rosctlScrolls.map((ros, rIdx) => (
+                                      <div
+                                        key={`ros-${rIdx}`}
+                                        style={{
+                                          marginTop: "4px",
+                                          padding: "2px 6px",
+                                          borderRadius: "4px",
+                                          fontSize: "9px",
+                                          fontWeight: "700",
+                                          color: "#6d28d9",
+                                          backgroundColor: "#f5f3ff",
+                                          border: "1px solid #ede9fe",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          width: "fit-content",
+                                          gap: "3px",
+                                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
+                                          whiteSpace: "nowrap"
+                                        }}
+                                        title="RoSCTL Scroll No & Date"
+                                      >
+                                        <span style={{ fontSize: "10px" }}>🏷️</span>
+                                        <span>RoSCTL: {ros.no} {ros.date ? `(${formatDate(ros.date)})` : ""}</span>
+                                      </div>
+                                    ))}
+                                    {(egmNo || egmDate) && (
+                                      <div
+                                        style={{
+                                          marginTop: "4px",
+                                          padding: "2px 6px",
+                                          borderRadius: "4px",
+                                          fontSize: "9px",
+                                          fontWeight: "700",
+                                          color: "#b45309",
+                                          backgroundColor: "#fff7ed",
+                                          border: "1px solid #ffedd5",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          width: "fit-content",
+                                          gap: "3px",
+                                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
+                                          whiteSpace: "nowrap"
+                                        }}
+                                        title="EGM No & Date"
+                                      >
+                                        <span style={{ fontSize: "10px" }}>✈️</span>
+                                        <span>EGM: {egmNo || "N/A"} {egmDate ? `(${formatDate(egmDate)})` : ""}</span>
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                               {(() => {
                                 const docClicks = job.docClicks || {};
                                 const checklistUser = docClicks.checklist?.clickedBy;
@@ -4227,6 +4370,14 @@ const ExportJobsTable = () => {
                                 </div>
                               )}
                               <div style={{ fontSize: "10px", color: "#475569", display: "flex", flexDirection: "column", gap: "2px" }}>
+                                {(job.forwarder || job.operations?.[0]?.statusDetails?.[0]?.forwarderName) && (
+                                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                    <span style={{ fontWeight: "700", color: "#fc8019", fontSize: "9px" }}>FWDR:</span>
+                                    <span style={{ color: "#fc8019", fontWeight: "700", fontSize: "10px" }}>
+                                      {job.forwarder || job.operations[0].statusDetails[0].forwarderName}
+                                    </span>
+                                  </div>
+                                )}
                                 {job.consignees?.[0]?.consignee_name && (
                                   <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                                     <span style={{ fontWeight: "700", color: "#94a3b8", fontSize: "9px" }}>CONS:</span>
@@ -4389,6 +4540,18 @@ const ExportJobsTable = () => {
                                 {job.invoices?.[0]?.currency}{" "}
                                 {job.invoices?.[0]?.invoiceValue?.toLocaleString()}
                               </div>
+                              {job.operations?.[0]?.statusDetails?.[0]?.billing_details?.agency_bill_no && (
+                                <div style={{ fontSize: "9.5px", color: "#0f766e", fontWeight: "700", marginTop: "4px" }}>
+                                  Bill (A): {job.operations[0].statusDetails[0].billing_details.agency_bill_no}
+                                  {job.operations[0].statusDetails[0].billing_details.agency_bill_date && ` / ${formatDate(job.operations[0].statusDetails[0].billing_details.agency_bill_date)}`}
+                                </div>
+                              )}
+                              {job.operations?.[0]?.statusDetails?.[0]?.billing_details?.reimbursement_bill_no && (
+                                <div style={{ fontSize: "9.5px", color: "#b45309", fontWeight: "700", marginTop: "2px" }}>
+                                  Bill (R): {job.operations[0].statusDetails[0].billing_details.reimbursement_bill_no}
+                                  {job.operations[0].statusDetails[0].billing_details.reimbursement_bill_date && ` / ${formatDate(job.operations[0].statusDetails[0].billing_details.reimbursement_bill_date)}`}
+                                </div>
+                              )}
                             </td>
 
                             {/* Column 5: SB */}
@@ -4711,7 +4874,7 @@ const ExportJobsTable = () => {
                                         onClick={(e) => e.stopPropagation()}
                                         style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
                                       />
-                                      <span 
+                                      <span
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           e.preventDefault();
@@ -6646,8 +6809,9 @@ const ExportJobsTable = () => {
         onClose={handleGenDocsClose}
         PaperProps={{
           style: {
-            maxHeight: 450,
-            width: '170px',
+            maxHeight: 350,
+            width: '280px',
+            overflowY: 'auto',
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
             borderRadius: '12px',
             border: '1px solid #e2e8f0',
@@ -6734,6 +6898,9 @@ const ExportJobsTable = () => {
                     <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
                       <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>BILL OF LADING</MenuItem>
                     </BillOfLadingGenerator>
+                    <CertificateOfOriginGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CERTIFICATE OF ORIGIN</MenuItem>
+                    </CertificateOfOriginGenerator>
                   </>
                 )}
 

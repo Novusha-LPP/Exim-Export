@@ -6,6 +6,7 @@ import {
 import './Penalty.css';
 import BillingPending from './BillingPending';
 import MonthlyContainers from './monthlyContainers';
+import FreightForwardingMonthlyReport from './FreightForwardingMonthlyReport';
 
 const Penalty = () => {
   // Basic state for the report tab
@@ -176,6 +177,10 @@ const Penalty = () => {
 
     if (activeReport === 'monthly-container') {
       return <MonthlyContainers />;
+    }
+
+    if (activeReport === 'freight-forwarding-monthly') {
+      return <FreightForwardingMonthlyReport />;
     }
 
     // Filter Controls
@@ -577,6 +582,12 @@ const Penalty = () => {
             onClick={() => setActiveReport('monthly-container')}
           >
             Monthly Container
+          </div>
+          <div
+            className={`sidebar-item ${activeReport === 'freight-forwarding-monthly' ? 'active' : ''}`}
+            onClick={() => setActiveReport('freight-forwarding-monthly')}
+          >
+            Freight Forwarding
           </div>
           <div
             className={`sidebar-item ${activeReport === 'exporter-container' ? 'active' : ''}`}

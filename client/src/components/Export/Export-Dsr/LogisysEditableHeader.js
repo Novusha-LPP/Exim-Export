@@ -28,6 +28,7 @@ const ImportContainerDeliveryOrderGenerator = lazy(() => import("./StandardDocum
 const CartingJobRequestGenerator = lazy(() => import("./StandardDocuments/CartingJobRequestGenerator"));
 const MovementJobRequestGenerator = lazy(() => import("./StandardDocuments/MovementJobRequestGenerator"));
 const StorageApplicationGenerator = lazy(() => import("./StandardDocuments/StorageApplicationGenerator"));
+const CertificateOfOriginGenerator = lazy(() => import("./StandardDocuments/CertificateOfOriginGenerator"));
 
 import CreateClubJobModal from "./CreateClubJobModal.jsx";
 
@@ -386,7 +387,11 @@ const LogisysEditableHeader = ({
     (async () => {
       setSearchJobLoading(true);
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/job-numbers-search?q=${searchJobInputValue}`);
+        const isGeneral = formik.values.isGeneralJob === true || 
+                          formik.values.exporter === "GENERAL JOB" || 
+                          formik.values.job_no?.startsWith("GEN/");
+        const completedParam = isGeneral ? "&completed=true" : "";
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/job-numbers-search?q=${searchJobInputValue}${completedParam}`);
         if (active) {
           setSearchJobOptions(response.data.data || []);
         }
@@ -400,17 +405,73 @@ const LogisysEditableHeader = ({
     return () => {
       active = false;
     };
-  }, [searchJobInputValue, searchJobOpen]);
+  }, [searchJobInputValue, searchJobOpen, formik.values.isGeneralJob, formik.values.exporter, formik.values.job_no]);
 
   const handleCopyFromJob = async (selectedJobNo) => {
     if (!selectedJobNo) return;
 
-    if (window.confirm(`⚠️ DO YOU WANT TO COPY THIS JOB DATA (${selectedJobNo}) IN THIS JOB? \n\nThis will overwrite all fields except the Job Number and identifiers.`)) {
+    const isGeneral = formik.values.isGeneralJob === true || 
+                      formik.values.exporter === "GENERAL JOB" || 
+                      formik.values.job_no?.startsWith("GEN/");
+
+    const confirmMsg = isGeneral 
+      ? `⚠️ DO YOU WANT TO COPY COMPLETED JOB DATA (${selectedJobNo}) INTO THIS GENERAL JOB? \n\nThis will copy only the billing and shipping variables.`
+      : `⚠️ DO YOU WANT TO COPY THIS JOB DATA (${selectedJobNo}) IN THIS JOB? \n\nThis will overwrite all fields except the Job Number and identifiers.`;
+
+    if (window.confirm(confirmMsg)) {
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(selectedJobNo)}`);
         const sourceData = response.data;
 
         if (sourceData) {
+          if (isGeneral) {
+            const sourceInv = sourceData.invoices?.[0] || {};
+            const newInvoice = {
+              ...(formik.values.invoices?.[0] || {}),
+              invoiceNumber: sourceInv.invoiceNumber || "",
+              invoiceDate: sourceInv.invoiceDate || "",
+              termsOfInvoice: sourceInv.termsOfInvoice || "FOB",
+              invoiceValue: sourceInv.invoiceValue || 0,
+            };
+
+            const updatedValues = {
+              ...formik.values,
+              sb_no: sourceData.sb_no || "",
+              sb_date: sourceData.sb_date || "",
+              consignmentType: sourceData.consignmentType || "",
+              vessel_name: sourceData.vessel_name || "",
+              exporter_ref_no: sourceData.exporter_ref_no || "",
+              invoices: [newInvoice],
+            };
+
+            // Copy freightInsuranceCharges if they exist
+            if (sourceData.freightInsuranceCharges) {
+              updatedValues.freightInsuranceCharges = sourceData.freightInsuranceCharges;
+            }
+
+            // Copy other optional fields if present in formik values
+            if ("cif_amount" in formik.values) {
+              const fobVal = parseFloat(sourceInv.freightInsuranceCharges?.fobValue?.amount || sourceInv.invoiceValue || 0);
+              const freightVal = parseFloat(sourceInv.freightInsuranceCharges?.freight?.amount || 0);
+              const insuranceVal = parseFloat(sourceInv.freightInsuranceCharges?.insurance?.amount || 0);
+              const calculatedCif = fobVal + freightVal + insuranceVal;
+              updatedValues.cif_amount = calculatedCif || "";
+            }
+            if ("cifValue" in formik.values) {
+              updatedValues.cifValue = updatedValues.cif_amount || "";
+            }
+            if ("assbl_value" in formik.values) {
+              updatedValues.assbl_value = sourceData.assbl_value || "";
+            }
+            if ("total_duty" in formik.values) {
+              updatedValues.total_duty = sourceData.total_duty || "";
+            }
+
+            formik.setValues(updatedValues);
+            alert("General Job billing details copied successfully!");
+            return;
+          }
+
           // Fields to exclude from copying (top level)
           const excludeFields = [
             "_id", "id", "job_no", "jobNumber", "createdAt", "updatedAt", "__v",
@@ -1705,6 +1766,16 @@ const LogisysEditableHeader = ({
                 DRAFT BILL OF LADING
               </MenuItem>
             </BillOfLadingGenerator>
+
+            <CertificateOfOriginGenerator jobNo={formik.values.job_no}>
+              <MenuItem
+                disableRipple
+                onClick={() => setAnchorEl(null)}
+                sx={{ fontSize: 12, minWidth: 140 }}
+              >
+                CERTIFICATE OF ORIGIN
+              </MenuItem>
+            </CertificateOfOriginGenerator>
 
             {isGandhidham && (
               <>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Dialog, DialogContent, DialogTitle, IconButton, Menu, MenuItem, Typography, CircularProgress, Tooltip, Box, Button, TextField, FormControl, InputLabel, Select, DialogActions } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -16,6 +16,16 @@ import CaptureRates from "./CaptureRates";
 import AddExJobs from "../Export-Dsr/AddExJobs";
 import FreightBillOfLadingGenerator from "./FreightBillOfLadingGenerator";
 import FreightTrackingMap from "./FreightTrackingMap";
+import FreightQuotation from "./FreightQuotation";
+
+const THEME = {
+  blue: "#16408f",
+  border: "#cbd5e1",
+  text: "#333",
+  textMuted: "#6b7280",
+  white: "#ffffff",
+  bg: "#fafaff",
+};
 
 const s = {
   wrapper: {
@@ -55,25 +65,336 @@ const s = {
   }
 };
 
-const THEME = {
-  blue: "#16408f",
-  border: "#cbd5e1",
-  text: "#333",
-  textMuted: "#6b7280",
-  white: "#ffffff",
-  bg: "#fafaff",
-};
+function HistoricRatesLookup() {
+  const [pol, setPol] = useState("");
+  const [pod, setPod] = useState("");
+  const [rates, setRates] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-const DOC_TYPES = [
-  { label: "LEO", field: "leo_copy" },
-  { label: "INVOICE", field: "invoice" },
-  { label: "PACKING LIST", field: "packing_list" },
-  { label: "BILL OF LADING", field: "bill_of_lading" },
-];
+  // Searchable dropdown state
+  const [polOptions, setPolOptions] = useState([]);
+  const [podOptions, setPodOptions] = useState([]);
+  const [showPolDropdown, setShowPolDropdown] = useState(false);
+  const [showPodDropdown, setShowPodDropdown] = useState(false);
+  const [loadingPol, setLoadingPol] = useState(false);
+  const [loadingPod, setLoadingPod] = useState(false);
+
+  // References to close dropdowns when clicking outside
+  const polRef = useRef(null);
+  const podRef = useRef(null);
+
+  const defaultPolPorts = ["MUNDRA", "HAZIRA", "NHAVA SHEVA", "PIPAVAV", "CHENNAI", "KOLKATA"];
+  const defaultPodPorts = ["JEBEL ALI", "MONTREAL", "HAMBURG", "ROTTERDAM", "SINGAPORE", "NEW YORK", "FELIXSTOWE"];
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (polRef.current && !polRef.current.contains(e.target)) {
+        setShowPolDropdown(false);
+      }
+      if (podRef.current && !podRef.current.contains(e.target)) {
+        setShowPodDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Fetch unique POL ports from /ports or /seaPorts or /airPorts
+  useEffect(() => {
+    if (!pol.trim()) {
+      setPolOptions(defaultPolPorts);
+      return;
+    }
+    const fetchPolPorts = async () => {
+      setLoadingPol(true);
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/ports`, {
+          params: { search: pol.trim(), limit: 20 }
+        });
+        const data = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
+        const formatted = data.map(p => {
+          const code = p.uneceCode || p.unece_code || "";
+          const name = p.portName || p.name || "";
+          return code ? `(${code.toUpperCase()}) ${name.toUpperCase()}` : name.toUpperCase();
+        });
+        setPolOptions(formatted);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingPol(false);
+      }
+    };
+    const timer = setTimeout(fetchPolPorts, 200);
+    return () => clearTimeout(timer);
+  }, [pol]);
+
+  // Fetch unique POD ports from /ports or /seaPorts or /airPorts
+  useEffect(() => {
+    if (!pod.trim()) {
+      setPodOptions(defaultPodPorts);
+      return;
+    }
+    const fetchPodPorts = async () => {
+      setLoadingPod(true);
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/ports`, {
+          params: { search: pod.trim(), limit: 20 }
+        });
+        const data = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
+        const formatted = data.map(p => {
+          const code = p.uneceCode || p.unece_code || "";
+          const name = p.portName || p.name || "";
+          return code ? `(${code.toUpperCase()}) ${name.toUpperCase()}` : name.toUpperCase();
+        });
+        setPodOptions(formatted);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingPod(false);
+      }
+    };
+    const timer = setTimeout(fetchPodPorts, 200);
+    return () => clearTimeout(timer);
+  }, [pod]);
+
+  const handleSearch = async (e) => {
+    if (e) e.preventDefault();
+    if (!pol && !pod) {
+      alert("Please enter Port of Loading or Destination Port");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/export-dsr/historical-freight`, {
+        params: { pol, pod }
+      });
+      if (res.data.success) {
+        setRates(res.data.data || []);
+      } else {
+        setRates([]);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Failed to search historical rates");
+      setRates([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const dropDownStyle = {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    width: "100%",
+    backgroundColor: "#fff",
+    border: "1px solid #cbd5e1",
+    borderRadius: "4px",
+    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+    maxHeight: "200px",
+    overflowY: "auto",
+    zIndex: 1000,
+    marginTop: "4px",
+  };
+
+  const dropDownItemStyle = {
+    padding: "8px 12px",
+    fontSize: "12px",
+    cursor: "pointer",
+    borderBottom: "1px solid #f1f5f9",
+    color: "#334155",
+    transition: "background-color 0.15s ease",
+  };
+
+  return (
+    <div style={{ backgroundColor: "#fff", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+      <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "14px", color: '#1e293b', mb: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        Historic Freight Rates Lookup
+      </Typography>
+      <form onSubmit={handleSearch} style={{ display: "flex", gap: "12px", alignItems: "flex-end", marginBottom: "20px", flexWrap: "wrap" }}>
+        <div ref={polRef} style={{ display: "flex", flexDirection: "column", gap: "4px", position: "relative" }}>
+          <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b" }}>PORT OF LOADING (POL)</span>
+          <input
+            value={pol}
+            onChange={(e) => {
+              setPol(e.target.value);
+              setShowPolDropdown(true);
+            }}
+            onFocus={() => setShowPolDropdown(true)}
+            placeholder="Search or select POL..."
+            style={{
+              height: "34px",
+              padding: "0 12px",
+              fontSize: "12.5px",
+              border: "1px solid #cbd5e1",
+              borderRadius: "4px",
+              outline: "none",
+              width: "220px",
+            }}
+            autoComplete="off"
+          />
+          {showPolDropdown && (polOptions.length > 0 || loadingPol) && (
+            <div style={dropDownStyle}>
+              {loadingPol ? (
+                <div style={{ padding: "8px 12px", fontSize: "12px", color: "#64748b" }}>Searching...</div>
+              ) : (
+                polOptions.map((opt, idx) => (
+                  <div
+                    key={idx}
+                    style={dropDownItemStyle}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = "#eff6ff"}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = "transparent"}
+                    onMouseDown={() => {
+                      setPol(opt);
+                      setShowPolDropdown(false);
+                    }}
+                  >
+                    {opt}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+        <div ref={podRef} style={{ display: "flex", flexDirection: "column", gap: "4px", position: "relative" }}>
+          <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b" }}>PORT OF DESTINATION (POD)</span>
+          <input
+            value={pod}
+            onChange={(e) => {
+              setPod(e.target.value);
+              setShowPodDropdown(true);
+            }}
+            onFocus={() => setShowPodDropdown(true)}
+            placeholder="Search or select POD..."
+            style={{
+              height: "34px",
+              padding: "0 12px",
+              fontSize: "12.5px",
+              border: "1px solid #cbd5e1",
+              borderRadius: "4px",
+              outline: "none",
+              width: "220px",
+            }}
+            autoComplete="off"
+          />
+          {showPodDropdown && (podOptions.length > 0 || loadingPod) && (
+            <div style={dropDownStyle}>
+              {loadingPod ? (
+                <div style={{ padding: "8px 12px", fontSize: "12px", color: "#64748b" }}>Searching...</div>
+              ) : (
+                podOptions.map((opt, idx) => (
+                  <div
+                    key={idx}
+                    style={dropDownItemStyle}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = "#eff6ff"}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = "transparent"}
+                    onMouseDown={() => {
+                      setPod(opt);
+                      setShowPodDropdown(false);
+                    }}
+                  >
+                    {opt}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            height: "34px",
+            padding: "0 20px",
+            backgroundColor: "#16408f",
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+            fontWeight: 700,
+            cursor: "pointer",
+            fontSize: "12px",
+            transition: "all 0.15s ease",
+            opacity: loading ? 0.7 : 1
+          }}
+        >
+          {loading ? "Searching..." : "Search Rates"}
+        </button>
+      </form>
+
+      <div style={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "4px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12.5px" }}>
+          <thead>
+            <tr style={{ backgroundColor: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
+              <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase" }}>Job No</th>
+              <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase" }}>S/Line</th>
+              <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase" }}>Forwarder</th>
+              <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase" }}>Date</th>
+              <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase" }}>Currency</th>
+              <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase" }}>Exchange Rate</th>
+              <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase" }}>Amount</th>
+              <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 700, color: "#475569", fontSize: "11px", textTransform: "uppercase" }}>Amount (INR)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={8} style={{ padding: "30px 16px", textAlign: "center", color: "#64748b" }}>
+                  Searching historical rates...
+                </td>
+              </tr>
+            ) : rates.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={{ padding: "30px 16px", textAlign: "center", color: "#64748b" }}>
+                  No historical rates found. Enter routing criteria to search.
+                </td>
+              </tr>
+            ) : (
+              rates.map((rate, idx) => {
+                const getCurrencySymbol = (curr) => {
+                  switch (String(curr || "").toUpperCase()) {
+                    case "USD": return "$";
+                    case "EUR": return "€";
+                    case "INR": return "₹";
+                    case "GBP": return "£";
+                    default: return curr ? `${curr} ` : "";
+                  }
+                };
+
+                return (
+                  <tr key={idx} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                    <td style={{ padding: "10px 16px", fontWeight: 700, color: "#16408f" }}>{rate.jobNo}</td>
+                    <td style={{ padding: "10px 16px", color: "#334155" }}>{rate.shippingLine || "-"}</td>
+                    <td style={{ padding: "10px 16px", color: "#334155" }}>{rate.forwarder || "-"}</td>
+                    <td style={{ padding: "10px 16px", color: "#334155" }}>
+                      {rate.date ? (typeof rate.date === "string" ? rate.date : new Date(rate.date).toLocaleDateString("en-GB")) : "-"}
+                    </td>
+                    <td style={{ padding: "10px 16px" }}>
+                      <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 6px", borderRadius: "3px", backgroundColor: "#eff6ff", color: "#1e40af", border: "1px solid #bfdbfe" }}>
+                        {rate.currency || "INR"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 16px", textAlign: "right", color: "#64748b" }}>{rate.exchangeRate || "-"}</td>
+                    <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "#0f766e" }}>
+                      {rate.amountOriginal !== undefined ? `${getCurrencySymbol(rate.currency)}${rate.amountOriginal.toLocaleString()}` : "-"}
+                    </td>
+                    <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 700, color: "#1e293b" }}>
+                      ₹{rate.amountINR ? rate.amountINR.toLocaleString() : "-"}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 function DocsUploadCell({ row, onUpdate }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [uploading, setUploading] = useState(null);
+  const [showQuoteDialog, setShowQuoteDialog] = useState(false);
 
   const handleOpen = (e) => {
     e.stopPropagation();
@@ -132,8 +453,65 @@ function DocsUploadCell({ row, onUpdate }) {
     }
   };
 
+  const getDocTypes = (shipmentType) => {
+    switch (shipmentType) {
+      case "Export-Sea":
+        return [
+          { label: "INVOICE", field: "invoice" },
+          { label: "PACKING LIST", field: "packing_list" },
+          { label: "BOOKING", field: "booking_copy" },
+          { label: "LEO", field: "leo_copy" },
+          { label: "GATE PASS", field: "gate_pass" },
+          { label: "HBL", field: "hbl_copy" },
+          { label: "MBL", field: "mbl_copy" },
+          { label: "AGENT INVOICE", field: "agent_invoice" },
+          { label: "OTHER", field: "other_copy" },
+        ];
+      case "Export-Air":
+        return [
+          { label: "INVOICE", field: "invoice" },
+          { label: "PACKING LIST", field: "packing_list" },
+          { label: "BOOKING", field: "booking_copy" },
+          { label: "LEO", field: "leo_copy" },
+          { label: "GATE PASS", field: "gate_pass" },
+          { label: "HAWB", field: "hawb_copy" },
+          { label: "MAWB", field: "mawb_copy" },
+          { label: "AGENT INVOICE", field: "agent_invoice" },
+          { label: "OTHER", field: "other_copy" },
+        ];
+      case "Import-Sea":
+        return [
+          { label: "INVOICE", field: "invoice" },
+          { label: "PACKING LIST", field: "packing_list" },
+          { label: "HBL", field: "hbl_copy" },
+          { label: "MBL", field: "mbl_copy" },
+          { label: "DO", field: "do_copy" },
+          { label: "AGENT INVOICE", field: "agent_invoice" },
+          { label: "OTHER", field: "other_copy" },
+        ];
+      case "Import-Air":
+        return [
+          { label: "INVOICE", field: "invoice" },
+          { label: "PACKING LIST", field: "packing_list" },
+          { label: "HAWB", field: "hawb_copy" },
+          { label: "MAWB", field: "mawb_copy" },
+          { label: "DO", field: "do_copy" },
+          { label: "AGENT INVOICE", field: "agent_invoice" },
+          { label: "OTHER", field: "other_copy" },
+        ];
+      default:
+        return [
+          { label: "INVOICE", field: "invoice" },
+          { label: "PACKING LIST", field: "packing_list" },
+          { label: "LEO", field: "leo_copy" },
+          { label: "BILL OF LADING", field: "bill_of_lading" },
+        ];
+    }
+  };
+
   const docs = row.documents || {};
-  const uploadedCount = Object.values(docs).filter(Boolean).length;
+  const docTypes = getDocTypes(row.shipment_type);
+  const uploadedCount = Object.keys(docs).filter(k => docTypes.some(dt => dt.field === k) && docs[k]).length;
 
   return (
     <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', justifyContent: 'center' }}>
@@ -166,7 +544,27 @@ function DocsUploadCell({ row, onUpdate }) {
         <Typography variant="overline" sx={{ px: 2, pt: 1, fontWeight: 800, color: '#64748b', display: 'block', borderBottom: `1px solid #f3f4f6`, mb: 1, letterSpacing: '0.5px' }}>
           SHIPPING / VGM DOCS
         </Typography>
-        {DOC_TYPES.map((doc) => (
+
+        {row.saved_quotation && (
+          <MenuItem
+            sx={{ display: "flex", justifyContent: "space-between", py: 1, px: 2, backgroundColor: "#ecfdf5", "&:hover": { backgroundColor: "#d1fae5" } }}
+            onClick={(e) => { e.stopPropagation(); setShowQuoteDialog(true); handleClose(e); }}
+          >
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#047857' }}>QUOTATION</span>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <Tooltip title="View / Print Saved Quotation">
+                <IconButton
+                  size="small"
+                  sx={{ color: "#047857", p: 0.5 }}
+                >
+                  <DownloadIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </div>
+          </MenuItem>
+        )}
+
+        {docTypes.map((doc) => (
           <MenuItem
             key={doc.field}
             sx={{ display: "flex", justifyContent: "space-between", py: 1, px: 2, "&:hover": { backgroundColor: "#f8fafc" } }}
@@ -208,6 +606,31 @@ function DocsUploadCell({ row, onUpdate }) {
           </MenuItem>
         ))}
       </Menu>
+
+      {showQuoteDialog && row.saved_quotation && (
+        <Dialog
+          open={showQuoteDialog}
+          onClose={() => setShowQuoteDialog(false)}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{ style: { borderRadius: 6, overflow: "hidden" } }}
+        >
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#16408f', color: '#fff', py: 1.5, px: 3 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Saved Quotation - {row.enquiry_no}</Typography>
+            <IconButton onClick={() => setShowQuoteDialog(false)} sx={{ color: '#fff' }}>
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ p: 0, backgroundColor: "#f3f4f6" }}>
+            <FreightQuotation
+              enquiry={row}
+              selectedRate={row.saved_quotation}
+              onBack={() => setShowQuoteDialog(false)}
+              onUpdate={onUpdate}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
@@ -483,7 +906,7 @@ function FreightForwardingModule() {
 
       {/* Tabs */}
       <Box sx={s.tabsContainer}>
-        {["Enquiry", "Rejected", "Success"].map((tab) => {
+        {["Enquiry", "Rejected", "Success", "Historic Rates"].map((tab) => {
           const isActive = activeTab === tab;
           return (
             <button
@@ -507,26 +930,32 @@ function FreightForwardingModule() {
               }}
             >
               {tab}
-              <span
-                style={{
-                  padding: "2px 8px",
-                  borderRadius: "12px",
-                  fontSize: "10.5px",
-                  fontWeight: "800",
-                  backgroundColor: isActive ? "#16408f" : "#f1f5f9",
-                  color: isActive ? "#ffffff" : "#64748b",
-                  marginLeft: "4px",
-                  transition: "all 0.15s ease"
-                }}
-              >
-                {tab === "Enquiry" ? enquiryCount : tab === "Rejected" ? rejectedCount : successCount}
-              </span>
+              {tab !== "Historic Rates" && (
+                <span
+                  style={{
+                    padding: "2px 8px",
+                    borderRadius: "12px",
+                    fontSize: "10.5px",
+                    fontWeight: "800",
+                    backgroundColor: isActive ? "#16408f" : "#f1f5f9",
+                    color: isActive ? "#ffffff" : "#64748b",
+                    marginLeft: "4px",
+                    transition: "all 0.15s ease"
+                  }}
+                >
+                  {tab === "Enquiry" ? enquiryCount : tab === "Rejected" ? rejectedCount : successCount}
+                </span>
+              )}
             </button>
           );
         })}
       </Box>
 
-      <Box sx={s.toolbar}>
+      {activeTab === "Historic Rates" ? (
+        <HistoricRatesLookup />
+      ) : (
+        <>
+          <Box sx={s.toolbar}>
             <input
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
@@ -888,6 +1317,8 @@ function FreightForwardingModule() {
               </table>
             </div>
           </Box>
+        </>
+      )}
 
       <Dialog
         open={openCreate}

@@ -67,9 +67,8 @@ function ExportChargesModule() {
       const isSentForBilling = formik.values.send_for_billing === true;
       const isAdmin = user?.role === "Admin";
 
-      if (isSentForBilling && !isAdmin) {
-        // Charges CRUD is locked for non-admins
-        setIsEditable(false);
+      if (isSentForBilling) {
+        setIsEditable(true);
       } else if (formik.values.sb_date && !isNewJob) {
         setIsEditable(false);
       } else {

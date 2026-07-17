@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 import surajCompanyLogo from "../../../assets/images/surajCompanyLogo.jpeg";
 
 const THEME = {
@@ -31,16 +32,36 @@ const s = {
   input: { border: "none", backgroundColor: "#f1f5f9", width: "90px", textAlign: "right", padding: "6px 10px", borderRadius: "3px", fontSize: "12px", outline: "none", fontWeight: 600, color: "#1e293b" },
 };
 
-function FreightQuotation({ enquiry, selectedRate, onBack }) {
+function FreightQuotation({ enquiry, selectedRate, onBack, onUpdate }) {
   const [quoteData, setQuoteData] = useState({
-    base_rates: selectedRate.base_rates.map(r => ({ ...r, margin: 0 })),
-    shipping_line_rates: selectedRate.shipping_line_rates.map(r => ({ ...r, margin: 0 })),
+    base_rates: selectedRate.base_rates.map(r => ({ ...r, margin: r.margin !== undefined ? Number(r.margin) : 0 })),
+    shipping_line_rates: selectedRate.shipping_line_rates.map(r => ({ ...r, margin: r.margin !== undefined ? Number(r.margin) : 0 })),
   });
 
   const calculateTotal = (list) => list.reduce((acc, curr) => acc + (Number(curr.amount) + Number(curr.margin || 0)), 0);
 
   const totalA = calculateTotal(quoteData.base_rates);
   const totalB = calculateTotal(quoteData.shipping_line_rates);
+
+  const handleSaveQuotation = async () => {
+    try {
+      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/freight-enquiries/${enquiry._id}`, {
+        saved_quotation: {
+          base_rates: quoteData.base_rates,
+          shipping_line_rates: quoteData.shipping_line_rates,
+          total: totalA + totalB,
+          forwarder_name: selectedRate.forwarder_name || "",
+        }
+      });
+      if (res.data.success) {
+        alert("Quotation saved successfully!");
+        if (onUpdate) onUpdate(res.data.data);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save quotation");
+    }
+  };
 
   return (
     <div style={{ backgroundColor: "#f3f4f6", padding: "20px", maxHeight: "80vh", overflowY: "auto" }}>
@@ -229,32 +250,59 @@ function FreightQuotation({ enquiry, selectedRate, onBack }) {
         </div>
 
         <div style={{ marginTop: "30px", textAlign: "center" }} className="no-print">
-           <button 
-             onClick={() => window.print()} 
-             style={{
-               backgroundColor: "#16408f",
-               color: "#fff",
-               padding: "12px 24px",
-               border: "none",
-               borderRadius: "3px",
-               fontWeight: 700,
-               fontSize: "13px",
-               cursor: "pointer",
-               transition: "all 0.15s ease",
-               display: "inline-flex",
-               alignItems: "center",
-               justifyContent: "center",
-               gap: "8px"
-             }}
-             onMouseEnter={(e) => {
-               e.currentTarget.style.backgroundColor = "#19448a";
-             }}
-             onMouseLeave={(e) => {
-               e.currentTarget.style.backgroundColor = "#16408f";
-             }}
-           >
-             Download / Print Quotation
-           </button>
+          <button 
+            onClick={handleSaveQuotation}
+            style={{
+              backgroundColor: "#059669",
+              color: "#fff",
+              padding: "12px 24px",
+              border: "none",
+              borderRadius: "3px",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              marginRight: "10px"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#047857";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#059669";
+            }}
+          >
+            Save Quotation
+          </button>
+          <button 
+            onClick={() => window.print()} 
+            style={{
+              backgroundColor: "#16408f",
+              color: "#fff",
+              padding: "12px 24px",
+              border: "none",
+              borderRadius: "3px",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#19448a";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#16408f";
+            }}
+          >
+            Download / Print Quotation
+          </button>
         </div>
       </div>
     </div>

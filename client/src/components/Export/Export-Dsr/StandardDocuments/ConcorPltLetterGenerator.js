@@ -101,7 +101,8 @@ const ConcorPltLetterGenerator = ({ jobNo, children }) => {
                      GANDHIDHAM (Kutch) - 370 201<br/>
                      Phone No. : (02836) 229011 / 12<br/>
                      E-mail : anurag@surajforwders.com<br/>
-                     PIC : Mr. Anurag Pillai (M) +91 99243 04422
+                     PIC : Mr. Anurag Pillai (M) +91 99243 04422<br/>
+                     <strong style="color: #000;">PIC : Balvir Bhai (M) +91 99243 04434</strong>
                    </div>
                  </td>
                </tr>

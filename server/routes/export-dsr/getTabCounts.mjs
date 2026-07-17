@@ -520,7 +520,18 @@ function applyCommonFilters(filter, query) {
   }
 
   if (branch) {
-    filter.$and.push({ branch_code: { $regex: `^${escapeRegex(branch)}$`, $options: "i" } });
+    const bStr = String(branch).trim().toUpperCase();
+    if (bStr === "GEN") {
+      filter.$and.push({ isGeneralJob: true });
+    } else if (bStr === "FREIGHT") {
+      filter.$and.push({ job_no: { $regex: "^FF", $options: "i" } });
+    } else {
+      filter.$and.push({
+        branch_code: { $regex: `^${escapeRegex(bStr)}$`, $options: "i" },
+        isGeneralJob: { $ne: true },
+        job_no: { $not: /^FF/i }
+      });
+    }
   }
 
   if (year && year !== "all") {
@@ -624,8 +635,8 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
         }
       }
 
-      const PAYMENT_TABS_LIST = ["billing-pending", "payment-requested", "payment", "payment-completed", "club-jobs", "export-completed-billing", "general-jobs"];
-      const PURCHASE_TABS_LIST = ["billing-pending", "purchase-book-requested", "purchase-book", "purchase-book-completed", "club-jobs", "export-completed-billing", "general-jobs"];
+      const PAYMENT_TABS_LIST = ["billing-pending", "payment-requested", "payment", "payment-completed", "club-jobs", "export-completed-billing"];
+      const PURCHASE_TABS_LIST = ["billing-pending", "purchase-book-requested", "purchase-book", "purchase-book-completed", "club-jobs", "export-completed-billing"];
       const tabs = workMode === "purchase-book" ? PURCHASE_TABS_LIST : PAYMENT_TABS_LIST;
 
       const counts = {};

@@ -11,9 +11,9 @@ router.get("/api/export-dsr/historical-freight", async (req, res) => {
       return res.status(400).json({ success: false, message: "POL and POD are required" });
     }
 
-    // Calculate date 2 months ago
-    const twoMonthsAgo = new Date();
-    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    // Calculate date 6 months ago for broader historical coverage
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
     // Extract significant keywords (longer than 3 chars) to match ports
     const getKeywords = (str) => {
@@ -32,36 +32,63 @@ router.get("/api/export-dsr/historical-freight", async (req, res) => {
     const jobs = await ExJobModel.find({
       port_of_loading: { $regex: polRegex, $options: "i" },
       destination_port: { $regex: podRegex, $options: "i" },
-      createdAt: { $gte: twoMonthsAgo }
+      createdAt: { $gte: sixMonthsAgo }
     })
+    .select("job_no job_date createdAt shipping_line_airline forwarder invoices.freightInsuranceCharges invoices.currency invoices.invoiceValue exchange_rate")
     .sort({ createdAt: -1 })
-    .limit(10);
+    .limit(20)
+    .lean();
 
     if (!jobs || jobs.length === 0) {
       return res.status(200).json({ success: true, data: [] });
     }
 
-    // Extract unique freight values
+    // Extract freight values with both USD and INR
     const results = [];
     jobs.forEach(job => {
       (job.invoices || []).forEach(inv => {
         const f = inv.freightInsuranceCharges?.freight;
         if (f && f.amount > 0) {
+          const currency = f.currency || inv.currency || "INR";
+          const exchangeRate = Number(f.exchangeRate || job.exchange_rate || 1);
+          const amountOriginal = Number(f.amount);
+
+          // Calculate both USD and INR values
+          let amountUSD = amountOriginal;
+          let amountINR = amountOriginal;
+
+          if (currency !== "INR" && exchangeRate > 1) {
+            // Original amount is in foreign currency (e.g. USD)
+            amountUSD = amountOriginal;
+            amountINR = Math.round(amountOriginal * exchangeRate);
+          } else if (currency === "INR") {
+            // Already in INR, try to calculate USD if exchange rate available
+            amountINR = amountOriginal;
+            amountUSD = exchangeRate > 1 ? Math.round(amountOriginal / exchangeRate) : amountOriginal;
+          }
+
           results.push({
             jobNo: job.job_no,
             date: job.job_date || job.createdAt,
-            amount: f.amount,
-            currency: f.currency,
-            exchangeRate: f.exchangeRate
+            amountOriginal,
+            amountUSD,
+            amountINR,
+            currency,
+            exchangeRate,
+            shippingLine: job.shipping_line_airline || "",
+            forwarder: job.forwarder || ""
           });
         }
       });
     });
 
-    // Return unique combinations to avoid clutter
-    const uniqueResults = results.filter((v, i, a) => 
-      a.findIndex(t => t.amount === v.amount && t.currency === v.currency) === i
-    ).slice(0, 5);
+    // Deduplicate by jobNo (keep first invoice per job)
+    const seen = new Set();
+    const uniqueResults = results.filter(r => {
+      if (seen.has(r.jobNo)) return false;
+      seen.add(r.jobNo);
+      return true;
+    }).slice(0, 10);
 
     res.status(200).json({ success: true, data: uniqueResults });
 

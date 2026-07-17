@@ -74,6 +74,7 @@ const freightEnquirySchema = new mongoose.Schema(
       }
     ],
     selected_rate_index: { type: Number, default: -1 },
+    saved_quotation: { type: mongoose.Schema.Types.Mixed, default: null },
     charges: { type: Array, default: [] },
     documents: {
       leo_copy: String,
@@ -92,6 +93,13 @@ const freightEnquirySchema = new mongoose.Schema(
       odex_vgm: String,
       odex_esb: String,
       odex_form_13: String,
+      hbl_copy: String,
+      mbl_copy: String,
+      hawb_copy: String,
+      mawb_copy: String,
+      do_copy: String,
+      agent_invoice: String,
+      other_copy: String,
     },
     bl_details: {
       consignor: { type: String, default: "" },

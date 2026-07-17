@@ -69,7 +69,7 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
         if (isGandhidham) {
           // Cover Ahmedabad address
           doc.setFillColor(255, 255, 255);
-          doc.rect(112, 4, 87, 38, "F");
+          doc.rect(112, 4, 87, 40, "F");
 
           // Draw Gandhidham address
           doc.setTextColor(100, 100, 100); // Grey color
@@ -85,7 +85,11 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
           doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
           doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(0, 0, 0);
+          doc.text("PIC : Balvir Bhai (M) +91 99243 04434", 138, 36.5);
 
+          doc.setFont("helvetica", "normal"); // Reset font style
           doc.setTextColor(0, 0, 0); // Reset color
         }
       } catch (err) {
@@ -143,6 +147,8 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       doc.setFont("helvetica", "bold");
       doc.text(`Shipping Bill No.  ${data.sb_no || ""}`, 15, yPos);
       yPos += 6;
+      doc.text(`Shipping Bill Date.  ${formatDate(data.sb_date) || ""}`, 15, yPos);
+      yPos += 6;
       doc.text(`Type of Cargo  ${data.consignmentType || ""}`, 15, yPos);
       yPos += 6;
       doc.text(`Shipping Bill Weight  ${data.gross_weight_kg || ""} ${data.gross_weight_unit || "KGS"}`, 15, yPos);
@@ -152,15 +158,21 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
       yPos += 10;
 
       // Table: Container Details
-      const tableBody = containers.map((c, i) => [
-        String(i + 1),
-        c.containerNo || c.container_number || "",
-        getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size || ""),
-        "", // Net weight of cargo per container (optional)
-        c.tareWeightKgs ? `${c.tareWeightKgs} KGS` : "",
-        c.customSealNo || c.custom_seal || c.sealNo || "",
-        data.port_of_discharge || ""
-      ]);
+      const tableBody = containers.map((c, i) => {
+        const customSeal = c.customSealNo || c.custom_seal || c.sealNo || "";
+        const lineSeal = c.shippingLineSealNo || c.line_seal || "";
+        const sealStr = [customSeal && `Cust: ${customSeal}`, lineSeal && `Line: ${lineSeal}`].filter(Boolean).join("\n") || "";
+
+        return [
+          String(i + 1),
+          c.containerNo || c.container_number || "",
+          getContainerSizeLabel(c.isoCode || c.containerSize || c.type || c.size || ""),
+          c.pkgsStuffed ? `${c.pkgsStuffed} PKGS` : "",
+          c.grossWeight ? `${c.grossWeight} KGS` : "",
+          sealStr,
+          data.port_of_discharge || ""
+        ];
+      });
 
       // If empty, add a blank row
       if (tableBody.length === 0) {
@@ -184,7 +196,7 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
           fontStyle: "bold",
           halign: "center",
         },
-        head: [["Sr No.", "Container No.", "Size", "Net Weight of Cargo", "Gross Weight of Container", "Seal No.", "POD"]],
+        head: [["Sr No.", "Container No.", "Size", "No. of Packages", "Gross Weight of Container", "Seal No.", "POD"]],
         body: tableBody,
       });
 

@@ -148,6 +148,7 @@ async function syncClubFields(job) {
       sibOp0.handoverImageUpload = op0Status.handoverImageUpload || [];
       sibOp0.manualVgmUpload = op0Status.manualVgmUpload || [];
       sibOp0.cmaForwardingNoteUpload = op0Status.cmaForwardingNoteUpload || [];
+      sibOp0.assessmentCopy = op0Status.assessmentCopy || [];
 
       // Sync billing details
       sibOp0.billingDocsSentDt = op0Status.billingDocsSentDt || "";
@@ -193,6 +194,7 @@ async function syncClubFields(job) {
         "operations.0.statusDetails.0.handoverImageUpload": sibOp0.handoverImageUpload,
         "operations.0.statusDetails.0.manualVgmUpload": sibOp0.manualVgmUpload,
         "operations.0.statusDetails.0.cmaForwardingNoteUpload": sibOp0.cmaForwardingNoteUpload,
+        "operations.0.statusDetails.0.assessmentCopy": sibOp0.assessmentCopy,
         "operations.0.statusDetails.0.billingDocsSentDt": sibOp0.billingDocsSentDt,
         "operations.0.statusDetails.0.billingDocsSentUpload": sibOp0.billingDocsSentUpload,
         "operations.0.statusDetails.0.billing_details": sibOp0.billing_details,
@@ -289,7 +291,7 @@ async function getImpexCubeAccessToken(financialYear, branchCode) {
 // GET /api/job-numbers-search - Search for job numbers for 'Copy From' feature
 router.get("/job-numbers-search", async (req, res) => {
   try {
-    const { q = "", year = "" } = req.query;
+    const { q = "", year = "", completed } = req.query;
     const filter = { job_no: { $not: /^FF/i } };
     const andConditions = [];
     if (q) {
@@ -297,6 +299,9 @@ router.get("/job-numbers-search", async (req, res) => {
     }
     if (year) {
       andConditions.push({ year: year });
+    }
+    if (completed === "true") {
+      andConditions.push({ status: "Completed" });
     }
     if (andConditions.length > 0) {
       filter.$and = andConditions;
@@ -963,6 +968,8 @@ router.get("/global-search-jobs", async (req, res) => {
           panNo: 1,
           gstin: 1,
           adCode: 1,
+          egm_no: 1,
+          egm_date: 1,
           "invoices.invoiceNumber": 1,
           "invoices.invoiceDate": 1,
           "invoices.termsOfInvoice": 1,
@@ -972,6 +979,7 @@ router.get("/global-search-jobs", async (req, res) => {
           "invoices.invoice_no": 1,
           "invoices.invoice_date": 1,
           "invoices.invValue": 1,
+          "invoices.products.drawbackDetails": 1,
           sb_no: 1,
           goods_stuffed_at: 1,
           sb_date: 1,
@@ -1034,6 +1042,7 @@ router.get("/global-search-jobs", async (req, res) => {
           "operations.statusDetails.movementCopyUpload": 1,
           "operations.statusDetails.shippingInstructionsUpload": 1,
           "operations.statusDetails.form13CopyUpload": 1,
+          "operations.statusDetails.assessmentCopy": 1,
           "operations.statusDetails.handoverImageUpload": 1,
           "operations.statusDetails.billingDocsSentUpload": 1,
           "operations.statusDetails.billingDocsSentDt": 1,
@@ -1606,6 +1615,7 @@ router.get("/exports/:status?", async (req, res) => {
 
     // Selected fields to reduce payload size for the frontend table
     const selectProjection = {
+      forwarder: 1,
       job_no: 1,
       docClicks: 1,
       custom_house: 1,
@@ -1622,6 +1632,8 @@ router.get("/exports/:status?", async (req, res) => {
       panNo: 1,
       gstin: 1,
       adCode: 1,
+      egm_no: 1,
+      egm_date: 1,
       "invoices.invoiceNumber": 1,
       "invoices.invoiceDate": 1,
       "invoices.termsOfInvoice": 1,
@@ -1631,6 +1643,7 @@ router.get("/exports/:status?", async (req, res) => {
       "invoices.invoice_no": 1,
       "invoices.invoice_date": 1,
       "invoices.invValue": 1,
+      "invoices.products.drawbackDetails": 1,
       sb_no: 1,
       goods_stuffed_at: 1,
       sb_date: 1,
@@ -1698,6 +1711,7 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.movementCopyUpload": 1,
       "operations.statusDetails.shippingInstructionsUpload": 1,
       "operations.statusDetails.form13CopyUpload": 1,
+      "operations.statusDetails.assessmentCopy": 1,
       "operations.statusDetails.handoverImageUpload": 1,
       "operations.statusDetails.billingDocsSentUpload": 1,
       "operations.statusDetails.billingDocsSentDt": 1,
@@ -2754,6 +2768,135 @@ router.put("/:job_no(.*)/track-click", async (req, res) => {
   }
 });
 
+// PUT documents
+router.put(
+  "/:job_no(.*)/documents",
+  auditMiddleware("Job"),
+  async (req, res) => {
+    try {
+      const raw = req.params.job_no || "";
+      const job_no = decodeURIComponent(raw);
+
+      const existingJob = await ExJobModel.findOne({ job_no: { $regex: `^${job_no}$`, $options: "i" } });
+      if (existingJob) {
+        const usernameHeader = req.headers["username"] || req.headers["x-username"];
+        const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
+        const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
+        const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
+
+        if (existingJob.send_for_billing && !isAdmin) {
+          return res.status(403).json({
+            message: "This job has been sent for billing. Only Admins can modify it."
+          });
+        }
+      }
+
+      const { export_documents } = req.body;
+
+      const updatedExportJob = await ExJobModel.findOneAndUpdate(
+        { job_no: { $regex: `^${job_no}$`, $options: "i" } },
+        { $set: { export_documents, updatedAt: new Date() } },
+        { new: true }
+      );
+
+      if (!updatedExportJob) {
+        return res.status(404).json({ message: "Export job not found" });
+      }
+
+      await syncToClientDatabase(updatedExportJob.job_no, { export_documents });
+
+      res.json({
+        message: "Documents updated successfully",
+        data: updatedExportJob,
+      });
+    } catch (error) {
+      console.error("Error updating export documents:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
+// PUT containers
+router.put(
+  "/:job_no(.*)/containers",
+  auditMiddleware("Job"),
+  async (req, res) => {
+    try {
+      const raw = req.params.job_no || "";
+      const job_no = decodeURIComponent(raw);
+
+      const existingJob = await ExJobModel.findOne({ job_no: { $regex: `^${job_no}$`, $options: "i" } });
+      if (existingJob) {
+        const usernameHeader = req.headers["username"] || req.headers["x-username"];
+        const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
+        const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
+        const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
+
+        if (existingJob.send_for_billing && !isAdmin) {
+          return res.status(403).json({
+            message: "This job has been sent for billing. Only Admins can modify it."
+          });
+        }
+      }
+
+      const { containers } = req.body;
+      const username = req.headers["username"] || "System";
+      const updateFields = { containers, updatedAt: new Date() };
+
+      if (existingJob) {
+        const changeNotif = detectSbOrSealChange(existingJob, { containers }, username);
+        if (changeNotif) {
+          updateFields.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
+          updateFields.sb_or_seal_changed_details = changeNotif.sb_or_seal_changed_details;
+        }
+      }
+
+      const updatedExportJob = await ExJobModel.findOneAndUpdate(
+        { job_no: { $regex: `^${job_no}$`, $options: "i" } },
+        { $set: updateFields },
+        { new: true }
+      );
+
+      if (!updatedExportJob) {
+        return res.status(404).json({ message: "Export job not found" });
+      }
+
+      await syncToClientDatabase(updatedExportJob.job_no, { containers });
+
+      res.json({
+        message: "Containers updated successfully",
+        data: updatedExportJob,
+      });
+    } catch (error) {
+      console.error("Error updating containers:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
+// PUT /api/exports/:job_no/clear-sb-seal-notif - Clear SB or Seal change notification
+router.put("/:job_no(.*)/clear-sb-seal-notif", async (req, res) => {
+  try {
+    const raw = req.params.job_no || "";
+    const job_no = decodeURIComponent(raw);
+
+    const updatedJob = await ExJobModel.findOneAndUpdate(
+      { job_no: { $regex: `^${job_no}$`, $options: "i" } },
+      { $set: { sb_or_seal_changed_notif: false } },
+      { new: true }
+    );
+
+    if (!updatedJob) {
+      return res.status(404).json({ success: false, message: "Job not found" });
+    }
+
+    res.json({ success: true, message: "Notification cleared successfully", data: updatedJob });
+  } catch (error) {
+    console.error("Error clearing notification:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 // Update export job (full)
 router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
   try {
@@ -3112,133 +3255,6 @@ router.patch(
   }
 );
 
-// PUT documents
-router.put(
-  "/:job_no(.*)/documents",
-  auditMiddleware("Job"),
-  async (req, res) => {
-    try {
-      const raw = req.params.job_no || "";
-      const job_no = decodeURIComponent(raw);
 
-      const existingJob = await ExJobModel.findOne({ job_no: { $regex: `^${job_no}$`, $options: "i" } });
-      if (existingJob) {
-        const usernameHeader = req.headers["username"] || req.headers["x-username"];
-        const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
-        const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
-        const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
-
-        if (existingJob.send_for_billing && !isAdmin) {
-          return res.status(403).json({
-            message: "This job has been sent for billing. Only Admins can modify it."
-          });
-        }
-      }
-
-      const { export_documents } = req.body;
-
-      const updatedExportJob = await ExJobModel.findOneAndUpdate(
-        { job_no: { $regex: `^${job_no}$`, $options: "i" } },
-        { $set: { export_documents, updatedAt: new Date() } },
-        { new: true }
-      );
-
-      if (!updatedExportJob) {
-        return res.status(404).json({ message: "Export job not found" });
-      }
-
-      await syncToClientDatabase(updatedExportJob.job_no, { export_documents });
-
-      res.json({
-        message: "Documents updated successfully",
-        data: updatedExportJob,
-      });
-    } catch (error) {
-      console.error("Error updating export documents:", error);
-      res.status(500).json({ message: "Server error" });
-    }
-  }
-);
-
-// PUT containers
-router.put(
-  "/:job_no(.*)/containers",
-  auditMiddleware("Job"),
-  async (req, res) => {
-    try {
-      const raw = req.params.job_no || "";
-      const job_no = decodeURIComponent(raw);
-
-      const existingJob = await ExJobModel.findOne({ job_no: { $regex: `^${job_no}$`, $options: "i" } });
-      if (existingJob) {
-        const usernameHeader = req.headers["username"] || req.headers["x-username"];
-        const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
-        const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
-        const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
-
-        if (existingJob.send_for_billing && !isAdmin) {
-          return res.status(403).json({
-            message: "This job has been sent for billing. Only Admins can modify it."
-          });
-        }
-      }
-
-      const { containers } = req.body;
-      const username = req.headers["username"] || "System";
-      const updateFields = { containers, updatedAt: new Date() };
-
-      if (existingJob) {
-        const changeNotif = detectSbOrSealChange(existingJob, { containers }, username);
-        if (changeNotif) {
-          updateFields.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
-          updateFields.sb_or_seal_changed_details = changeNotif.sb_or_seal_changed_details;
-        }
-      }
-
-      const updatedExportJob = await ExJobModel.findOneAndUpdate(
-        { job_no: { $regex: `^${job_no}$`, $options: "i" } },
-        { $set: updateFields },
-        { new: true }
-      );
-
-      if (!updatedExportJob) {
-        return res.status(404).json({ message: "Export job not found" });
-      }
-
-      await syncToClientDatabase(updatedExportJob.job_no, { containers });
-
-      res.json({
-        message: "Containers updated successfully",
-        data: updatedExportJob,
-      });
-    } catch (error) {
-      console.error("Error updating containers:", error);
-      res.status(500).json({ message: "Server error" });
-    }
-  }
-);
-
-// PUT /api/exports/:job_no/clear-sb-seal-notif - Clear SB or Seal change notification
-router.put("/:job_no(.*)/clear-sb-seal-notif", async (req, res) => {
-  try {
-    const raw = req.params.job_no || "";
-    const job_no = decodeURIComponent(raw);
-
-    const updatedJob = await ExJobModel.findOneAndUpdate(
-      { job_no: { $regex: `^${job_no}$`, $options: "i" } },
-      { $set: { sb_or_seal_changed_notif: false } },
-      { new: true }
-    );
-
-    if (!updatedJob) {
-      return res.status(404).json({ success: false, message: "Job not found" });
-    }
-
-    res.json({ success: true, message: "Notification cleared successfully", data: updatedJob });
-  } catch (error) {
-    console.error("Error clearing notification:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
 
 export default router;

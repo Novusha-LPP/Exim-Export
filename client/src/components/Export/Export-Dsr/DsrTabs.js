@@ -59,6 +59,15 @@ function DsrTabs() {
     return () => clearInterval(interval);
   }, [fetchQueryCount]);
 
+  const lastModuleRef = React.useRef(currentModule);
+
+  React.useEffect(() => {
+    if (lastModuleRef.current !== currentModule) {
+      setTabValue(1);
+      lastModuleRef.current = currentModule;
+    }
+  }, [currentModule, setTabValue]);
+
   // Clear badge when user clicks on the Queries tab
   const handleChange = (event, newValue) => {
     setTabValue(newValue);

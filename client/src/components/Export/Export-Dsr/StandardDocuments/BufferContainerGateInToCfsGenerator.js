@@ -63,7 +63,7 @@ const BufferContainerGateInToCfsGenerator = ({ jobNo, children, onTrackSuccess }
         if (isGandhidham) {
           // Cover Ahmedabad address
           doc.setFillColor(255, 255, 255);
-          doc.rect(112, 4, 87, 38, "F");
+          doc.rect(112, 4, 87, 40, "F");
 
           // Draw Gandhidham address
           doc.setTextColor(100, 100, 100); // Grey color
@@ -79,7 +79,11 @@ const BufferContainerGateInToCfsGenerator = ({ jobNo, children, onTrackSuccess }
           doc.text("Phone No. : (02836) 229011 / 12", 138, 24.5);
           doc.text("E-mail : anurag@surajforwders.com", 138, 28.5);
           doc.text("PIC : Mr. Anurag Pillai (M) +91 99243 04422", 138, 32.5);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(0, 0, 0);
+          doc.text("PIC : Balvir Bhai (M) +91 99243 04434", 138, 36.5);
 
+          doc.setFont("helvetica", "normal"); // Reset font style
           doc.setTextColor(0, 0, 0); // Reset color
         }
       } catch (err) {
@@ -127,12 +131,24 @@ const BufferContainerGateInToCfsGenerator = ({ jobNo, children, onTrackSuccess }
 
       const tableBody = containers.map((c, idx) => {
         const exporterName = data.exporter || "-";
-        const cargo = data.nature_of_cargo || "-";
+        const cargo = data.invoices?.[0]?.products?.[0]?.description || data.description || data.nature_of_cargo || "-";
         const sbNoDated = data.sb_no ? `SB NO: ${data.sb_no}\nDT: ${formatDate(data.sb_date)}` : "-";
         const pkgCount = c.pkgsStuffed ? `${c.pkgsStuffed} PKGS` : (data.total_no_of_pkgs ? `${data.total_no_of_pkgs} PKGS` : "-");
         const contNo = c.containerNo || c.container_number || "-";
         const contSize = c.containerSize || c.type || "";
         const contDisplay = contSize ? `${contNo} (${contSize})` : contNo;
+
+        let op = data.operations?.[idx];
+        let trans = op?.transporterDetails?.[0];
+        if (!trans || !trans.vehicleNo) {
+          const mainOp = data.operations?.[0] || {};
+          const t = mainOp.transporterDetails?.[idx];
+          if (t && t.vehicleNo) {
+            trans = t;
+          }
+        }
+        const vehicleNo = c.weighmentVehicleNo || trans?.vehicleNo || (idx === 0 ? data.operations?.[0]?.transporterDetails?.[0]?.vehicleNo : "") || "";
+        const contDisplayWithVehicle = vehicleNo ? `${contDisplay}\nVeh No: ${vehicleNo}` : contDisplay;
 
         return [
           String(idx + 1),
@@ -140,7 +156,7 @@ const BufferContainerGateInToCfsGenerator = ({ jobNo, children, onTrackSuccess }
           cargo,
           sbNoDated,
           pkgCount,
-          contDisplay
+          contDisplayWithVehicle
         ];
       });
 
