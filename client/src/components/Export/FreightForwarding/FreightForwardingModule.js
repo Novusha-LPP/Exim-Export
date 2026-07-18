@@ -15,6 +15,7 @@ import ForwarderDirectory from "./ForwarderDirectory";
 import CaptureRates from "./CaptureRates";
 import AddExJobs from "../Export-Dsr/AddExJobs";
 import FreightBillOfLadingGenerator from "./FreightBillOfLadingGenerator";
+import FreightCertificateGenerator from "../Export-Dsr/StandardDocuments/FreightCertificateGenerator";
 import FreightTrackingMap from "./FreightTrackingMap";
 import FreightQuotation from "./FreightQuotation";
 
@@ -670,14 +671,14 @@ function FreightForwardingModule() {
           responseType: "blob",
         }
       );
-      
+
       const blob = new Blob([response.data], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      
+
       const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
       link.setAttribute("download", `Freight_Forwarding_${dsrMode}_DSR_${dateStr}.xlsx`);
       document.body.appendChild(link);
@@ -966,10 +967,10 @@ function FreightForwardingModule() {
                 height: "32px",
                 padding: "0 10px",
                 fontSize: "12px",
-                border: searchFocused 
-                  ? "1px solid #16408f" 
-                  : filters.search 
-                    ? "1px solid #16408f" 
+                border: searchFocused
+                  ? "1px solid #16408f"
+                  : filters.search
+                    ? "1px solid #16408f"
                     : "1px solid #cbd5e1",
                 borderRadius: "4px",
                 outline: "none",
@@ -978,8 +979,8 @@ function FreightForwardingModule() {
                 fontWeight: filters.search ? "600" : "normal",
                 flex: 1,
                 maxWidth: "350px",
-                boxShadow: searchFocused 
-                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)" 
+                boxShadow: searchFocused
+                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)"
                   : "inset 0 1px 2px rgba(0,0,0,0.05)",
                 transition: "all 0.15s ease-in-out"
               }}
@@ -993,10 +994,10 @@ function FreightForwardingModule() {
                 height: "32px",
                 padding: "0 8px",
                 fontSize: "12px",
-                border: shipmentTypeFocused 
-                  ? "1px solid #16408f" 
-                  : filters.shipment_type 
-                    ? "1px solid #16408f" 
+                border: shipmentTypeFocused
+                  ? "1px solid #16408f"
+                  : filters.shipment_type
+                    ? "1px solid #16408f"
                     : "1px solid #cbd5e1",
                 borderRadius: "4px",
                 backgroundColor: filters.shipment_type ? "#eff6ff" : "#fff",
@@ -1004,8 +1005,8 @@ function FreightForwardingModule() {
                 cursor: "pointer",
                 fontWeight: "600",
                 outline: "none",
-                boxShadow: shipmentTypeFocused 
-                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)" 
+                boxShadow: shipmentTypeFocused
+                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)"
                   : "none",
                 transition: "all 0.15s ease-in-out"
               }}
@@ -1025,10 +1026,10 @@ function FreightForwardingModule() {
                 height: "32px",
                 padding: "0 8px",
                 fontSize: "12px",
-                border: statusFocused 
-                  ? "1px solid #16408f" 
-                  : filters.status 
-                    ? "1px solid #16408f" 
+                border: statusFocused
+                  ? "1px solid #16408f"
+                  : filters.status
+                    ? "1px solid #16408f"
                     : "1px solid #cbd5e1",
                 borderRadius: "4px",
                 backgroundColor: filters.status ? "#eff6ff" : "#fff",
@@ -1036,8 +1037,8 @@ function FreightForwardingModule() {
                 cursor: "pointer",
                 fontWeight: "600",
                 outline: "none",
-                boxShadow: statusFocused 
-                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)" 
+                boxShadow: statusFocused
+                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)"
                   : "none",
                 transition: "all 0.15s ease-in-out"
               }}
@@ -1261,7 +1262,7 @@ function FreightForwardingModule() {
                         <td style={{ padding: "10px 8px", verticalAlign: "middle" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
                             <DocsUploadCell row={row} onUpdate={handleUpdateEnquiry} />
-                            
+
                             {row.status === "Converted" && (
                               <Tooltip title="Track Shipment">
                                 <IconButton
@@ -1281,7 +1282,7 @@ function FreightForwardingModule() {
                                 </IconButton>
                               </Tooltip>
                             )}
-                            
+
                             {row.shipment_type !== "Import-Air" && row.shipment_type !== "Export-Air" && (
                               <Tooltip title="Generate BL">
                                 <span>
@@ -1302,6 +1303,25 @@ function FreightForwardingModule() {
                                 </span>
                               </Tooltip>
                             )}
+
+                            <Tooltip title="Freight Certificate">
+                              <span>
+                                <FreightCertificateGenerator jobNo={row.success_no || row.enquiry_no}>
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => e.stopPropagation()}
+                                    sx={{
+                                      border: "1px solid #e2e8f0",
+                                      backgroundColor: "#f8fafc",
+                                      color: "#0369a1",
+                                      "&:hover": { backgroundColor: "#e0f2fe", color: "#0c4a6e" }
+                                    }}
+                                  >
+                                    <GetAppIcon fontSize="small" />
+                                  </IconButton>
+                                </FreightCertificateGenerator>
+                              </span>
+                            </Tooltip>
                           </div>
                         </td>
                       </tr>
@@ -1414,7 +1434,7 @@ function FreightForwardingModule() {
         </DialogTitle>
         <DialogContent sx={{ pt: 2, pb: 2 }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-            
+
             <FormControl size="small" fullWidth>
               <InputLabel id="dsr-year-label">Financial Year</InputLabel>
               <Select
@@ -1523,7 +1543,7 @@ function FreightForwardingModule() {
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {trackingEnquiry && (
         <FreightTrackingMap
           enquiry={trackingEnquiry}

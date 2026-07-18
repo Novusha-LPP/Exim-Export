@@ -55,7 +55,7 @@ const ForwardingNoteTharGenerator = lazy(() => import("./StandardDocuments/Forwa
 const AnnexureCGenerator = lazy(() => import("./StandardDocuments/AnnexureCGenerator"));
 const ConcorForwardingNoteGenerator = lazy(() => import("./StandardDocuments/ConcorForwardingNoteGenerator.js"));
 const VGMAuthorizationGenerator = lazy(() => import("./StandardDocuments/VGMAuthorizationGenerator"));
-const FreightCertificateGenerator = lazy(() => import("./StandardDocuments/FreightCertificateGenerator"));
+
 const BillOfLadingGenerator = lazy(() => import("./StandardDocuments/BillOfLadingGenerator"));
 const ConcorPltLetterGenerator = lazy(() => import("./StandardDocuments/ConcorPltLetterGenerator"));
 const AnnexureDGenerator = lazy(() => import("./StandardDocuments/AnnexureDGenerator"));
@@ -297,22 +297,22 @@ const s = {
 
   },
   th: {
- background: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
-  color: "white",
-  padding: "2px 12px",
-  textAlign: "left",
-  fontWeight: "700",
-  fontSize: "0.75rem",
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-  whiteSpace: "nowrap",
-  userSelect: "none",
-  borderBottom: "2px solid #0f172a",
-  borderRight: "1px solid rgba(255, 255, 255, 0.15)",
-  position: "sticky",
-  top: 0,
-  zIndex: 10,
-  fontFamily: "'Inter', sans-serif",
+    background: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
+    color: "white",
+    padding: "7px 12px",
+    textAlign: "left",
+    fontWeight: "700",
+    fontSize: "0.75rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    whiteSpace: "nowrap",
+    userSelect: "none",
+    borderBottom: "2px solid #0f172a",
+    borderRight: "1px solid rgba(255, 255, 255, 0.15)",
+    position: "sticky",
+    top: 0,
+    zIndex: 10,
+    fontFamily: "'Inter', sans-serif",
   },
   td: {
     padding: "10px 8px",
@@ -6892,10 +6892,7 @@ const ExportJobsTable = () => {
                     <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
                       <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>VGM AUTHORIZATION</MenuItem>
                     </VGMAuthorizationGenerator>
-                    <FreightCertificateGenerator jobNo={selectedGenDocJob?.job_no}>
-                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FREIGHT CERTIFICATE</MenuItem>
-                    </FreightCertificateGenerator>
-                    <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
+                                        <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
                       <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>BILL OF LADING</MenuItem>
                     </BillOfLadingGenerator>
                     <CertificateOfOriginGenerator jobNo={selectedGenDocJob?.job_no}>

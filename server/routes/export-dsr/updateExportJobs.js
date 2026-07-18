@@ -3085,11 +3085,11 @@ router.patch(
     try {
       const { id } = req.params;
       const { fieldUpdates } = req.body;
+      const usernameHeader = req.headers["username"] || req.headers["x-username"];
+      const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
 
       const existingJob = await ExJobModel.findById(id);
       if (existingJob) {
-        const usernameHeader = req.headers["username"] || req.headers["x-username"];
-        const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
         const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
         const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
 
@@ -3116,7 +3116,7 @@ router.patch(
       updateObject.updatedAt = new Date();
 
       if (existingJob) {
-        const changeNotif = detectSbOrSealChange(existingJob, updateObject, username);
+        const changeNotif = detectSbOrSealChange(existingJob, updateObject, usernameHeader);
         if (changeNotif) {
           updateObject.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
           updateObject.sb_or_seal_changed_details = changeNotif.sb_or_seal_changed_details;
@@ -3172,11 +3172,11 @@ router.patch(
     try {
       const raw = req.params.job_no || "";
       const job_no = decodeURIComponent(raw);
+      const usernameHeader = req.headers["username"] || req.headers["x-username"];
+      const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
 
       const existingJob = await ExJobModel.findOne({ job_no: { $regex: `^${job_no}$`, $options: "i" } });
       if (existingJob) {
-        const usernameHeader = req.headers["username"] || req.headers["x-username"];
-        const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
         const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
         const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
 
@@ -3205,7 +3205,7 @@ router.patch(
       updateObject.updatedAt = new Date();
 
       if (existingJob) {
-        const changeNotif = detectSbOrSealChange(existingJob, updateObject, username);
+        const changeNotif = detectSbOrSealChange(existingJob, updateObject, usernameHeader);
         if (changeNotif) {
           updateObject.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
           updateObject.sb_or_seal_changed_details = changeNotif.sb_or_seal_changed_details;
