@@ -89,6 +89,64 @@ async function syncToClientDatabase(jobNo, updateObject) {
   }
 }
 
+function validateSendForBilling(job, updates) {
+  if (updates.send_for_billing === true || updates.send_for_billing === "true") {
+    const isAir = String(updates.transportMode || job.transportMode || "").toUpperCase() === "AIR" ||
+                  String(job.job_no).toUpperCase().includes("/AIR/") ||
+                  String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "AIR";
+    const isLCL = String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "LCL";
+
+    if (!isAir && !isLCL) {
+      const ops = updates.operations || job.operations || [];
+      const firstOp = ops[0] || {};
+      const status = firstOp.statusDetails?.[0] || {};
+
+      const railRoadOutDate = status.handoverConcorTharSanganaRailRoadDate;
+      const reachedDate = status.railOutReachedDate;
+
+      if (!railRoadOutDate || !String(railRoadOutDate).trim() || !reachedDate || !String(reachedDate).trim()) {
+        return "Cannot send for billing: Rail Out/Road Out date and Reached date are required.";
+      }
+    }
+  }
+  return null;
+}
+
+async function applyParentDatesIfChild(existingJob, updateObject) {
+  const parentJobNo = existingJob.parent_club_job;
+  if (!parentJobNo) return;
+
+  const parentJob = await ExJobModel.findOne({ job_no: parentJobNo }).lean();
+  if (!parentJob) return;
+
+  const parentStatus = parentJob.operations?.[0]?.statusDetails?.[0] || {};
+  const parentRailRoadDate = parentStatus.handoverConcorTharSanganaRailRoadDate;
+  const parentReachedDate = parentStatus.railOutReachedDate;
+
+  if (parentRailRoadDate || parentReachedDate) {
+    if (!updateObject.operations) {
+      updateObject.operations = JSON.parse(JSON.stringify(existingJob.operations || []));
+    }
+    if (!updateObject.operations[0]) {
+      updateObject.operations[0] = { statusDetails: [{}] };
+    }
+    if (!updateObject.operations[0].statusDetails) {
+      updateObject.operations[0].statusDetails = [{}];
+    }
+    if (!updateObject.operations[0].statusDetails[0]) {
+      updateObject.operations[0].statusDetails[0] = {};
+    }
+
+    const childStatus = updateObject.operations[0].statusDetails[0];
+    if (parentRailRoadDate) {
+      childStatus.handoverConcorTharSanganaRailRoadDate = parentRailRoadDate;
+    }
+    if (parentReachedDate) {
+      childStatus.railOutReachedDate = parentReachedDate;
+    }
+  }
+}
+
 async function syncClubFields(job) {
   try {
     if (!job) return;
@@ -139,10 +197,14 @@ async function syncClubFields(job) {
 
       // Sync operational dates
       sibOp0.handoverForwardingNoteDate = op0Status.handoverForwardingNoteDate || "";
-      sibOp0.handoverConcorTharSanganaRailRoadDate = op0Status.handoverConcorTharSanganaRailRoadDate || "";
-      sibOp0.railOutReachedDate = op0Status.railOutReachedDate || "";
       sibOp0.containerPlacementDate = op0Status.containerPlacementDate || "";
       sibOp0.gateInDate = op0Status.gateInDate || "";
+
+      // Copy rail out/road out and reached dates only if the source is the parent job
+      if (job.is_club_job_parent) {
+        sibOp0.handoverConcorTharSanganaRailRoadDate = op0Status.handoverConcorTharSanganaRailRoadDate || "";
+        sibOp0.railOutReachedDate = op0Status.railOutReachedDate || "";
+      }
 
       // Sync operational uploads
       sibOp0.handoverImageUpload = op0Status.handoverImageUpload || [];
@@ -151,14 +213,29 @@ async function syncClubFields(job) {
       sibOp0.assessmentCopy = op0Status.assessmentCopy || [];
 
       // Sync billing details
-      sibOp0.billingDocsSentDt = op0Status.billingDocsSentDt || "";
-      sibOp0.billingDocsSentUpload = op0Status.billingDocsSentUpload || [];
-      sibOp0.billing_details = {
-        agency_bill_date: op0Status.billing_details?.agency_bill_date || "",
-        agency_bill_no: op0Status.billing_details?.agency_bill_no || "",
-        reimbursement_bill_date: op0Status.billing_details?.reimbursement_bill_date || "",
-        reimbursement_bill_no: op0Status.billing_details?.reimbursement_bill_no || "",
-      };
+      if (op0Status.billingDocsSentDt) {
+        sibOp0.billingDocsSentDt = op0Status.billingDocsSentDt;
+      }
+      if (op0Status.billingDocsSentUpload && op0Status.billingDocsSentUpload.length > 0) {
+        sibOp0.billingDocsSentUpload = op0Status.billingDocsSentUpload;
+      }
+      if (op0Status.billing_details) {
+        if (!sibOp0.billing_details) {
+          sibOp0.billing_details = {};
+        }
+        if (op0Status.billing_details.agency_bill_date) {
+          sibOp0.billing_details.agency_bill_date = op0Status.billing_details.agency_bill_date;
+        }
+        if (op0Status.billing_details.agency_bill_no) {
+          sibOp0.billing_details.agency_bill_no = op0Status.billing_details.agency_bill_no;
+        }
+        if (op0Status.billing_details.reimbursement_bill_date) {
+          sibOp0.billing_details.reimbursement_bill_date = op0Status.billing_details.reimbursement_bill_date;
+        }
+        if (op0Status.billing_details.reimbursement_bill_no) {
+          sibOp0.billing_details.reimbursement_bill_no = op0Status.billing_details.reimbursement_bill_no;
+        }
+      }
 
       // Sync top level fields
       sibling.send_for_billing = updates.send_for_billing;
@@ -2642,7 +2719,20 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       isAdmin = requester?.role === "Admin";
     }
 
-    if (exportJob.lockedBy && (exportJob.lockedBy || "").toLowerCase() !== (username || "").toLowerCase() && !isAdmin) {
+    let isLockerAdmin = false;
+    if (exportJob.lockedBy) {
+      const locker = await UserModel.findOne({
+        username: { $regex: `^${exportJob.lockedBy}$`, $options: "i" }
+      }).lean();
+      isLockerAdmin = locker?.role === "Admin";
+    }
+
+    if (
+      exportJob.lockedBy &&
+      (exportJob.lockedBy || "").toLowerCase() !== (username || "").toLowerCase() &&
+      !isAdmin &&
+      !isLockerAdmin
+    ) {
       return res.status(423).json({
         message: `Job is currently locked by ${exportJob.lockedBy}`,
         lockedBy: exportJob.lockedBy,
@@ -2686,7 +2776,21 @@ router.put("/:job_no(.*)/lock", async (req, res) => {
       isAdmin = requester?.role === "Admin";
     }
 
-    if (job.lockedBy && (job.lockedBy || "").toLowerCase() !== (username || "").toLowerCase() && !isStale && !isAdmin) {
+    let isLockerAdmin = false;
+    if (job.lockedBy) {
+      const locker = await UserModel.findOne({
+        username: { $regex: `^${job.lockedBy}$`, $options: "i" }
+      }).lean();
+      isLockerAdmin = locker?.role === "Admin";
+    }
+
+    if (
+      job.lockedBy &&
+      (job.lockedBy || "").toLowerCase() !== (username || "").toLowerCase() &&
+      !isStale &&
+      !isAdmin &&
+      !isLockerAdmin
+    ) {
       return res.status(423).json({
         message: `Already locked by ${job.lockedBy}`,
         lockedBy: job.lockedBy,
@@ -2937,10 +3041,19 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
         }
       }
 
+      let isLockerAdmin = false;
+      if (existingJob.lockedBy) {
+        const locker = await UserModel.findOne({
+          username: { $regex: `^${existingJob.lockedBy}$`, $options: "i" }
+        }).lean();
+        isLockerAdmin = locker?.role === "Admin";
+      }
+
       if (
         existingJob.lockedBy &&
         existingJob.lockedBy !== username &&
-        !isAdmin
+        !isAdmin &&
+        !isLockerAdmin
       ) {
         const LOCK_TIMEOUT = 30 * 60 * 1000;
         if (
@@ -2958,6 +3071,15 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
     delete updateData._id;
 
     if (existingJob) {
+      // Billing validation check
+      const billingErr = validateSendForBilling(existingJob, updateData);
+      if (billingErr) {
+        return res.status(400).json({ message: billingErr });
+      }
+
+      // Copy parent dates if child
+      await applyParentDatesIfChild(existingJob, updateData);
+
       const changeNotif = detectSbOrSealChange(existingJob, updateData, username);
       if (changeNotif) {
         updateData.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
@@ -3003,7 +3125,8 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
         "consignment_type",
         "eta_date",
         "arrival_date",
-        "delay_reason"
+        "delay_reason",
+        "shipped_on_board_date"
       ];
       fieldsToSync.forEach(field => {
         if (req.body[field] !== undefined) {
@@ -3116,6 +3239,15 @@ router.patch(
       updateObject.updatedAt = new Date();
 
       if (existingJob) {
+        // Billing validation check
+        const billingErr = validateSendForBilling(existingJob, updateObject);
+        if (billingErr) {
+          return res.status(400).json({ message: billingErr });
+        }
+
+        // Copy parent dates if child
+        await applyParentDatesIfChild(existingJob, updateObject);
+
         const changeNotif = detectSbOrSealChange(existingJob, updateObject, usernameHeader);
         if (changeNotif) {
           updateObject.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
@@ -3205,6 +3337,15 @@ router.patch(
       updateObject.updatedAt = new Date();
 
       if (existingJob) {
+        // Billing validation check
+        const billingErr = validateSendForBilling(existingJob, updateObject);
+        if (billingErr) {
+          return res.status(400).json({ message: billingErr });
+        }
+
+        // Copy parent dates if child
+        await applyParentDatesIfChild(existingJob, updateObject);
+
         const changeNotif = detectSbOrSealChange(existingJob, updateObject, usernameHeader);
         if (changeNotif) {
           updateObject.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;

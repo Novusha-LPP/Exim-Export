@@ -108,6 +108,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
       consol_date: "",
       eta_date: "",
       arrival_date: "",
+      shipped_on_board_date: "",
       delay_reason: "",
       booking_thru: "",
       sales_person: "",
@@ -796,6 +797,24 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         return Promise.reject(new Error("Validation failed: Cancellation reason is required"));
       }
 
+      // Verify Rail Out/Road Out and Reached dates before sending for billing
+      const isAir = (values.transportMode || "").toUpperCase() === "AIR" ||
+                    (values.job_no || "").toUpperCase().includes("/AIR/") ||
+                    (values.consignmentType || "").toUpperCase() === "AIR";
+      const isLCL = (values.consignmentType || "").toUpperCase() === "LCL";
+
+      if (values.send_for_billing === true && !isAir && !isLCL) {
+        const firstOp = values.operations?.[0] || {};
+        const status = firstOp.statusDetails?.[0] || {};
+        const railRoadOutDate = status.handoverConcorTharSanganaRailRoadDate;
+        const reachedDate = status.railOutReachedDate;
+
+        if (!railRoadOutDate || !railRoadOutDate.trim() || !reachedDate || !reachedDate.trim()) {
+          alert("Cannot send for billing: Rail Out/Road Out date and Reached date are required.");
+          return Promise.reject(new Error("Validation failed: Rail Out/Road Out date and Reached date are required."));
+        }
+      }
+
       try {
         const user = JSON.parse(localStorage.getItem("exim_user") || "{}");
         const headers = {
@@ -953,6 +972,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         egm_date: formatDate(safeValue(data.egm_date)),
         mbl_date: formatDate(safeValue(data.mbl_date)),
         hbl_date: formatDate(safeValue(data.hbl_date)),
+        shipped_on_board_date: formatDate(safeValue(data.shipped_on_board_date)),
         hbl_no: safeValue(data.hbl_no),
         mbl_no: safeValue(data.mbl_no),
         transhipper_code: safeValue(data.transhipper_code),

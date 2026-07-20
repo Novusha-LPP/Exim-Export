@@ -51,6 +51,7 @@ const freightEnquirySchema = new mongoose.Schema(
     source_job_no: { type: String },
     eta_date: { type: String },
     arrival_date: { type: String },
+    shipped_on_board_date: { type: String },
     delay_reason: { type: String },
     status: { type: String, default: "Open" },
     received_rates: [

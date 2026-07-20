@@ -1026,9 +1026,12 @@ function FreightForwardingJobDetail() {
                 {renderDateInputBox("Cut off Date", "cut_off_date")}
               </Grid>
               <Grid item xs={12} md={2} sm={4}>
+                {renderDateInputBox("Shipped on Board Date", "shipped_on_board_date")}
+              </Grid>
+              <Grid item xs={12} md={2} sm={4}>
                 {renderDateInputBox("Final Arrival Date", "arrival_date")}
               </Grid>
-              <Grid item xs={12} md={6} sm={12}>
+              <Grid item xs={12} md={4} sm={8}>
                 {renderInputBox("Reason for Delay", "delay_reason")}
               </Grid>
             </Grid>
@@ -1606,7 +1609,7 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("Place of Issue", "bl_details.place_of_issue")}
               </Grid>
               <Grid item xs={12} md={4}>
-                {renderBLDateInputBox("Date of Issue", "bl_details.date_of_issue")}
+                {renderBLDateInputBox("Date of Issue", "shipped_on_board_date")}
               </Grid>
             </Grid>
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>

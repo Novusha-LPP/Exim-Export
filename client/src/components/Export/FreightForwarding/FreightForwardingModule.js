@@ -637,6 +637,29 @@ function DocsUploadCell({ row, onUpdate }) {
 }
 
 function FreightForwardingModule() {
+  const formatDateDisplay = (dateStr) => {
+    if (!dateStr) return "-";
+    if (dateStr.includes("/")) return dateStr;
+    if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr.replace(/-/g, "/");
+    if (/^\d{2}-[A-Za-z]{3}-\d{4}$/.test(dateStr)) return dateStr;
+    
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr.split("-").reverse().join("/");
+    }
+    
+    try {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+      }
+    } catch (e) {}
+    
+    return dateStr;
+  };
+
   const [rows, setRows] = useState([]);
   const [openCreate, setOpenCreate] = useState(false);
   const [openDSRDialog, setOpenDSRDialog] = useState(false);
@@ -1066,7 +1089,7 @@ function FreightForwardingModule() {
                       "Organization Details",
                       "Port & Routing",
                       "Container & Cargo Details",
-                      "Tracking & Timeline",
+                      "Tracking, Documents & Timeline",
                       "Actions"
                     ].map((h) => (
                       <th key={h} style={{ textAlign: h === "Actions" ? "center" : "left", padding: "10px 8px", fontWeight: "700", fontSize: "12px", borderRight: "1px solid rgba(255,255,255,0.05)" }}>
@@ -1170,10 +1193,24 @@ function FreightForwardingModule() {
                               <span style={{ fontWeight: "800", fontSize: "9px", color: "#64748b", width: "85px" }}>POD:</span>
                               <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{row.port_of_destination || "-"}</span>
                             </div>
-                            {row.bl_details?.vessel_name && (
+                            {(row.vessel_name || row.bl_details?.vessel_name) && (
                               <div style={{ marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" }}>
                                 <div style={{ fontSize: "9.5px", color: "#475569" }}>
-                                  <span style={{ fontWeight: "700" }}>Vessel:</span> {row.bl_details.vessel_name} {row.bl_details.voyage_no ? `(Voy: ${row.bl_details.voyage_no})` : ""}
+                                  <span style={{ fontWeight: "700" }}>Vessel:</span> {row.vessel_name || row.bl_details.vessel_name} {(row.voyage_no || row.bl_details.voyage_no) ? `(Voy: ${row.voyage_no || row.bl_details.voyage_no})` : ""}
+                                </div>
+                              </div>
+                            )}
+                            {row.flight_no && (
+                              <div style={{ marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" }}>
+                                <div style={{ fontSize: "9.5px", color: "#475569" }}>
+                                  <span style={{ fontWeight: "700" }}>Flight:</span> {row.flight_no} {row.flight_date ? `(Date: ${formatDateDisplay(row.flight_date)})` : ""}
+                                </div>
+                              </div>
+                            )}
+                            {row.shipping_line_airline && (
+                              <div style={{ marginTop: "4px", borderTop: "1px solid #e2e8f0", paddingTop: "4px" }}>
+                                <div style={{ fontSize: "9.5px", color: "#475569" }}>
+                                  <span style={{ fontWeight: "700" }}>Carrier:</span> {row.shipping_line_airline}
                                 </div>
                               </div>
                             )}
@@ -1241,18 +1278,101 @@ function FreightForwardingModule() {
                             )}
                           </div>
                         </td>
-                        <td style={{ padding: "10px 8px", verticalAlign: "top" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10.5px" }}>
-                              <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>E.T.A:</span>
-                              <span style={{ fontWeight: "700", color: "#1e293b" }}>{row.eta_date ? row.eta_date.split("-").reverse().join("/") : "-"}</span>
+                        <td style={{ padding: "10px 8px", verticalAlign: "top", minWidth: "220px" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            {/* Transit Dates */}
+                            <div style={{ display: "flex", flexDirection: "column", gap: "3px", backgroundColor: "#f8fafc", padding: "6px", borderRadius: "4px", border: "1px solid #e2e8f0" }}>
+                              <div style={{ fontSize: "8.5px", fontWeight: "800", color: "#475569", borderBottom: "1px solid #cbd5e1", paddingBottom: "2px", marginBottom: "3px", textTransform: "uppercase" }}>
+                                Transit Dates
+                              </div>
+                              {row.booking_date && (
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "600" }}>Booking:</span>
+                                  <span style={{ fontWeight: "700", color: "#1e293b" }}>
+                                    {row.booking_no ? `${row.booking_no} (${formatDateDisplay(row.booking_date)})` : formatDateDisplay(row.booking_date)}
+                                  </span>
+                                </div>
+                              )}
+                              {row.cut_off_date && (
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "600" }}>Cut-off:</span>
+                                  <span style={{ fontWeight: "700", color: "#1e293b" }}>{formatDateDisplay(row.cut_off_date)}</span>
+                                </div>
+                              )}
+                              {row.shipped_on_board_date && (
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "600" }}>Shipped on Board:</span>
+                                  <span style={{ fontWeight: "700", color: "#1e293b" }}>{formatDateDisplay(row.shipped_on_board_date)}</span>
+                                </div>
+                              )}
+                              {row.eta_date && (
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "600" }}>E.T.A:</span>
+                                  <span style={{ fontWeight: "700", color: "#1e293b" }}>{formatDateDisplay(row.eta_date)}</span>
+                                </div>
+                              )}
+                              {row.arrival_date && (
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "600" }}>Arrival:</span>
+                                  <span style={{ fontWeight: "700", color: "#1e293b" }}>{formatDateDisplay(row.arrival_date)}</span>
+                                </div>
+                              )}
+                              {row.consol_date && (
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                                  <span style={{ color: "#64748b", fontWeight: "600" }}>Consol Date:</span>
+                                  <span style={{ fontWeight: "700", color: "#1e293b" }}>
+                                    {row.consol_no ? `${row.consol_no} (${formatDateDisplay(row.consol_date)})` : formatDateDisplay(row.consol_date)}
+                                  </span>
+                                </div>
+                              )}
+                              {!row.booking_date && !row.cut_off_date && !row.shipped_on_board_date && !row.eta_date && !row.arrival_date && !row.consol_date && (
+                                <span style={{ color: "#94a3b8", fontSize: "10px", fontStyle: "italic" }}>No transit dates set</span>
+                              )}
                             </div>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10.5px" }}>
-                              <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>ARRIVAL:</span>
-                              <span style={{ fontWeight: "700", color: "#1e293b" }}>{row.arrival_date ? row.arrival_date.split("-").reverse().join("/") : "-"}</span>
-                            </div>
+ 
+                            {/* Document Info */}
+                            {(row.mbl_no || row.hbl_no || row.sb_no || row.egm_no) && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "3px", backgroundColor: "#f0fdf4", padding: "6px", borderRadius: "4px", border: "1px solid #bbf7d0" }}>
+                                <div style={{ fontSize: "8.5px", fontWeight: "800", color: "#166534", borderBottom: "1px solid #bbf7d0", paddingBottom: "2px", marginBottom: "3px", textTransform: "uppercase" }}>
+                                  Document Info
+                                </div>
+                                {row.mbl_no && (
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                                    <span style={{ color: "#166534", fontWeight: "600" }}>MBL:</span>
+                                    <span style={{ fontWeight: "700", color: "#14532d" }}>
+                                      {row.mbl_no} {row.mbl_date ? `(${formatDateDisplay(row.mbl_date)})` : ""}
+                                    </span>
+                                  </div>
+                                )}
+                                {row.hbl_no && (
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                                    <span style={{ color: "#166534", fontWeight: "600" }}>HBL:</span>
+                                    <span style={{ fontWeight: "700", color: "#14532d" }}>
+                                      {row.hbl_no} {row.hbl_date ? `(${formatDateDisplay(row.hbl_date)})` : ""}
+                                    </span>
+                                  </div>
+                                )}
+                                {row.sb_no && (
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                                    <span style={{ color: "#166534", fontWeight: "600" }}>SB No:</span>
+                                    <span style={{ fontWeight: "700", color: "#14532d" }}>
+                                      {row.sb_no} {row.sb_date ? `(${formatDateDisplay(row.sb_date)})` : ""}
+                                    </span>
+                                  </div>
+                                )}
+                                {row.egm_no && (
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                                    <span style={{ color: "#166534", fontWeight: "600" }}>EGM No:</span>
+                                    <span style={{ fontWeight: "700", color: "#14532d" }}>
+                                      {row.egm_no} {row.egm_date ? `(${formatDateDisplay(row.egm_date)})` : ""}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+ 
                             {row.delay_reason && (
-                              <div style={{ marginTop: "4px", backgroundColor: "#fffbeb", border: "1px solid #fef3c7", padding: "4px 6px", borderRadius: "4px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                              <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fef3c7", padding: "4px 6px", borderRadius: "4px", display: "flex", flexDirection: "column", gap: "2px" }}>
                                 <span style={{ fontSize: "8.5px", fontWeight: "800", color: "#d97706", textTransform: "uppercase" }}>Delay Reason:</span>
                                 <span style={{ fontSize: "10px", fontWeight: "600", color: "#b45309", wordBreak: "break-word" }}>{row.delay_reason}</span>
                               </div>

@@ -128,7 +128,35 @@ router.get("/freight-enquiries", async (req, res) => {
       const jobNos = convertedEnquiries.map(e => e.success_no || e.enquiry_no);
       const exJobs = await ExJobModel.find(
         { job_no: { $in: jobNos } },
-        { job_no: 1, place_of_receipt: 1, hbl_no: 1, consignees: 1, shipper: 1, "bl_details.shipment_ref_no": 1 }
+        { 
+          job_no: 1, 
+          place_of_receipt: 1, 
+          hbl_no: 1, 
+          consignees: 1, 
+          shipper: 1, 
+          "bl_details.shipment_ref_no": 1,
+          shipped_on_board_date: 1,
+          "operations.statusDetails.billing_details": 1,
+          arrival_date: 1,
+          booking_no: 1,
+          booking_date: 1,
+          cut_off_date: 1,
+          voyage_no: 1,
+          vessel_name: 1,
+          sb_no: 1,
+          sb_date: 1,
+          egm_no: 1,
+          egm_date: 1,
+          mbl_no: 1,
+          mbl_date: 1,
+          hbl_date: 1,
+          shipping_line_airline: 1,
+          flight_no: 1,
+          flight_date: 1,
+          consol_no: 1,
+          consol_date: 1,
+          eta_date: 1
+        }
       ).lean();
       const jobMap = {};
       exJobs.forEach(j => { jobMap[j.job_no] = j; });
@@ -146,6 +174,35 @@ router.get("/freight-enquiries", async (req, res) => {
             if (job.shipper) e.shipper_name = job.shipper;
             // Merge shipment ref no from ExJob bl_details
             if (job.bl_details?.shipment_ref_no) e.shipment_ref_no = job.bl_details.shipment_ref_no;
+            
+            // Merge SBO and arrival dates
+            if (job.shipped_on_board_date) e.shipped_on_board_date = job.shipped_on_board_date;
+            if (job.arrival_date) e.arrival_date = job.arrival_date;
+
+            // Merge newly requested timeline and document details
+            if (job.booking_no) e.booking_no = job.booking_no;
+            if (job.booking_date) e.booking_date = job.booking_date;
+            if (job.cut_off_date) e.cut_off_date = job.cut_off_date;
+            if (job.voyage_no) e.voyage_no = job.voyage_no;
+            if (job.vessel_name) e.vessel_name = job.vessel_name;
+            if (job.sb_no) e.sb_no = job.sb_no;
+            if (job.sb_date) e.sb_date = job.sb_date;
+            if (job.egm_no) e.egm_no = job.egm_no;
+            if (job.egm_date) e.egm_date = job.egm_date;
+            if (job.mbl_no) e.mbl_no = job.mbl_no;
+            if (job.mbl_date) e.mbl_date = job.mbl_date;
+            if (job.hbl_date) e.hbl_date = job.hbl_date;
+            if (job.shipping_line_airline) e.shipping_line_airline = job.shipping_line_airline;
+            if (job.flight_no) e.flight_no = job.flight_no;
+            if (job.flight_date) e.flight_date = job.flight_date;
+            if (job.consol_no) e.consol_no = job.consol_no;
+            if (job.consol_date) e.consol_date = job.consol_date;
+            if (job.eta_date) e.eta_date = job.eta_date;
+ 
+            // Merge billing submission details
+            if (job.operations?.[0]?.statusDetails?.[0]?.billing_details) {
+              e.billing_details = job.operations[0].statusDetails[0].billing_details;
+            }
           }
         }
       }

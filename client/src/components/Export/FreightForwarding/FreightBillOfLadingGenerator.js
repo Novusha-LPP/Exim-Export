@@ -117,6 +117,17 @@ const splitDescription = (desc, packagesDesc = "", hsnCode = "") => {
 const generateBLTemplate = (enquiry, mode = 'draft') => {
   const bl = enquiry?.bl_details || {};
   const isLcl = (enquiry?.consignment_type?.toUpperCase() === 'LCL' || enquiry?.consignmentType?.toUpperCase() === 'LCL');
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
   const freightLabel = isLcl ? 'FREIGHT PREPAID<br/>LCL/LCL<br/>CFS/CFS' : 'FREIGHT PREPAID<br/>FCL/FCL<br/>CY/CY';
   const enquiryContainers = enquiry?.containers || [];
   let autoContainerNumbers = "";
@@ -344,7 +355,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
             </td>
             <td style="width: 25%; padding: 6px 10px 6px 20px; vertical-align: top;">
                <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place and Date of Issue</div>
-               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '40px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
+               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '40px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${formatDate(enquiry?.shipped_on_board_date) || bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
             </td>
           </tr>
         </table>
