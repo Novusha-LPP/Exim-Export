@@ -5,15 +5,31 @@ const router = express.Router();
 
 router.get("/api/export-dsr/historical-freight", async (req, res) => {
   try {
-    const { pol, pod } = req.query;
+    const { pol, pod, year } = req.query;
 
     if (!pol || !pod) {
       return res.status(400).json({ success: false, message: "POL and POD are required" });
     }
 
-    // Calculate date 6 months ago for broader historical coverage
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    // --- NEW: Build Date Filter based on Year ---
+    let dateFilter = {};
+    if (year && year !== "all") {
+      const [startYrStr, endYrStr] = year.split("-");
+      const startYr = 2000 + parseInt(startYrStr, 10);
+      const endYr = 2000 + parseInt(endYrStr, 10);
+
+      if (!isNaN(startYr) && !isNaN(endYr)) {
+        // Financial year starts April 1st
+        const startDate = new Date(startYr, 3, 1); // April 1st
+        const endDate = new Date(endYr, 3, 1);     // April 1st next year
+        dateFilter = { createdAt: { $gte: startDate, $lt: endDate } };
+      }
+    } else {
+      // Default to last 6 months if year is "all" or not provided
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      dateFilter = { createdAt: { $gte: sixMonthsAgo } };
+    }
 
     // Extract significant keywords (longer than 3 chars) to match ports
     const getKeywords = (str) => {
@@ -32,12 +48,12 @@ router.get("/api/export-dsr/historical-freight", async (req, res) => {
     const jobs = await ExJobModel.find({
       port_of_loading: { $regex: polRegex, $options: "i" },
       destination_port: { $regex: podRegex, $options: "i" },
-      createdAt: { $gte: sixMonthsAgo }
+      ...dateFilter // Apply the date filter here
     })
-    .select("job_no job_date createdAt shipping_line_airline forwarder invoices.freightInsuranceCharges invoices.currency invoices.invoiceValue exchange_rate")
-    .sort({ createdAt: -1 })
-    .limit(20)
-    .lean();
+      .select("job_no job_date createdAt shipping_line_airline forwarder invoices.freightInsuranceCharges invoices.currency invoices.invoiceValue exchange_rate")
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
 
     if (!jobs || jobs.length === 0) {
       return res.status(200).json({ success: true, data: [] });

@@ -1644,6 +1644,7 @@ const exportJobSchema = new mongoose.Schema(
     destination_country: { type: String, trim: true },
     egm_no: { type: String, trim: true },
     egm_date: { type: String, trim: true },
+    sb_track_last_polled: { type: Date, default: null }, // Tracks last automatic SB Track API poll
     mbl_date: { type: String, trim: true },
     hbl_date: { type: String, trim: true },
     hbl_no: { type: String, trim: true },

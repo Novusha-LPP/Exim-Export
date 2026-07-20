@@ -94,6 +94,7 @@ import clubJobRoutes from "./routes/export-dsr/clubJobRoutes.mjs";
 import chargesRoute from "./routes/charges/chargesRoute.mjs";
 import tallyRoutes from "./routes/charges/tallyRoutes.mjs";
 import { initDsrCronJob } from "./jobs/dsrJob.mjs"; // Import DSR Job
+import { initSbTrackCronJob, sbTrackJobRouter } from "./jobs/sbTrackJob.mjs"; // SB Track Auto-Poll
 import testDsrEmailRoute from "./routes/export-dsr/testDsrEmail.mjs"; // Import Test DSR Route
 import apiKeyRoutes from "./routes/admin/apiKeyRoutes.mjs";
 import freightEnquiryRoutes from "./routes/export-dsr/freightEnquiryRoutes.mjs";
@@ -269,6 +270,7 @@ app.use(queryRoutes);
 app.use(clientQueryRoutes);
 app.use(testDsrEmailRoute);
 app.use(apiKeyRoutes);
+app.use(sbTrackJobRouter);
 app.use("/api", forwarderRoutes);
 app.use("/api", freightEnquiryRoutes);
 app.use(getHistoricalFreight);
@@ -317,7 +319,8 @@ process.on("SIGTERM", async () => {
 const PORT = process.env.PORT || 9002;
 
 // Initialize Cron Jobs
-initDsrCronJob(); // Start Daily 8 PM DSR Job
+initDsrCronJob();      // Daily 8 PM DSR email job
+initSbTrackCronJob();  // Daily 2 AM SB Track auto-poll (15-day gate per job)
 
 app.listen(PORT, () => {
   console.log(`🟢 Server listening on http://localhost:${PORT}`);

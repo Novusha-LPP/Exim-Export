@@ -145,6 +145,8 @@ const MovementJobRequestGenerator = ({ jobNo, children, onTrackSuccess }) => {
 
       // Fields
       doc.setFont("helvetica", "bold");
+      doc.text(`Exporter.  ${data.exporter || ""}`, 15, yPos);
+      yPos += 6;
       doc.text(`Shipping Bill No.  ${data.sb_no || ""}`, 15, yPos);
       yPos += 6;
       doc.text(`Shipping Bill Date.  ${formatDate(data.sb_date) || ""}`, 15, yPos);
