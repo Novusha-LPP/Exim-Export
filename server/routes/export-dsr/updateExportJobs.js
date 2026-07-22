@@ -2944,8 +2944,21 @@ router.put(
       }
 
       const { containers } = req.body;
+
+      let cleanContainers = containers;
+      if (Array.isArray(containers)) {
+        const seen = new Set();
+        cleanContainers = containers.filter(c => {
+          const cNo = (c.containerNo || c.container_number || "").trim().toUpperCase();
+          if (!cNo) return true;
+          if (seen.has(cNo)) return false;
+          seen.add(cNo);
+          return true;
+        });
+      }
+
       const username = req.headers["username"] || "System";
-      const updateFields = { containers, updatedAt: new Date() };
+      const updateFields = { containers: cleanContainers, updatedAt: new Date() };
 
       if (existingJob) {
         const changeNotif = detectSbOrSealChange(existingJob, { containers }, username);
