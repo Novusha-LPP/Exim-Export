@@ -35,11 +35,13 @@ router.get("/api/virtual-balance", async (req, res) => {
       jobNo: { $in: jobNos },
     }).lean();
 
-    // 3. Map purchase books by jobNo and supplierName (case-insensitive CFS matching)
+    // 3. Map purchase books by jobNo and supplierName (or virtualBalanceTerminal override)
     const pbSumMap = {};
     purchaseBooks.forEach((pb) => {
-      if (!pb.jobNo || !pb.supplierName) return;
-      const key = `${pb.jobNo.trim().toUpperCase()}_${pb.supplierName.trim().toUpperCase()}`;
+      if (!pb.jobNo) return;
+      const targetTerminal = (pb.virtualBalanceTerminal || pb.supplierName || "").trim().toUpperCase();
+      if (!targetTerminal) return;
+      const key = `${pb.jobNo.trim().toUpperCase()}_${targetTerminal}`;
       const netAmt = pb.netAmount !== undefined && pb.netAmount !== null
         ? pb.netAmount
         : ((pb.total || 0) - (pb.tds || 0));
@@ -278,10 +280,18 @@ router.get("/api/virtual-balance/job-purchase-books", async (req, res) => {
       return res.status(400).json({ success: false, message: "Job No and CFS Name are required." });
     }
 
-    // Query purchase book entries matching jobNo and supplierName (case-insensitive CFS name)
+    // Query purchase book entries matching jobNo and supplierName/virtualBalanceTerminal (case-insensitive CFS name)
     const purchaseBooks = await PurchaseBookEntryModel.find({
       jobNo: jobNo.trim().toUpperCase(),
-      supplierName: { $regex: new RegExp(`^${escapeRegex(cfsName.trim())}$`, "i") }
+      $or: [
+        { virtualBalanceTerminal: { $regex: new RegExp(`^${escapeRegex(cfsName.trim())}$`, "i") } },
+        {
+          $and: [
+            { $or: [{ virtualBalanceTerminal: { $exists: false } }, { virtualBalanceTerminal: "" }, { virtualBalanceTerminal: null }] },
+            { supplierName: { $regex: new RegExp(`^${escapeRegex(cfsName.trim())}$`, "i") } }
+          ]
+        }
+      ]
     }).lean();
 
     res.status(200).json({ success: true, data: purchaseBooks });

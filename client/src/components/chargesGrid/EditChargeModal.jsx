@@ -1195,6 +1195,39 @@ const EditChargeModal = ({
                                 return null;
                               })()}
 
+                              {/* VIRTUAL BALANCE TERMINAL SELECTOR */}
+                              {(() => {
+                                const pType = (row.cost?.partyType || '').toUpperCase();
+                                const isTypeTerminal = pType === 'TERMINAL' || pType === 'CFS';
+                                const isPartyTerminal = terminalCodes.some(
+                                  t => (t.name || t.organization || '').trim().toUpperCase() === (row.cost?.partyName || '').trim().toUpperCase()
+                                );
+                                if (isTypeTerminal || isPartyTerminal) {
+                                  return (
+                                    <div className="ep-row">
+                                      <span className="ep-label" style={{ fontWeight: 'bold', color: '#0284c7' }}>VIRTUAL BALANCE TERMINAL</span>
+                                      <select
+                                        className="form-input"
+                                        style={{ borderColor: '#38bdf8', backgroundColor: '#f0f9ff', fontWeight: '500' }}
+                                        value={row.cost?.virtualBalanceTerminal || ''}
+                                        onChange={e => handleFieldChange(i, 'virtualBalanceTerminal', e.target.value, 'cost')}
+                                      >
+                                        <option value="">Same as Payable To ({row.cost?.partyName || 'Terminal'})</option>
+                                        {terminalCodes.map((term, tIdx) => {
+                                          const tName = term.name || term.organization;
+                                          return (
+                                            <option key={tIdx} value={tName}>
+                                              {tName}
+                                            </option>
+                                          );
+                                        })}
+                                      </select>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
+
                               {/* GST & TDS FIELDS FOR COST */}
                               <div className="ep-row">
                                 <span className="ep-label">INCLUDE GST?</span>
@@ -1303,7 +1336,8 @@ const EditChargeModal = ({
                                             jobId: parentId,
                                             branchIndex: cost.branchIndex || 0,
                                             isClubJob: row.isClubJob || false,
-                                            clubbedJobs: row.clubbedJobs || []
+                                            clubbedJobs: row.clubbedJobs || [],
+                                            virtualBalanceTerminal: cost.virtualBalanceTerminal || ''
                                           };
                                         });
                                       }}
@@ -1339,7 +1373,8 @@ const EditChargeModal = ({
                                           netPayable: row.cost?.netPayable,
                                           chargeHead: row.name || row.chargeHead,
                                           chargeId: row._id,
-                                          jobId: parentId
+                                          jobId: parentId,
+                                          virtualBalanceTerminal: row.cost?.virtualBalanceTerminal || ''
                                         });
                                       }}
                                     >

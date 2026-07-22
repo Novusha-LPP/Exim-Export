@@ -36,6 +36,7 @@ const purchaseBookEntrySchema = new mongoose.Schema({
     chargeHeadCategory: { type: String },
     isClubJob: { type: Boolean, default: false },
     clubbedJobs: { type: [String], default: [] },
+    virtualBalanceTerminal: { type: String, default: '' },
     jobDetails: { type: Array, default: [] },
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });

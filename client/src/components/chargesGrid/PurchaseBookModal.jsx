@@ -174,7 +174,8 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     "chargeRef": initialData.chargeId || '',
                     "jobRef": initialData.jobId || '',
                     isClubJob: initialData.isClubJob || false,
-                    clubbedJobs: initialData.clubbedJobs || []
+                    clubbedJobs: initialData.clubbedJobs || [],
+                    "Virtual Balance Terminal": initialData.virtualBalanceTerminal || ''
                 }));
             }
         };

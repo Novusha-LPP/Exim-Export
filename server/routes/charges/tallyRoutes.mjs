@@ -702,7 +702,8 @@ const mapPurchaseEntryData = (data) => {
         status: data["Status"] || data.status || '',
         chargeHeadCategory: data["Charge Head Category"] || data.chargeHeadCategory || '',
         isClubJob: data.isClubJob !== undefined ? data.isClubJob : false,
-        clubbedJobs: Array.isArray(data.clubbedJobs) ? data.clubbedJobs : []
+        clubbedJobs: Array.isArray(data.clubbedJobs) ? data.clubbedJobs : [],
+        virtualBalanceTerminal: data["Virtual Balance Terminal"] || data["Virtual Balance"] || data.virtualBalanceTerminal || data.virtualBalance || ''
     };
 };
 
