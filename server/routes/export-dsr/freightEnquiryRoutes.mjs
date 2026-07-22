@@ -115,6 +115,8 @@ const router = express.Router();
 // Get all enquiries
 router.get("/freight-enquiries", async (req, res) => {
   try {
+    const { tab } = req.query;
+
     const enquiries = await FreightEnquiryModel.find().sort({ createdAt: -1 });
     const dataList = enquiries.map(e => e.toObject());
     
@@ -123,9 +125,9 @@ router.get("/freight-enquiries", async (req, res) => {
 
     // For converted enquiries, merge key fields from the associated ExJob
     // (e.g. place_of_receipt, hbl_no) so the BL generator has access to them
-    const convertedEnquiries = dataList.filter(e => e.status === "Converted" && (e.success_no || e.enquiry_no));
+    const convertedEnquiries = dataList.filter(e => e.status === "Converted" && (e.source_job_no || e.success_no || e.enquiry_no));
     if (convertedEnquiries.length > 0) {
-      const jobNos = convertedEnquiries.map(e => e.success_no || e.enquiry_no);
+      const jobNos = convertedEnquiries.map(e => e.source_job_no || e.success_no || e.enquiry_no).filter(Boolean);
       const exJobs = await ExJobModel.find(
         { job_no: { $in: jobNos } },
         { 
@@ -134,10 +136,11 @@ router.get("/freight-enquiries", async (req, res) => {
           hbl_no: 1, 
           consignees: 1, 
           shipper: 1, 
-          "bl_details.shipment_ref_no": 1,
           shipped_on_board_date: 1,
+          sailing_date: 1,
           "operations.statusDetails.billing_details": 1,
           arrival_date: 1,
+          final_delivery_date: 1,
           booking_no: 1,
           booking_date: 1,
           cut_off_date: 1,
@@ -155,14 +158,29 @@ router.get("/freight-enquiries", async (req, res) => {
           flight_date: 1,
           consol_no: 1,
           consol_date: 1,
-          eta_date: 1
+          eta_date: 1,
+          booking_thru: 1,
+          sales_person: 1,
+          freight_type: 1,
+          cargo_type: 1,
+          movement_type: 1,
+          volume_weight: 1,
+          shipment_terms: 1,
+          container_qty_type: 1,
+          net_weight_kg: 1,
+          gross_weight_kg: 1,
+          volume_cbm: 1,
+          chargeable_weight: 1,
+          container_size: 1,
+          goods_stuffed: 1,
+          dimensions: 1
         }
       ).lean();
       const jobMap = {};
       exJobs.forEach(j => { jobMap[j.job_no] = j; });
       for (const e of dataList) {
         if (e.status === "Converted") {
-          const job = jobMap[e.success_no] || jobMap[e.enquiry_no];
+          const job = jobMap[e.source_job_no] || jobMap[e.success_no] || jobMap[e.enquiry_no];
           if (job) {
             if (job.place_of_receipt) e.place_of_receipt = job.place_of_receipt;
             if (job.hbl_no) e.hbl_no = job.hbl_no;
@@ -172,14 +190,14 @@ router.get("/freight-enquiries", async (req, res) => {
             }
             // Merge shipper from ExJob for export shipments
             if (job.shipper) e.shipper_name = job.shipper;
-            // Merge shipment ref no from ExJob bl_details
-            if (job.bl_details?.shipment_ref_no) e.shipment_ref_no = job.bl_details.shipment_ref_no;
             
             // Merge SBO and arrival dates
             if (job.shipped_on_board_date) e.shipped_on_board_date = job.shipped_on_board_date;
+            if (job.sailing_date) e.sailing_date = job.sailing_date;
             if (job.arrival_date) e.arrival_date = job.arrival_date;
-
-            // Merge newly requested timeline and document details
+            if (job.final_delivery_date) e.final_delivery_date = job.final_delivery_date;
+ 
+            // Merge timeline and document details
             if (job.booking_no) e.booking_no = job.booking_no;
             if (job.booking_date) e.booking_date = job.booking_date;
             if (job.cut_off_date) e.cut_off_date = job.cut_off_date;
@@ -198,6 +216,29 @@ router.get("/freight-enquiries", async (req, res) => {
             if (job.consol_no) e.consol_no = job.consol_no;
             if (job.consol_date) e.consol_date = job.consol_date;
             if (job.eta_date) e.eta_date = job.eta_date;
+            
+            // Merge transport/sales fields
+            if (job.booking_thru) e.booking_thru = job.booking_thru;
+            if (job.sales_person) e.sales_person = job.sales_person;
+            if (job.freight_type) e.freight_type = job.freight_type;
+            if (job.cargo_type) e.cargo_type = job.cargo_type;
+            if (job.movement_type) e.movement_type = job.movement_type;
+            if (job.volume_weight) e.volume_weight = job.volume_weight;
+            if (job.shipment_terms) e.shipment_terms = job.shipment_terms;
+            if (job.container_qty_type) e.container_qty_type = job.container_qty_type;
+            if (job.net_weight_kg) e.net_weight_kg = job.net_weight_kg;
+            if (job.gross_weight_kg) e.gross_weight_kg = job.gross_weight_kg;
+            if (job.volume_cbm) e.volume_cbm = job.volume_cbm;
+            if (job.chargeable_weight) e.chargeable_weight = job.chargeable_weight;
+            if (job.container_size) e.container_size = job.container_size;
+            if (job.goods_stuffed) e.goods_stuffed = job.goods_stuffed;
+            if (job.dimensions && job.dimensions.length > 0) e.dimensions = job.dimensions;
+            if (job.bl_details) {
+              e.bl_details = {
+                ...e.bl_details,
+                ...job.bl_details
+              };
+            }
  
             // Merge billing submission details
             if (job.operations?.[0]?.statusDetails?.[0]?.billing_details) {
@@ -208,7 +249,100 @@ router.get("/freight-enquiries", async (req, res) => {
       }
     }
 
-    res.status(200).json({ success: true, data: dataList });
+    // ─── Strict sequential pipeline stage classifier ───────────────────────────
+    // Each stage requires ALL prior gates to be fully satisfied.
+    // A job is "locked" in a stage until its OWN condition is met.
+    // e.g. even if ETD is present, if draft is not approved → stays in Draft BL.
+    const getPipelineStage = (e) => {
+      if (e.status !== "Converted") {
+        if (e.status === "Open") return "Enquiry";
+        if (e.status === "Rejected") return "Rejected";
+        return "";
+      }
+
+      // Gate 1: Draft BL – must be approved by client
+      const draftApproved = e.draft_bl_approved === true;
+      if (!draftApproved) return "Draft BL";
+
+      // Gate 2: SBO – must have ETD (sailing_date) AFTER draft approved
+      const sboDate = !!(e.sailing_date);
+      if (!sboDate) return "SBO";
+
+      // Gate 3: Billing – must have all 4 billing fields AFTER ETD
+      const hasBillingDetails = !!(
+        e.billing_details?.agency_bill_no &&
+        e.billing_details?.agency_bill_date &&
+        e.billing_details?.reimbursement_bill_no &&
+        e.billing_details?.reimbursement_bill_date
+      );
+      if (!hasBillingDetails) return "Billing";
+
+      // Gate 4: ETA Pending – billing done, waiting for final arrival date
+      const hasArrivalDate = !!(e.arrival_date);
+      if (!hasArrivalDate) return "ETA Pending";
+
+      // Gate 5: Delivery – arrival date present, waiting for final delivery date
+      const hasFinalDelivery = !!(e.final_delivery_date);
+      if (!hasFinalDelivery) return "Delivery";
+
+      // Gate 6: Completed – all gates passed
+      return "Completed";
+    };
+
+    // Pending = all converted jobs that have NOT yet reached ETA Pending or beyond
+    const PRE_ETA_STAGES = new Set(["Draft BL", "SBO", "Billing"]);
+
+    let enquiryCount = 0;
+    let rejectedCount = 0;
+    let pendingCount = 0;
+    let draftBlCount = 0;
+    let sboCount = 0;
+    let billingCount = 0;
+    let etaPendingCount = 0;
+    let deliveryCount = 0;
+    let completedCount = 0;
+
+    const processedList = dataList.map((e) => {
+      const computedTab = getPipelineStage(e);
+      const isPreEta = PRE_ETA_STAGES.has(computedTab);
+
+      if (computedTab === "Enquiry") enquiryCount++;
+      else if (computedTab === "Rejected") rejectedCount++;
+      else if (computedTab === "Draft BL") { draftBlCount++; pendingCount++; }
+      else if (computedTab === "SBO") { sboCount++; pendingCount++; }
+      else if (computedTab === "Billing") { billingCount++; pendingCount++; }
+      else if (computedTab === "ETA Pending") etaPendingCount++;
+      else if (computedTab === "Delivery") deliveryCount++;
+      else if (computedTab === "Completed") completedCount++;
+
+      return { ...e, computedTab, isPreEta };
+    });
+
+    let resultData = processedList;
+    if (tab) {
+      if (tab === "Pending") {
+        // Pending shows all converted jobs not yet at ETA Pending (pre-billing completion)
+        resultData = processedList.filter(e => PRE_ETA_STAGES.has(e.computedTab));
+      } else {
+        resultData = processedList.filter(e => e.computedTab === tab);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: resultData,
+      counts: {
+        Enquiry: enquiryCount,
+        Rejected: rejectedCount,
+        Pending: pendingCount,
+        "Draft BL": draftBlCount,
+        SBO: sboCount,
+        Billing: billingCount,
+        "ETA Pending": etaPendingCount,
+        Delivery: deliveryCount,
+        Completed: completedCount
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

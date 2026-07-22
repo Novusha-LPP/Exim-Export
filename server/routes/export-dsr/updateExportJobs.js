@@ -3125,7 +3125,9 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
         "consignment_type",
         "eta_date",
         "arrival_date",
+        "final_delivery_date",
         "delay_reason",
+        "sailing_date",
         "shipped_on_board_date"
       ];
       fieldsToSync.forEach(field => {

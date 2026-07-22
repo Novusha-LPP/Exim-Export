@@ -8,6 +8,29 @@ import { SHIPPING_LINES } from "../../../../utils/masterList";
 
 const toUpper = (str) => (str ? str.toUpperCase() : "");
 
+const getPreviousDayDate = (dateVal) => {
+  if (!dateVal) return "";
+  const str = String(dateVal).trim();
+  let d = null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const parts = str.split("-");
+    d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  } else {
+    const dmy = str.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})/);
+    if (dmy) {
+      d = new Date(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10));
+    } else {
+      d = new Date(str);
+    }
+  }
+  if (!d || isNaN(d.getTime())) return "";
+  d.setDate(d.getDate() - 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 import { formatDate } from "../../../../utils/dateUtils";
 import DateInput from "../../../common/DateInput.js";
 
@@ -1298,10 +1321,9 @@ const StatusSection = ({
   const displayData =
     data && data.length > 0 ? data : [getDefaultItem(section)];
 
-  const hideStuffing = isAir || ["THAR DRY PORT", "ICD SACHANA", "AHMEDABAD AIR CARGO"].some(h => customHouse.includes(h));
-
   const isLclDock = consignmentType === "LCL" && (stuffedAt === "DOCK" || stuffedAt === "DOCKS");
   const isFclFactory = consignmentType === "FCL" && stuffedAt === "FACTORY";
+  const isDockStuffFclSea = !isAir && consignmentType === "FCL" && (stuffedAt === "DOCK" || stuffedAt === "DOCKS");
 
   const row1Fields = [
     {
@@ -1347,28 +1369,28 @@ const StatusSection = ({
       label: "Container Placement",
       type: "date",
       width: 1,
-      hidden: isAir || isLclDock || isFclFactory,
+      hidden: isAir || (consignmentType === "LCL" && (stuffedAt === "DOCK" || stuffedAt === "DOCKS")) || (consignmentType === "FCL" && stuffedAt === "FACTORY"),
     },
     {
       field: "stuffingDate",
       label: "Stuffing",
       type: "date",
       width: 1,
-      hidden: hideStuffing || isLclDock || isFclFactory,
+      hidden: !isDockStuffFclSea,
     },
     {
       field: "stuffingSheetUpload",
       label: "Stuffing Sheet",
       type: "upload",
       width: 1,
-      hidden: hideStuffing || isLclDock || isFclFactory,
+      hidden: !isDockStuffFclSea,
     },
     {
       field: "stuffingPhotoUpload",
       label: "Stuffing Photo",
       type: "upload",
       width: 1,
-      hidden: hideStuffing,
+      hidden: !isDockStuffFclSea,
     },
     {
       field: "eGatePassCopyDate",
@@ -1683,12 +1705,24 @@ const StatusSection = ({
               name={`operations.${activeOpIndex}.${section}.${rowIdx}.railOutReachedDate`}
               value={item.railOutReachedDate || ""}
               onChange={(e) => {
+                const reachedVal = e.target.value;
                 onUpdate(
                   section,
                   rowIdx,
                   "railOutReachedDate",
-                  e.target.value,
+                  reachedVal,
                 );
+                if (reachedVal && !item.handoverConcorTharSanganaRailRoadDate) {
+                  const prevDate = getPreviousDayDate(reachedVal);
+                  if (prevDate) {
+                    onUpdate(
+                      section,
+                      rowIdx,
+                      "handoverConcorTharSanganaRailRoadDate",
+                      prevDate,
+                    );
+                  }
+                }
               }}
               style={{
                 ...styles.cellInput,

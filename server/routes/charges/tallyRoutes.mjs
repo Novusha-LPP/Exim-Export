@@ -152,39 +152,140 @@ const formatInvoiceSeries = (invoiceList) => {
  * Resolves a potentially formatted club job series (or standard job number)
  * into a query conditions array for $or.
  */
-const resolveJobNumberQuery = (jobNo) => {
-    if (!jobNo) return [];
-    const cleanJobNo = String(jobNo).trim();
-    
-    // Check for "TO" format: e.g. AMD/EXP/SEA/00463 TO 00466/26-27
+/**
+ * Resolves a Tally job number or short bill reference (e.g., GIA/00001/26-27, GEA/0001/26-27, 
+ * GG/IA/0001/26-27, GH/EA/0001/26-27, GC/IA/0001/26-27, GB/IA/0001/26-27, FF/0001/26-27, 0001, 00001) 
+ * into an array of MongoDB $or query objects.
+ */
+const resolveJobNumberQuery = (jobNoInput) => {
+    if (!jobNoInput) return [{ _id: null }];
+    const cleanJobNo = String(jobNoInput).trim();
+    if (!cleanJobNo) return [{ _id: null }];
+
+    const conditions = [];
+
+    // 1. Direct exact matches across standard job identifier fields
+    const exactFields = [
+        "job_no",
+        "job_number",
+        "jobNo",
+        "tally_club_ref_no",
+        "agency_bill_no",
+        "reimbursement_bill_no",
+        "tally_bill_no",
+        "enquiry_no",
+        "success_no",
+        "custom_job_no"
+    ];
+    exactFields.forEach((field) => {
+        conditions.push({ [field]: cleanJobNo });
+    });
+
+    // 2. Check for "TO" format: e.g. AMD/EXP/SEA/00463 TO 00466/26-27
     const toMatch = cleanJobNo.match(/^(.*)\/(\d+)\s+TO\s+(\d+)\/([^\/]+)$/i);
     if (toMatch) {
         const prefix = toMatch[1];
         const startNum = toMatch[2];
         const suffix = toMatch[4];
         const candidate1 = `${prefix}/${startNum}/${suffix}`;
-        return [
-            { job_no: candidate1 },
-            { job_no: { $regex: new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "/0*" + parseInt(startNum, 10) + "/" + suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "$", "i") } }
-        ];
+        conditions.push({ job_no: candidate1 });
+        const safePrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const safeSuffix = suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        conditions.push({ job_no: { $regex: new RegExp("^" + safePrefix + "/0*" + parseInt(startNum, 10) + "/" + safeSuffix + "$", "i") } });
+        return conditions;
     }
 
-    // Check for comma-separated format: e.g. AMD/EXP/SEA/302,303,304,306,309/26-27
+    // 3. Check for comma-separated format: e.g. AMD/EXP/SEA/302,303,304,306,309/26-27
     const commaMatch = cleanJobNo.match(/^(.*)\/(\d+(?:,\d+)+)\/([^\/]+)$/i);
     if (commaMatch) {
         const prefix = commaMatch[1];
         const firstNum = commaMatch[2].split(',')[0].trim();
         const suffix = commaMatch[3];
-        return [
-            { job_no: { $regex: new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "/0*" + parseInt(firstNum, 10) + "/" + suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "$", "i") } }
-        ];
+        const safePrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const safeSuffix = suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        conditions.push({ job_no: { $regex: new RegExp("^" + safePrefix + "/0*" + parseInt(firstNum, 10) + "/" + safeSuffix + "$", "i") } });
+        return conditions;
     }
 
-    // Standard case
-    return [
-        { job_no: cleanJobNo },
-        { tally_club_ref_no: cleanJobNo }
-    ];
+    // 4. Parse Tally short bill formats (GIA/00001/26-27, GEA/0001/26-27, GG/IA/0001/26-27, GH/EA/0001/26-27, FF/0001/26-27, 0001, etc.)
+    let seqNum = null;
+    let yearSuffix = null;
+    let prefixPart = "";
+
+    const slashParts = cleanJobNo.split("/").map(s => s.trim()).filter(Boolean);
+    
+    if (slashParts.length >= 2) {
+        const last = slashParts[slashParts.length - 1];
+        if (/^\d{2}-\d{2}$|^\d{4}-\d{4}$/.test(last)) {
+            yearSuffix = last;
+        }
+
+        for (const p of slashParts) {
+            if (/^\d+$/.test(p)) {
+                seqNum = parseInt(p, 10);
+                break;
+            }
+        }
+        
+        prefixPart = slashParts[0].toUpperCase();
+        if (slashParts.length > 3 && (slashParts[1] === "IA" || slashParts[1] === "EA" || slashParts[1] === "IR" || slashParts[1] === "ER")) {
+            prefixPart = `${slashParts[0]}/${slashParts[1]}`.toUpperCase();
+        }
+    } else if (/^\d+$/.test(cleanJobNo)) {
+        seqNum = parseInt(cleanJobNo, 10);
+    } else {
+        const numMatch = cleanJobNo.match(/0*(\d+)/);
+        if (numMatch) {
+            seqNum = parseInt(numMatch[1], 10);
+        }
+    }
+
+    if (seqNum !== null && !isNaN(seqNum)) {
+        const padded4 = seqNum.toString().padStart(4, '0');
+        const padded5 = seqNum.toString().padStart(5, '0');
+
+        conditions.push({ sequence_number: seqNum });
+        conditions.push({ sequence_no: seqNum });
+        conditions.push({ job_no: seqNum.toString() });
+        conditions.push({ job_no: padded4 });
+        conditions.push({ job_no: padded5 });
+
+        let yearRegexPart = "";
+        if (yearSuffix) {
+            const shortYear = yearSuffix.slice(-5);
+            yearRegexPart = `.*${shortYear}`;
+        }
+
+        const flexRegex = new RegExp(`(?:^|/|-)0*${seqNum}(?:/|-|$)${yearRegexPart}`, "i");
+        conditions.push({ job_no: { $regex: flexRegex } });
+        conditions.push({ job_number: { $regex: flexRegex } });
+        conditions.push({ tally_club_ref_no: { $regex: flexRegex } });
+
+        if (prefixPart) {
+            let branchRegexStr = "";
+            if (prefixPart.startsWith("GH")) {
+                branchRegexStr = "^(HAZ|GH)";
+            } else if (prefixPart.startsWith("GG")) {
+                branchRegexStr = "^(GND|GAN|GG)";
+            } else if (prefixPart.startsWith("GC")) {
+                branchRegexStr = "^(COK|COC|GC)";
+            } else if (prefixPart.startsWith("GB")) {
+                branchRegexStr = "^(BAR|GB)";
+            } else if (prefixPart.startsWith("GE") || prefixPart.startsWith("GI") || prefixPart === "GIA" || prefixPart === "GEA") {
+                branchRegexStr = "^(AMD|AHM|G)";
+            } else if (prefixPart.startsWith("FF")) {
+                branchRegexStr = "^(FF|FF-)";
+            }
+
+            if (branchRegexStr) {
+                const branchSpecificRegex = new RegExp(`${branchRegexStr}.*0*${seqNum}`, "i");
+                conditions.push({ job_no: { $regex: branchSpecificRegex } });
+                conditions.push({ job_number: { $regex: branchSpecificRegex } });
+            }
+        }
+    }
+
+    return conditions;
 };
 
 router.get("/test", (req, res) => res.json({ status: "Tally API is connected and working!" }));
@@ -193,10 +294,30 @@ router.get("/test", (req, res) => res.json({ status: "Tally API is connected and
  * @api {get} /api/tally/job-data Retrieve job data for Tally integration
  */
 /**
+ * Helper to determine if a job is a Freight Forwarding / Freight job
+ */
+const isFreightJob = (job) => {
+    if (!job) return false;
+    if (job.freight === true || job.is_freight === true || job.freight_done === true) return true;
+    if (job.freight_enquiry_id) return true;
+    const jobNoStr = String(job.tally_club_ref_no || job.job_no || job.success_no || job.enquiry_no || job.parent_club_job || "").toUpperCase();
+    if (jobNoStr.includes("FF-") || jobNoStr.startsWith("FF")) return true;
+    if (String(job.detailedStatus || "").toLowerCase().includes("freight")) return true;
+    if (String(job.job_type || "").toLowerCase().includes("freight")) return true;
+    return false;
+};
+
+/**
  * Internal helper to format job and invoice data for Tally
  */
-const mapJobAndInvoiceToTally = (job, inv) => {
+const mapJobAndInvoiceToTally = (job, inv, explicitFreight) => {
+    const isFreight = explicitFreight !== undefined 
+        ? Boolean(explicitFreight) 
+        : isFreightJob(job);
+
     return {
+        "freight": isFreight,
+        "Freight": isFreight,
         "Job Number": job.tally_club_ref_no || job.job_no,
         "Job Year": job.year || "",
         "Job Type": "EXPORT",
@@ -264,7 +385,7 @@ const mapJobAndInvoiceToTally = (job, inv) => {
 /**
  * Internal helper to retrieve and format job data for Tally
  */
-const getJobDetailsInternal = async (job_number) => {
+const getJobDetailsInternal = async (job_number, explicitFreight) => {
     if (!job_number) return null;
     let job = await ExJobModel.findOne({
         $or: resolveJobNumberQuery(job_number)
@@ -350,18 +471,19 @@ const getJobDetailsInternal = async (job_number) => {
 
     const invoices = job.invoices || [];
     if (invoices.length === 0) {
-        return [mapJobAndInvoiceToTally(job, null)];
+        return [mapJobAndInvoiceToTally(job, null, explicitFreight)];
     }
-    return invoices.map(inv => mapJobAndInvoiceToTally(job, inv));
+    return invoices.map(inv => mapJobAndInvoiceToTally(job, inv, explicitFreight));
 };
 
 router.get("/job-data", authApiKey, async (req, res) => {
     try {
-        const { job_number, invoice_number } = req.query;
+        const { job_number, invoice_number, freight } = req.query;
         if (!job_number) {
             return res.status(400).send({ error: "job_number is a required query parameter" });
         }
-        const responseData = await getJobDetailsInternal(job_number);
+        const explicitFreight = freight !== undefined ? (String(freight).toLowerCase() === "true") : undefined;
+        const responseData = await getJobDetailsInternal(job_number, explicitFreight);
         if (!responseData) {
             return res.status(404).send({ error: "Job not found for the provided job_number" });
         }
@@ -798,15 +920,21 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             formattedData["Total"] = netAmount;
         }
 
+        // Determine freight flag
+        const explicitFreight = req.query.freight !== undefined ? (String(req.query.freight).toLowerCase() === "true") : undefined;
+        const isFreight = explicitFreight !== undefined ? explicitFreight : (isClub ? true : (isFreightJob(rawJobDB) || isFreightJob(entry)));
+
+        formattedData["freight"] = isFreight;
+        formattedData["Freight"] = isFreight;
+
         // Include Job Details
         const jobNoToFetch = (isClub && c1ParentJobNo) ? c1ParentJobNo : entry.jobNo;
-        const jobDetails = await getJobDetailsInternal(jobNoToFetch);
+        const jobDetails = await getJobDetailsInternal(jobNoToFetch, explicitFreight);
         if (jobDetails) {
             formattedData["Job Details"] = jobDetails;
         } else {
             formattedData["Job Details"] = [];
         }
-
 
         res.status(200).json(formattedData);
     } catch (error) {
@@ -923,9 +1051,17 @@ router.get("/payment-request", authApiKey, async (req, res) => {
             }
         }
 
-        // Include Job Details
+        // Determine freight flag for payment request
+        const explicitFreight = req.query.freight !== undefined ? (String(req.query.freight).toLowerCase() === "true") : undefined;
         const job_number = enriched.jobNo;
-        const jobDetails = await getJobDetailsInternal(job_number);
+        const jobDetails = await getJobDetailsInternal(job_number, explicitFreight);
+        const isFreight = explicitFreight !== undefined 
+            ? explicitFreight 
+            : (Boolean(enriched.jobNo && String(enriched.jobNo).toUpperCase().includes("FF")) || isFreightJob(jobDetails?.[0]));
+
+        enriched["freight"] = isFreight;
+        enriched["Freight"] = isFreight;
+
         if (jobDetails) {
             enriched["Job Details"] = jobDetails;
         }
@@ -935,6 +1071,359 @@ router.get("/payment-request", authApiKey, async (req, res) => {
         console.error("Payment request fetch error:", error);
         res.status(500).send({ error: "Internal Server Error" });
     }
+});
+
+/**
+ * Automatically formats a single raw bill number from Tally (e.g. "0863", "0001", "1")
+ * into the official branch bill number (e.g. GEA/0863/26-27, GIA/00001/26-27, GG/IA/0001/26-27, GH/EA/0001/26-27, FF/0001/26-27).
+ */
+const formatTallyBillNumber = (rawBillNo, job = {}, fallbackType = "EXPORT", billCategory = "AGENCY") => {
+    if (!rawBillNo) return "";
+    const cleanBill = String(rawBillNo).trim();
+    if (!cleanBill) return "";
+
+    // If already fully formatted (contains slashes like GEA/0863/26-27 or GG/IA/0001/26-27), return as-is
+    if (cleanBill.includes("/")) {
+        return cleanBill;
+    }
+
+    const seq = parseInt(cleanBill, 10);
+    if (isNaN(seq)) return cleanBill;
+
+    // Detect job attributes
+    const jobNoStr = String(job.job_no || job.job_number || job.jobNo || "").toUpperCase();
+    const branchCode = String(job.branch_code || job.branch || "").toUpperCase();
+    const tradeType = String(job.trade_type || job.type || fallbackType || "").toUpperCase();
+    const isImport = tradeType.includes("IMP") || jobNoStr.includes("/IMP/") || jobNoStr.includes("IMP");
+    const isFreight = isFreightJob(job) || jobNoStr.includes("FF-") || jobNoStr.startsWith("FF");
+    const isReimb = billCategory === "REIMBURSEMENT" || billCategory === "REIMB" || billCategory === "ER" || billCategory === "IR";
+
+    // Financial year extraction
+    let yearStr = job.year || job.financial_year || "";
+    if (!yearStr && jobNoStr.includes("/")) {
+        const parts = jobNoStr.split("/");
+        const lastPart = parts[parts.length - 1];
+        if (/^\d{2}-\d{2}$|^\d{4}-\d{4}$/.test(lastPart)) {
+            yearStr = lastPart;
+        }
+    }
+    if (!yearStr) {
+        yearStr = "26-27";
+    }
+
+    // Branch detection
+    const isHazira = branchCode.includes("HAZ") || branchCode.includes("GH") || jobNoStr.startsWith("HAZ") || jobNoStr.includes("/HAZ/");
+    const isGandhidham = branchCode.includes("GND") || branchCode.includes("GAN") || branchCode.includes("GG") || jobNoStr.startsWith("GND") || jobNoStr.includes("/GND/");
+    const isCochin = branchCode.includes("COK") || branchCode.includes("COC") || branchCode.includes("GC") || jobNoStr.startsWith("COK") || jobNoStr.includes("/COK/");
+    const isBaroda = branchCode.includes("BAR") || branchCode.includes("GB") || jobNoStr.startsWith("BAR") || jobNoStr.includes("/BAR/");
+
+    // Format output
+    if (isFreight) {
+        return `FF/${seq.toString().padStart(4, '0')}/${yearStr}`;
+    }
+
+    if (isHazira) {
+        const prefix = isReimb ? (isImport ? "GH/IR" : "GH/ER") : (isImport ? "GH/IA" : "GH/EA");
+        return `${prefix}/${seq.toString().padStart(4, '0')}/${yearStr}`;
+    }
+
+    if (isGandhidham) {
+        const prefix = isReimb ? (isImport ? "GG/IR" : "GG/ER") : (isImport ? "GG/IA" : "GG/EA");
+        return `${prefix}/${seq.toString().padStart(4, '0')}/${yearStr}`;
+    }
+
+    if (isCochin) {
+        const prefix = isReimb ? (isImport ? "GC/IR" : "GC/ER") : (isImport ? "GC/IA" : "GC/EA");
+        return `${prefix}/${seq.toString().padStart(4, '0')}/${yearStr}`;
+    }
+
+    if (isBaroda) {
+        const prefix = isReimb ? (isImport ? "GB/IR" : "GB/ER") : (isImport ? "GB/IA" : "GB/EA");
+        return `${prefix}/${seq.toString().padStart(4, '0')}/${yearStr}`;
+    }
+
+    // Default: Ahmedabad
+    if (isImport) {
+        const prefix = isReimb ? "GIR" : "GIA";
+        return `${prefix}/${seq.toString().padStart(5, '0')}/${yearStr}`;
+    } else {
+        const prefix = isReimb ? "GER" : "GEA";
+        return `${prefix}/${seq.toString().padStart(4, '0')}/${yearStr}`;
+    }
+};
+
+/**
+ * @api {put} /api/tally/billing-details Push/Update billing details from Tally
+ * Protected by authApiKey middleware (Header: x-api-key: <TALLY_KEY> or Authorization: Bearer <TALLY_KEY>)
+ */
+router.put("/billing-details", authApiKey, async (req, res) => {
+    try {
+        const {
+            job_no,
+            jobNo,
+            job_number,
+            bill_no,
+            billNo,
+            bill_number,
+            bill_date,
+            billDate,
+            bill_amount,
+            billAmount,
+            bill_doc,
+            billDoc,
+            agency_bill_no,
+            agencyBillNo,
+            agency_bill_date,
+            agencyBillDate,
+            agency_bill_amount,
+            agencyBillAmount,
+            agency_bill_doc,
+            agencyBillDoc,
+            reimbursement_bill_no,
+            reimbursementBillNo,
+            reimbursement_bill_date,
+            reimbursementBillDate,
+            reimbursement_bill_amount,
+            reimbursementBillAmount,
+            reimbursement_bill_doc,
+            reimbursementBillDoc
+        } = req.body;
+
+        const targetJobNo = (job_no || jobNo || job_number || "").trim();
+        if (!targetJobNo) {
+            return res.status(400).json({ error: "job_no is required in request body" });
+        }
+
+        const rawAgencyNo = bill_no || billNo || bill_number || agency_bill_no || agencyBillNo || "";
+        const rawAgencyDate = bill_date || billDate || agency_bill_date || agencyBillDate;
+        const rawAgencyAmt = (bill_amount ?? billAmount ?? agency_bill_amount ?? agencyBillAmount);
+        const rawAgencyDoc = bill_doc || billDoc || agency_bill_doc || agencyBillDoc || "";
+
+        const rawReimbNo = reimbursement_bill_no || reimbursementBillNo || "";
+        const rawReimbDate = reimbursement_bill_date || reimbursementBillDate;
+        const rawReimbAmt = (reimbursement_bill_amount ?? reimbursementBillAmount);
+        const rawReimbDoc = reimbursement_bill_doc || reimbursementBillDoc || "";
+
+        let agencyNo = "";
+        let agencyDate = "";
+        let agencyAmt = undefined;
+        let agencyDoc = "";
+
+        let reimbNo = "";
+        let reimbDate = "";
+        let reimbAmt = undefined;
+        let reimbDoc = "";
+
+        let updatedJobType = null;
+        let matchedJobNo = targetJobNo;
+
+        // 1. Try finding in ExJobModel (Export Jobs)
+        let exJob = await ExJobModel.findOne({
+            $or: resolveJobNumberQuery(targetJobNo)
+        });
+
+        if (exJob) {
+            updatedJobType = "EXPORT";
+            matchedJobNo = exJob.job_no;
+
+            agencyNo = formatTallyBillNumber(rawAgencyNo, exJob, "EXPORT", "AGENCY");
+            agencyDate = normalizeDate(rawAgencyDate);
+            agencyAmt = (rawAgencyAmt !== undefined && rawAgencyAmt !== null && rawAgencyAmt !== "") ? Number(rawAgencyAmt) : undefined;
+            agencyDoc = rawAgencyDoc;
+
+            reimbNo = formatTallyBillNumber(rawReimbNo, exJob, "EXPORT", "REIMBURSEMENT");
+            reimbDate = normalizeDate(rawReimbDate);
+            reimbAmt = (rawReimbAmt !== undefined && rawReimbAmt !== null && rawReimbAmt !== "") ? Number(rawReimbAmt) : undefined;
+            reimbDoc = rawReimbDoc;
+
+            const existingBDetails = exJob.billing_details || exJob.operations?.[0]?.statusDetails?.[0]?.billing_details || {};
+            if (!agencyNo && existingBDetails.agency_bill_no) agencyNo = existingBDetails.agency_bill_no;
+            if (!agencyDate && existingBDetails.agency_bill_date) agencyDate = existingBDetails.agency_bill_date;
+            if (agencyAmt === undefined && existingBDetails.agency_bill_amount !== undefined) agencyAmt = existingBDetails.agency_bill_amount;
+            if (!agencyDoc && existingBDetails.agency_bill_doc) agencyDoc = existingBDetails.agency_bill_doc;
+
+            if (!reimbNo && existingBDetails.reimbursement_bill_no) reimbNo = existingBDetails.reimbursement_bill_no;
+            if (!reimbDate && existingBDetails.reimbursement_bill_date) reimbDate = existingBDetails.reimbursement_bill_date;
+            if (reimbAmt === undefined && existingBDetails.reimbursement_bill_amount !== undefined) reimbAmt = existingBDetails.reimbursement_bill_amount;
+            if (!reimbDoc && existingBDetails.reimbursement_bill_doc) reimbDoc = existingBDetails.reimbursement_bill_doc;
+
+            if (!exJob.operations || exJob.operations.length === 0) {
+                exJob.operations = [{ statusDetails: [{ billing_details: {} }] }];
+            }
+            if (!exJob.operations[0].statusDetails || exJob.operations[0].statusDetails.length === 0) {
+                exJob.operations[0].statusDetails = [{ billing_details: {} }];
+            }
+            if (!exJob.operations[0].statusDetails[0].billing_details) {
+                exJob.operations[0].statusDetails[0].billing_details = {};
+            }
+
+            const bDetails = exJob.operations[0].statusDetails[0].billing_details;
+            if (agencyNo) bDetails.agency_bill_no = agencyNo;
+            if (agencyDate) bDetails.agency_bill_date = agencyDate;
+            if (agencyAmt !== undefined) bDetails.agency_bill_amount = agencyAmt;
+            if (agencyDoc) bDetails.agency_bill_doc = agencyDoc;
+
+            if (reimbNo) bDetails.reimbursement_bill_no = reimbNo;
+            if (reimbDate) bDetails.reimbursement_bill_date = reimbDate;
+            if (reimbAmt !== undefined) bDetails.reimbursement_bill_amount = reimbAmt;
+            if (reimbDoc) bDetails.reimbursement_bill_doc = reimbDoc;
+
+            // Also keep top-level billing_details object updated
+            if (!exJob.billing_details) exJob.billing_details = {};
+            if (agencyNo) exJob.billing_details.agency_bill_no = agencyNo;
+            if (agencyDate) exJob.billing_details.agency_bill_date = agencyDate;
+            if (agencyAmt !== undefined) exJob.billing_details.agency_bill_amount = agencyAmt;
+            if (agencyDoc) exJob.billing_details.agency_bill_doc = agencyDoc;
+
+            if (reimbNo) exJob.billing_details.reimbursement_bill_no = reimbNo;
+            if (reimbDate) exJob.billing_details.reimbursement_bill_date = reimbDate;
+            if (reimbAmt !== undefined) exJob.billing_details.reimbursement_bill_amount = reimbAmt;
+            if (reimbDoc) exJob.billing_details.reimbursement_bill_doc = reimbDoc;
+
+            exJob.markModified("operations");
+            exJob.markModified("billing_details");
+            await exJob.save();
+
+            // If it's a parent club job, also update clubbed child jobs
+            if (exJob.is_club_job_parent && Array.isArray(exJob.clubbed_jobs) && exJob.clubbed_jobs.length > 0) {
+                for (const cJobNo of exJob.clubbed_jobs) {
+                    await ExJobModel.updateOne(
+                        { job_no: cJobNo },
+                        {
+                            $set: {
+                                "operations.0.statusDetails.0.billing_details.agency_bill_no": agencyNo,
+                                "operations.0.statusDetails.0.billing_details.agency_bill_date": agencyDate,
+                                "operations.0.statusDetails.0.billing_details.agency_bill_amount": agencyAmt,
+                                "operations.0.statusDetails.0.billing_details.agency_bill_doc": agencyDoc,
+                                "operations.0.statusDetails.0.billing_details.reimbursement_bill_no": reimbNo,
+                                "operations.0.statusDetails.0.billing_details.reimbursement_bill_date": reimbDate,
+                                "operations.0.statusDetails.0.billing_details.reimbursement_bill_amount": reimbAmt,
+                                "operations.0.statusDetails.0.billing_details.reimbursement_bill_doc": reimbDoc,
+                                "billing_details.agency_bill_no": agencyNo,
+                                "billing_details.agency_bill_date": agencyDate,
+                                "billing_details.agency_bill_amount": agencyAmt,
+                                "billing_details.agency_bill_doc": agencyDoc,
+                                "billing_details.reimbursement_bill_no": reimbNo,
+                                "billing_details.reimbursement_bill_date": reimbDate,
+                                "billing_details.reimbursement_bill_amount": reimbAmt,
+                                "billing_details.reimbursement_bill_doc": reimbDoc
+                            }
+                        }
+                    );
+                }
+            }
+        } else {
+            // 2. Search in Import Jobs collection ("jobs" or "importjobs")
+            const mongoose = (await import("mongoose")).default;
+            const db = mongoose.connection.db;
+            const collectionsToSearch = ["jobs", "importjobs", "import_jobs"];
+            let importJobFound = false;
+
+            for (const collName of collectionsToSearch) {
+                const coll = db.collection(collName);
+                const query = {
+                    $or: resolveJobNumberQuery(targetJobNo)
+                };
+                const doc = await coll.findOne(query);
+                if (doc) {
+                    importJobFound = true;
+                    updatedJobType = "IMPORT";
+                    matchedJobNo = doc.job_no || doc.job_number || doc.jobNo || targetJobNo;
+
+                    agencyNo = formatTallyBillNumber(rawAgencyNo, doc, "IMPORT", "AGENCY");
+                    agencyDate = normalizeDate(rawAgencyDate);
+                    agencyAmt = (rawAgencyAmt !== undefined && rawAgencyAmt !== null && rawAgencyAmt !== "") ? Number(rawAgencyAmt) : undefined;
+                    agencyDoc = rawAgencyDoc;
+
+                    reimbNo = formatTallyBillNumber(rawReimbNo, doc, "IMPORT", "REIMBURSEMENT");
+                    reimbDate = normalizeDate(rawReimbDate);
+                    reimbAmt = (rawReimbAmt !== undefined && rawReimbAmt !== null && rawReimbAmt !== "") ? Number(rawReimbAmt) : undefined;
+                    reimbDoc = rawReimbDoc;
+
+                    const existingBDetails = doc.billing_details || {};
+                    if (!agencyNo && existingBDetails.agency_bill_no) agencyNo = existingBDetails.agency_bill_no;
+                    if (!agencyDate && existingBDetails.agency_bill_date) agencyDate = existingBDetails.agency_bill_date;
+                    if (agencyAmt === undefined && existingBDetails.agency_bill_amount !== undefined) agencyAmt = existingBDetails.agency_bill_amount;
+                    if (!agencyDoc && existingBDetails.agency_bill_doc) agencyDoc = existingBDetails.agency_bill_doc;
+
+                    if (!reimbNo && existingBDetails.reimbursement_bill_no) reimbNo = existingBDetails.reimbursement_bill_no;
+                    if (!reimbDate && existingBDetails.reimbursement_bill_date) reimbDate = existingBDetails.reimbursement_bill_date;
+                    if (reimbAmt === undefined && existingBDetails.reimbursement_bill_amount !== undefined) reimbAmt = existingBDetails.reimbursement_bill_amount;
+                    if (!reimbDoc && existingBDetails.reimbursement_bill_doc) reimbDoc = existingBDetails.reimbursement_bill_doc;
+
+                    const setObj = {};
+                    if (agencyNo) {
+                        setObj["billing_details.agency_bill_no"] = agencyNo;
+                        setObj["agency_bill_no"] = agencyNo;
+                    }
+                    if (agencyDate) {
+                        setObj["billing_details.agency_bill_date"] = agencyDate;
+                        setObj["agency_bill_date"] = agencyDate;
+                    }
+                    if (agencyAmt !== undefined) {
+                        setObj["billing_details.agency_bill_amount"] = agencyAmt;
+                        setObj["agency_bill_amount"] = agencyAmt;
+                    }
+                    if (agencyDoc) {
+                        setObj["billing_details.agency_bill_doc"] = agencyDoc;
+                        setObj["agency_bill_doc"] = agencyDoc;
+                    }
+
+                    if (reimbNo) {
+                        setObj["billing_details.reimbursement_bill_no"] = reimbNo;
+                        setObj["reimbursement_bill_no"] = reimbNo;
+                    }
+                    if (reimbDate) {
+                        setObj["billing_details.reimbursement_bill_date"] = reimbDate;
+                        setObj["reimbursement_bill_date"] = reimbDate;
+                    }
+                    if (reimbAmt !== undefined) {
+                        setObj["billing_details.reimbursement_bill_amount"] = reimbAmt;
+                        setObj["reimbursement_bill_amount"] = reimbAmt;
+                    }
+                    if (reimbDoc) {
+                        setObj["billing_details.reimbursement_bill_doc"] = reimbDoc;
+                        setObj["reimbursement_bill_doc"] = reimbDoc;
+                    }
+                    setObj["updatedAt"] = new Date();
+
+                    await coll.updateOne({ _id: doc._id }, { $set: setObj });
+                    break;
+                }
+            }
+
+            if (!importJobFound) {
+                return res.status(404).json({ error: `No job found with job_no '${targetJobNo}' in Export or Import databases` });
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Billing details updated successfully by Tally API for ${updatedJobType} job`,
+            job_no: matchedJobNo,
+            job_type: updatedJobType,
+            billing_details: {
+                agency_bill_no: agencyNo || "",
+                agency_bill_date: agencyDate || "",
+                agency_bill_amount: agencyAmt !== undefined ? agencyAmt : 0,
+                agency_bill_doc: agencyDoc || "",
+                reimbursement_bill_no: reimbNo || "",
+                reimbursement_bill_date: reimbDate || "",
+                reimbursement_bill_amount: reimbAmt !== undefined ? reimbAmt : 0,
+                reimbursement_bill_doc: reimbDoc || ""
+            }
+        });
+
+    } catch (error) {
+        console.error("PUT Billing Details Error:", error);
+        res.status(500).json({ error: "Internal Server Error updating billing details" });
+    }
+});
+
+// Alias POST route for clients sending POST instead of PUT
+router.post("/billing-details", authApiKey, async (req, res, next) => {
+    req.url = "/billing-details";
+    router.handle(req, res, next);
 });
 
 export default router;

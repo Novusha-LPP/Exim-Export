@@ -1017,24 +1017,55 @@ function FreightForwardingJobDetail() {
               </Grid>
             </Grid>
 
-            {/* Logistics Details */}
-            <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-              <Grid item xs={12} md={2} sm={4}>
-                {renderDateInputBox("ETA (Dest)", "eta_date")}
+            {/* Pipeline Stages & Timeline Tracking Dates */}
+            <Box
+              sx={{
+                border: "1.5px solid #3b82f6",
+                borderRadius: "6px",
+                backgroundColor: "#eff6ff",
+                p: 2,
+                mb: 2,
+                boxShadow: "0 1px 3px rgba(59, 130, 246, 0.08)",
+              }}
+            >
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 800,
+                  fontSize: "11px",
+                  color: "#1d4ed8",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  mb: 1.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#3b82f6" }}></span>
+                Pipeline & Timeline Tracking (Key Date Triggers)
+              </Typography>
+              <Grid container spacing={0.5}>
+                <Grid item xs={12} md={2} sm={4}>
+                  {renderDateInputBox("ETD (Departure)", "sailing_date")}
+                </Grid>
+                <Grid item xs={12} md={2} sm={4}>
+                  {renderDateInputBox("ETA (Dest)", "eta_date")}
+                </Grid>
+                <Grid item xs={12} md={2} sm={4}>
+                  {renderDateInputBox("Cut off Date", "cut_off_date")}
+                </Grid>
+                <Grid item xs={12} md={2} sm={4}>
+                  {renderDateInputBox("Final Arrival Date", "arrival_date")}
+                </Grid>
+                <Grid item xs={12} md={2} sm={4}>
+                  {renderDateInputBox("Final Delivery Date", "final_delivery_date")}
+                </Grid>
+                <Grid item xs={12} md={2} sm={4}>
+                  {renderInputBox("Reason for Delay", "delay_reason")}
+                </Grid>
               </Grid>
-              <Grid item xs={12} md={2} sm={4}>
-                {renderDateInputBox("Cut off Date", "cut_off_date")}
-              </Grid>
-              <Grid item xs={12} md={2} sm={4}>
-                {renderDateInputBox("Shipped on Board Date", "shipped_on_board_date")}
-              </Grid>
-              <Grid item xs={12} md={2} sm={4}>
-                {renderDateInputBox("Final Arrival Date", "arrival_date")}
-              </Grid>
-              <Grid item xs={12} md={4} sm={8}>
-                {renderInputBox("Reason for Delay", "delay_reason")}
-              </Grid>
-            </Grid>
+            </Box>
 
             {/* Row 4 */}
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
@@ -1047,14 +1078,11 @@ function FreightForwardingJobDetail() {
               <Grid item xs={12} md={2} sm={4}>
                 {renderCombinedBox("No of Pkgs", "total_no_of_pkgs", "package_unit")}
               </Grid>
-              <Grid item xs={12} md={2} sm={4}>
+              <Grid item xs={12} md={3} sm={6}>
                 {renderInputBox("Discharge Port", "port_of_discharge")}
               </Grid>
-              <Grid item xs={12} md={2} sm={4}>
+              <Grid item xs={12} md={3} sm={6}>
                 {renderInputBox("Sales Person", "sales_person")}
-              </Grid>
-              <Grid item xs={12} md={2} sm={4}>
-                {renderDateInputBox("ETD", "sailing_date")}
               </Grid>
             </Grid>
 
@@ -1609,7 +1637,7 @@ function FreightForwardingJobDetail() {
                 {renderInputBox("Place of Issue", "bl_details.place_of_issue")}
               </Grid>
               <Grid item xs={12} md={4}>
-                {renderBLDateInputBox("Date of Issue", "shipped_on_board_date")}
+                {renderBLDateInputBox("Date of Issue", "sailing_date")}
               </Grid>
             </Grid>
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>

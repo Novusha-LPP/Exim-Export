@@ -329,13 +329,13 @@ export async function runSbTrackJob(force = false) {
 // ── Cron registration ─────────────────────────────────────────────────────────
 
 /**
- * Runs daily at 02:00 IST.
+ * Runs daily at 12:00 PM IST.
  * Most jobs are skipped (15-day gate via sb_track_last_polled), so the daily
  * cron is cheap — it only does real work once per 15 days per job.
  */
 export const initSbTrackCronJob = () => {
     cron.schedule(
-        "0 2 * * *",
+        "0 12 * * *",
         async () => {
             try {
                 await runSbTrackJob();
@@ -345,7 +345,7 @@ export const initSbTrackCronJob = () => {
         },
         { timezone: "Asia/Kolkata" }
     );
-    console.log(`${LOG_PREFIX} Registered — runs daily 02:00 IST, 15-day gate per job.`);
+    console.log(`${LOG_PREFIX} Registered — runs daily 12:00 PM IST, 15-day gate per job.`);
 };
 
 // ── Manual trigger endpoint ───────────────────────────────────────────────────

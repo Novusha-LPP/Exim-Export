@@ -280,7 +280,7 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
                   onClick={() => handleUpdateStatus("Converted")}
                   style={{ ...s.btn, backgroundColor: "#059669", color: "#fff" }}
                 >
-                  Success
+                  Pending
                 </button>
                 <button
                   onClick={() => handleUpdateStatus("Rejected")}

@@ -4,6 +4,7 @@ import { ContentCopy as CopyIcon } from "@mui/icons-material";
 import html2pdf from "html2pdf.js";
 import logo from "../../../assets/images/surajCompanyLogo.jpeg";
 import DocumentEditorDialog from "../Export-Dsr/StandardDocuments/DocumentEditorDialog";
+import FreightCertificateGenerator from "../Export-Dsr/StandardDocuments/FreightCertificateGenerator";
 
 const LEGAL_TEXT_1 =
   "Taken in charge in apparently good condition herein at the place of receipt for transport and delivery as mentioned above, unless otherwise stated. The MTO in accordance with the provisions contained in the MTD undertakes to perform or to procure the performance of the multimodal transport from the place at which the goods are taken in charge to the place designated for delivery and assumes responsibility for such transport.";
@@ -165,10 +166,10 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
   ` : '';
 
   return `
-    <div style="font-family: 'Helvetica', 'Arial', sans-serif; color: #000; width: 784px; margin: 0 auto; background-color: #fff; line-height: 1.15; padding-left: 0px; padding-right: 0px; box-sizing: border-box;">
+    <div style="font-family: 'Helvetica', 'Arial', sans-serif; color: #000; width: 750px; margin: 0 auto; background-color: #fff; line-height: 1.15; padding-left: 0px; padding-right: 0px; box-sizing: border-box;">
       
       <!-- FIRST PAGE (MAIN BL) -->
-      <div style="${b22} box-sizing: border-box; width: 784px; height: 1040px; max-height: 1040px; overflow-y: hidden; overflow-x: visible; ${p2_desc ? 'page-break-after: always; break-after: page;' : ''} position: relative; padding-left: 20px; padding-right: 20px;">
+      <div style="${b22} box-sizing: border-box; width: 750px; height: 1040px; max-height: 1040px; overflow-y: hidden; overflow-x: visible; ${p2_desc ? 'page-break-after: always; break-after: page;' : ''} position: relative; padding-left: 20px; padding-right: 20px;">
         ${watermark}
         <!-- TOP HEADER BOX -->
         <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
@@ -180,17 +181,17 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
                <table style="width: 100%; border-collapse: collapse;">
                   <tr>
                     <td style="padding: 2px 10px 0px; ${bb2}; height: 32px; box-sizing: border-box;">
-                       <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px;">
+                       <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: ${isOriginal ? '10px' : '0px'};">
                           <span style="font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'};">MTD. No.</span>
-                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px; position: relative; top: ${isOriginal ? '-10px' : '0'};">${enquiry?.hbl_no || ""}</span>
+                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; height: 22px; line-height: 18px; box-sizing: border-box; display: inline-block; font-size: 13px; position: relative; top: ${isOriginal ? '-10px' : '-2px'};">${enquiry?.hbl_no || ""}</span>
                        </div>
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding: 6px 10px; height: 32px; box-sizing: border-box;">
+                    <td style="padding: ${isOriginal ? '6px 10px' : '2px 10px 0px'}; height: 32px; box-sizing: border-box;">
                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                           <span style="font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'};">Shipment Ref. No.</span>
-                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px;">${bl.shipment_ref_no || ""}</span>
+                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; height: 22px; line-height: 18px; box-sizing: border-box; display: inline-block; font-size: 13px; position: relative; top: ${isOriginal ? '0px' : '-2px'};">${bl.shipment_ref_no || ""}</span>
                        </div>
                     </td>
                   </tr>
@@ -203,17 +204,17 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
         <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
           <tr>
             <td style="width: 53%; ${br22} vertical-align: top; padding: 0; ${isOriginal ? 'position: relative; height: 255px;' : ''}">
-               <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: -25px; left: -10px; width: 100%;' : ''}">
-                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Consignor</div>'}
-                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.consignor || enquiry?.organization_name || "")}</div>
+               <div style="padding: ${isOriginal ? '8px 10px 8px 0px' : '3px 8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: -25px; left: -10px; width: 100%;' : ''}">
+                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 1px; font-size: 8.5px;">Consignor</div>'}
+                  <div style="font-weight: 700; text-transform: uppercase; font-size: ${isOriginal ? '12px' : '9px'}; line-height: ${isOriginal ? '1.3' : '1.15'}; white-space: normal;">${formatAddress(bl.consignor || enquiry?.organization_name || "")}</div>
                </div>
-               <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 105px; left: -10px; width: 100%;' : ''}">
-                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Consignee (Or Order)</div>'}
-                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.consignee || "TO ORDER")}</div>
+               <div style="padding: ${isOriginal ? '8px 10px 8px 0px' : '3px 8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 105px; left: -10px; width: 100%;' : ''}">
+                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 1px; font-size: 8.5px;">Consignee (Or Order)</div>'}
+                  <div style="font-weight: 700; text-transform: uppercase; font-size: ${isOriginal ? '12px' : '9px'}; line-height: ${isOriginal ? '1.3' : '1.15'}; white-space: normal;">${formatAddress(bl.consignee || "TO ORDER")}</div>
                </div>
-               <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 230px; left: -10px; width: 100%;' : ''}">
-                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Notify Address</div>'}
-                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.notify_party || "SAME AS CONSIGNEE")}</div>
+               <div style="padding: ${isOriginal ? '8px 10px 8px 0px' : '3px 8px'}; height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 230px; left: -10px; width: 100%;' : ''}">
+                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 1px; font-size: 8.5px;">Notify Address</div>'}
+                  <div style="font-weight: 700; text-transform: uppercase; font-size: ${isOriginal ? '12px' : '9px'}; line-height: ${isOriginal ? '1.3' : '1.15'}; white-space: normal;">${formatAddress(bl.notify_party || "SAME AS CONSIGNEE")}</div>
                </div>
             </td>
             <td style="width: 47%; vertical-align: top; padding: 10px 12px; text-align: center;">
@@ -355,7 +356,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
             </td>
             <td style="width: 25%; padding: 6px 10px 6px 20px; vertical-align: top;">
                <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place and Date of Issue</div>
-               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '40px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${formatDate(enquiry?.shipped_on_board_date) || bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
+               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '40px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${formatDate(enquiry?.sailing_date) || bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
             </td>
           </tr>
         </table>
@@ -379,7 +380,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
       </div>
       ${p2_desc ? `
       <!-- SECOND PAGE (ANNEXURE) -->
-      <div style="border: 2.2px solid ${isOriginal ? 'transparent' : '#000'}; padding: 20px 30px; width: 784px; height: 1040px; max-height: 1040px; overflow-y: hidden; overflow-x: visible; box-sizing: border-box; background-color: #fff; position: relative;">
+      <div style="border: 2.2px solid ${isOriginal ? 'transparent' : '#000'}; padding: 20px 30px; width: 750px; height: 1040px; max-height: 1040px; overflow-y: hidden; overflow-x: visible; box-sizing: border-box; background-color: #fff; position: relative;">
         ${watermark}
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
           <div style="font-size: 15px; font-weight: 700; color: #000; text-align: left; margin: 0; line-height: 1.2;">Annexure to the Multimodal Transport Document.</div>
@@ -542,6 +543,14 @@ const FreightBillOfLadingGenerator = ({ enquiry, children }) => {
           >
             Edit Mode
           </Button>
+          <FreightCertificateGenerator jobNo={enquiry?.success_no || enquiry?.enquiry_no}>
+            <Button
+              variant="contained"
+              sx={{ fontWeight: 700, borderRadius: 2, px: 3, bgcolor: "#f59e0b", color: "#fff", '&:hover': { bgcolor: "#d97706" } }}
+            >
+              Freight Certificate
+            </Button>
+          </FreightCertificateGenerator>
           <div style={{ width: "100%", textAlign: "center", marginTop: "10px" }}>
             <Button
               onClick={handleCopyLink}

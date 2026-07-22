@@ -47,6 +47,29 @@ import VirtualBalanceList from "../Export-Billing/VirtualBalanceList";
 import { formatDate } from "../../../utils/dateUtils";
 import { priorityFilter } from "../../../utils/filterUtils";
 
+const getPreviousDayDate = (dateVal) => {
+  if (!dateVal) return "";
+  const str = String(dateVal).trim();
+  let d = null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const parts = str.split("-");
+    d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  } else {
+    const dmy = str.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})/);
+    if (dmy) {
+      d = new Date(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10));
+    } else {
+      d = new Date(str);
+    }
+  }
+  if (!d || isNaN(d.getTime())) return "";
+  d.setDate(d.getDate() - 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 // Lazy-loaded standard document generators
 const ExportChecklistGenerator = lazy(() => import("./StandardDocuments/ExportChecklistGenerator"));
 const ConsignmentNoteGenerator = lazy(() => import("./StandardDocuments/ConsignmentNoteGenerator"));
@@ -1899,7 +1922,10 @@ const ExportJobsTable = () => {
           if (job.containers && job.containers.length > 0) {
             job.containers.forEach(c => {
               if (c.containerNo) contCol.push(`Cont: ${c.containerNo}`);
-              if (c.isoCode || c.type) contCol.push(`Size: ${getContainerSizeLabel(c.isoCode || c.type)}`);
+              const cSize = c.container_size || c.containerSize || c.size || c.isoCode || job.container_size || "";
+              const cType = c.container_type || c.containerType || c.type || job.container_type || "";
+              const cLabel = [cSize, cType].filter(Boolean).join(" ");
+              if (cLabel) contCol.push(`Size/Type: ${getContainerSizeLabel(cLabel)}`);
             });
           }
           const placeDate = job.operations?.[0]?.statusDetails?.[0]?.containerPlacementDate;
@@ -4734,12 +4760,62 @@ const ExportJobsTable = () => {
                                                   {container.containerNo}
                                                 </a>
 
-                                                {/* Container type badge inline */}
-                                                {(container.isoCode || container.type) && (
-                                                  <span style={{ fontSize: '8px', color: '#4b5563', fontWeight: "900", backgroundColor: "#e2e8f0", padding: "0px 4px", borderRadius: "2px", whiteSpace: "nowrap" }}>
-                                                    {getContainerSizeLabel(container.isoCode || container.type)}
-                                                  </span>
-                                                )}
+                                                {/* Container type/size badge inline */}
+                                                {(() => {
+                                                  let size = container.container_size || container.containerSize || container.size || container.cntr_size || container.isoCode || "";
+                                                  let type = container.container_type || container.containerType || container.type || container.cntr_type || container.equipmentType || "";
+
+                                                  if (!size && !type) {
+                                                    const firstC = job.containers?.[0];
+                                                    if (firstC) {
+                                                      size = firstC.container_size || firstC.containerSize || firstC.size || firstC.cntr_size || firstC.isoCode || "";
+                                                      type = firstC.container_type || firstC.containerType || firstC.type || firstC.cntr_type || firstC.equipmentType || "";
+                                                    }
+                                                  }
+
+                                                  if (!size && !type) {
+                                                    size = job.container_size || job.containerSize || job.container_qty_type || "";
+                                                    type = job.container_type || job.containerType || "";
+                                                  }
+
+                                                  const sizeLbl = size ? getContainerSizeLabel(size) : "";
+                                                  const typeLbl = type ? getContainerSizeLabel(type) : "";
+
+                                                  let badgeText = "";
+                                                  if (sizeLbl && typeLbl) {
+                                                    if (sizeLbl.toUpperCase() === typeLbl.toUpperCase()) {
+                                                      badgeText = sizeLbl;
+                                                    } else if (typeLbl.toUpperCase().includes(sizeLbl.toUpperCase())) {
+                                                      badgeText = typeLbl;
+                                                    } else if (sizeLbl.toUpperCase().includes(typeLbl.toUpperCase())) {
+                                                      badgeText = sizeLbl;
+                                                    } else {
+                                                      badgeText = `${sizeLbl} ${typeLbl}`;
+                                                    }
+                                                  } else {
+                                                    badgeText = sizeLbl || typeLbl;
+                                                  }
+
+                                                  if (!badgeText) return null;
+
+                                                  return (
+                                                    <span
+                                                      style={{
+                                                        fontSize: "8.5px",
+                                                        color: "#1e293b",
+                                                        fontWeight: "800",
+                                                        backgroundColor: "#e2e8f0",
+                                                        padding: "1px 4px",
+                                                        borderRadius: "2px",
+                                                        whiteSpace: "nowrap",
+                                                        border: "1px solid #cbd5e1"
+                                                      }}
+                                                      title={`Size: ${size || '-'}, Type: ${type || '-'}`}
+                                                    >
+                                                      {badgeText}
+                                                    </span>
+                                                  );
+                                                })()}
                                               </div>
 
                                               <div style={{ display: "flex", alignItems: "center", gap: "1px", flexShrink: 0 }}>
@@ -4963,6 +5039,12 @@ const ExportJobsTable = () => {
                                             <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(job.shipping_bill_done_date, "dd-MM-yy")}</span>
                                           </div>
                                         )}
+                                        {opDetails.stuffingDate && (
+                                          <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                            <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>STUFFING</span>
+                                            <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.stuffingDate, "dd-MM-yy")}</span>
+                                          </div>
+                                        )}
                                         <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
                                           <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>DHO</span>
                                           <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}</span>
@@ -4971,7 +5053,12 @@ const ExportJobsTable = () => {
                                           <>
                                             <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
                                               <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{outLbl.toUpperCase()}</span>
-                                              <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}</span>
+                                              <span style={{ fontWeight: "600", color: "#1e293b" }}>
+                                                {formatDate(
+                                                  opDetails.handoverConcorTharSanganaRailRoadDate || (opDetails.railOutReachedDate ? getPreviousDayDate(opDetails.railOutReachedDate) : ""),
+                                                  "dd-MM-yy"
+                                                )}
+                                              </span>
                                             </div>
                                             <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
                                               <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{reachedLbl.toUpperCase()}</span>
