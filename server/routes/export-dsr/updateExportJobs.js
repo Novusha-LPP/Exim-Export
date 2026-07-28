@@ -2589,7 +2589,11 @@ router.get("/:job_no(.*)", async (req, res, next) => {
           { enquiry_no: job_no },
           { success_no: job_no }
         ],
-        status: "Converted"
+        $or: [
+          { status: "Converted" },
+          { source_job_no: { $exists: true, $ne: "" } },
+          { success_no: { $exists: true, $ne: "" } }
+        ]
       });
       if (enquiry) {
         console.log(`[JIT] Creating job record for converted enquiry: ${job_no}`);
@@ -2629,7 +2633,11 @@ router.get("/:job_no(.*)", async (req, res, next) => {
           { enquiry_no: job_no },
           { success_no: job_no }
         ],
-        status: "Converted"
+        $or: [
+          { status: "Converted" },
+          { source_job_no: { $exists: true, $ne: "" } },
+          { success_no: { $exists: true, $ne: "" } }
+        ]
       });
       if (enquiry) {
         let changed = false;
@@ -2676,7 +2684,11 @@ router.get("/:job_no(.*)", async (req, res, next) => {
           { enquiry_no: job_no },
           { success_no: job_no }
         ],
-        status: "Converted"
+        $or: [
+          { status: "Converted" },
+          { source_job_no: { $exists: true, $ne: "" } },
+          { success_no: { $exists: true, $ne: "" } }
+        ]
       }).lean();
       if (enquiry) {
         jobData.shipment_type = enquiry.shipment_type;

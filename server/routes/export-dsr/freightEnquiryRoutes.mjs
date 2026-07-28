@@ -123,9 +123,12 @@ router.get("/freight-enquiries", async (req, res) => {
     // Sync missing documents (like LEO copy) from source Export Jobs
     await Promise.all(dataList.map(e => syncEnquiryDocuments(e)));
 
+    // Helper to determine if an enquiry is converted or linked to an export job
+    const isConverted = (e) => e.status === "Converted" || !!e.source_job_no || !!e.success_no;
+
     // For converted enquiries, merge key fields from the associated ExJob
     // (e.g. place_of_receipt, hbl_no) so the BL generator has access to them
-    const convertedEnquiries = dataList.filter(e => e.status === "Converted" && (e.source_job_no || e.success_no || e.enquiry_no));
+    const convertedEnquiries = dataList.filter(e => isConverted(e) && (e.source_job_no || e.success_no || e.enquiry_no));
     if (convertedEnquiries.length > 0) {
       const jobNos = convertedEnquiries.map(e => e.source_job_no || e.success_no || e.enquiry_no).filter(Boolean);
       const exJobs = await ExJobModel.find(
@@ -179,7 +182,7 @@ router.get("/freight-enquiries", async (req, res) => {
       const jobMap = {};
       exJobs.forEach(j => { jobMap[j.job_no] = j; });
       for (const e of dataList) {
-        if (e.status === "Converted") {
+        if (isConverted(e)) {
           const job = jobMap[e.source_job_no] || jobMap[e.success_no] || jobMap[e.enquiry_no];
           if (job) {
             if (job.place_of_receipt) e.place_of_receipt = job.place_of_receipt;
@@ -254,10 +257,9 @@ router.get("/freight-enquiries", async (req, res) => {
     // A job is "locked" in a stage until its OWN condition is met.
     // e.g. even if ETD is present, if draft is not approved → stays in Draft BL.
     const getPipelineStage = (e) => {
-      if (e.status !== "Converted") {
-        if (e.status === "Open") return "Enquiry";
+      if (!isConverted(e)) {
         if (e.status === "Rejected") return "Rejected";
-        return "";
+        return "Enquiry";
       }
 
       // Gate 1: Draft BL – must be approved by client
@@ -724,7 +726,7 @@ router.get("/freight-forwarding/generate-dsr", async (req, res) => {
 
       for (const enq of enquiries) {
         let job = null;
-        if (enq.status === "Converted") {
+        if (enq.status === "Converted" || enq.source_job_no || enq.success_no) {
           const jobNo = enq.success_no || enq.enquiry_no;
           job = await ExJobModel.findOne({ job_no: jobNo }).lean();
         }
@@ -839,7 +841,7 @@ router.get("/freight-forwarding/generate-dsr", async (req, res) => {
 
       for (const enq of enquiries) {
         let job = null;
-        if (enq.status === "Converted") {
+        if (enq.status === "Converted" || enq.source_job_no || enq.success_no) {
           const jobNo = enq.success_no || enq.enquiry_no;
           job = await ExJobModel.findOne({ job_no: jobNo }).lean();
         }

@@ -8,7 +8,8 @@ const router = express.Router();
 router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
   const { year, month } = req.params;
   const { custom_house, branch_code } = req.query;
-  const monthInt = parseInt(month);
+  const isWholeYear = month === "all" || month === "0" || month === "whole_year";
+  const monthInt = isWholeYear ? null : parseInt(month);
 
   try {
     // Create base match condition
@@ -80,64 +81,75 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
             }
           }
         },
-        {
-          $addFields: {
-            isSbInMonth: { $eq: [{ $month: { $ifNull: ["$sbDateObj", new Date(0)] } }, monthInt] },
-            isLeoInMonth: {
-              $gt: [
-                {
-                  $size: {
-                    $filter: {
-                      input: "$leoDates",
-                      as: "d",
-                      cond: {
-                        $let: {
-                          vars: {
-                            parsed: {
-                              $switch: {
-                                branches: [
-                                  {
-                                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
-                                    then: { $toDate: "$$d" }
-                                  },
-                                  {
-                                    case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
-                                    then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y", onError: null } }
-                                  }
-                                ],
-                                default: null
+        ...(isWholeYear ? [
+          {
+            $match: {
+              $or: [
+                { sbDateObj: { $ne: null } },
+                { $gt: [{ $size: "$leoDates" }, 0] }
+              ]
+            }
+          }
+        ] : [
+          {
+            $addFields: {
+              isSbInMonth: { $eq: [{ $month: { $ifNull: ["$sbDateObj", new Date(0)] } }, monthInt] },
+              isLeoInMonth: {
+                $gt: [
+                  {
+                    $size: {
+                      $filter: {
+                        input: "$leoDates",
+                        as: "d",
+                        cond: {
+                          $let: {
+                            vars: {
+                              parsed: {
+                                $switch: {
+                                  branches: [
+                                    {
+                                      case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
+                                      then: { $toDate: "$$d" }
+                                    },
+                                    {
+                                      case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
+                                      then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y", onError: null } }
+                                    }
+                                  ],
+                                  default: null
+                                }
                               }
+                            },
+                            in: {
+                              $and: [
+                                { $ne: ["$$parsed", null] },
+                                { $eq: [{ $month: { $ifNull: ["$$parsed", new Date(0)] } }, monthInt] }
+                              ]
                             }
-                          },
-                          in: {
-                            $and: [
-                              { $ne: ["$$parsed", null] },
-                              { $eq: [{ $month: { $ifNull: ["$$parsed", new Date(0)] } }, monthInt] }
-                            ]
                           }
                         }
                       }
                     }
-                  }
-                },
-                0
-              ]
+                  },
+                  0
+                ]
+              }
+            }
+          },
+          {
+            $match: {
+              $or: [{ isSbInMonth: true }, { isLeoInMonth: true }]
             }
           }
-        },
-        {
-          $match: {
-            $or: [{ isSbInMonth: true }, { isLeoInMonth: true }]
-          }
-        },
+        ]),
         {
           $group: {
             _id: groupId,
             container20Ft: {
               $sum: {
                 $cond: [
-                  { $eq: ["$consignmentType", "AIR"] },
-                  1,
+                  { $or: [{ $eq: ["$consignmentType", "AIR"] }, { $eq: ["$consignmentType", "LCL"] }] },
+                  0,
                   {
                     $size: {
                       $filter: {
@@ -158,7 +170,7 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
             container40Ft: {
               $sum: {
                 $cond: [
-                  { $eq: ["$consignmentType", "AIR"] },
+                  { $or: [{ $eq: ["$consignmentType", "AIR"] }, { $eq: ["$consignmentType", "LCL"] }] },
                   0,
                   {
                     $size: {
@@ -178,10 +190,77 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
               }
             },
             lcl20Ft: {
-              $sum: { $cond: [{ $eq: ["$consignmentType", "LCL"] }, 1, 0] }
+              $sum: {
+                $cond: [
+                  { $eq: ["$consignmentType", "LCL"] },
+                  {
+                    $cond: [
+                      {
+                        $gt: [
+                          {
+                            $size: {
+                              $filter: {
+                                input: { $ifNull: ["$containers", []] },
+                                as: "c",
+                                cond: {
+                                  $or: [
+                                    { $eq: ["$$c.containerSize", "40"] },
+                                    { $regexMatch: { input: { $toString: { $ifNull: ["$$c.type", ""] } }, regex: "\\b40\\b" } }
+                                  ]
+                                }
+                              }
+                            }
+                          },
+                          0
+                        ]
+                      },
+                      0,
+                      {
+                        $max: [
+                          1,
+                          {
+                            $size: {
+                              $filter: {
+                                input: { $ifNull: ["$containers", []] },
+                                as: "c",
+                                cond: {
+                                  $or: [
+                                    { $eq: ["$$c.containerSize", "20"] },
+                                    { $regexMatch: { input: { $toString: { $ifNull: ["$$c.type", ""] } }, regex: "\\b20\\b" } }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  0
+                ]
+              }
             },
             lcl40Ft: {
-              $sum: { $cond: [{ $eq: ["$consignmentType", "LCL"] }, 0, 0] }
+              $sum: {
+                $cond: [
+                  { $eq: ["$consignmentType", "LCL"] },
+                  {
+                    $size: {
+                      $filter: {
+                        input: { $ifNull: ["$containers", []] },
+                        as: "c",
+                        cond: {
+                          $or: [
+                            { $eq: ["$$c.containerSize", "40"] },
+                            { $regexMatch: { input: { $toString: { $ifNull: ["$$c.type", ""] } }, regex: "\\b40\\b" } }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  0
+                ]
+              }
             }
           }
         },
@@ -226,8 +305,10 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
           },
         },
         { $match: { sbDateObj: { $ne: null } } },
-        { $addFields: { sbMonth: { $month: "$sbDateObj" } } },
-        { $match: { sbMonth: monthInt } },
+        ...(isWholeYear ? [] : [
+          { $addFields: { sbMonth: { $month: "$sbDateObj" } } },
+          { $match: { sbMonth: monthInt } }
+        ]),
         {
           $group: {
             _id: groupId,
@@ -275,37 +356,53 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
             }
           }
         },
-        {
-          $addFields: {
-            matchedInMonth: {
-              $size: {
-                $filter: {
-                  input: "$leoDates",
-                  as: "d",
-                  cond: {
-                    $let: {
-                      vars: {
-                        parsed: {
-                          $switch: {
-                            branches: [
-                              {
-                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
-                                then: { $toDate: "$$d" }
-                              },
-                              {
-                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
-                                then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y", onError: null } }
-                              }
-                            ],
-                            default: null
+        ...(isWholeYear ? [
+          {
+            $addFields: {
+              matchedInMonth: {
+                $size: {
+                  $filter: {
+                    input: "$leoDates",
+                    as: "d",
+                    cond: { $ne: ["$$d", ""] }
+                  }
+                }
+              }
+            }
+          }
+        ] : [
+          {
+            $addFields: {
+              matchedInMonth: {
+                $size: {
+                  $filter: {
+                    input: "$leoDates",
+                    as: "d",
+                    cond: {
+                      $let: {
+                        vars: {
+                          parsed: {
+                            $switch: {
+                              branches: [
+                                {
+                                  case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
+                                  then: { $toDate: "$$d" }
+                                },
+                                {
+                                  case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
+                                  then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y", onError: null } }
+                                }
+                              ],
+                              default: null
+                            }
                           }
+                        },
+                        in: {
+                          $and: [
+                            { $ne: ["$$parsed", null] },
+                            { $eq: [{ $month: { $ifNull: ["$$parsed", new Date(0)] } }, monthInt] }
+                          ]
                         }
-                      },
-                      in: {
-                        $and: [
-                          { $ne: ["$$parsed", null] },
-                          { $eq: [{ $month: { $ifNull: ["$$parsed", new Date(0)] } }, monthInt] }
-                        ]
                       }
                     }
                   }
@@ -313,7 +410,7 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
               }
             }
           }
-        },
+        ]),
         { $match: { matchedInMonth: { $gt: 0 } } },
         {
           $group: {
@@ -366,37 +463,53 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
             }
           }
         },
-        {
-          $addFields: {
-            matchedInMonth: {
-              $size: {
-                $filter: {
-                  input: "$leoDates",
-                  as: "d",
-                  cond: {
-                    $let: {
-                      vars: {
-                        parsed: {
-                          $switch: {
-                            branches: [
-                              {
-                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
-                                then: { $toDate: "$$d" }
-                              },
-                              {
-                                case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
-                                then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y", onError: null } }
-                              }
-                            ],
-                            default: null
+        ...(isWholeYear ? [
+          {
+            $addFields: {
+              matchedInMonth: {
+                $size: {
+                  $filter: {
+                    input: "$leoDates",
+                    as: "d",
+                    cond: { $ne: ["$$d", ""] }
+                  }
+                }
+              }
+            }
+          }
+        ] : [
+          {
+            $addFields: {
+              matchedInMonth: {
+                $size: {
+                  $filter: {
+                    input: "$leoDates",
+                    as: "d",
+                    cond: {
+                      $let: {
+                        vars: {
+                          parsed: {
+                            $switch: {
+                              branches: [
+                                {
+                                  case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
+                                  then: { $toDate: "$$d" }
+                                },
+                                {
+                                  case: { $regexMatch: { input: { $toString: { $ifNull: ["$$d", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
+                                  then: { $dateFromString: { dateString: "$$d", format: "%d-%m-%Y", onError: null } }
+                                }
+                              ],
+                              default: null
+                            }
                           }
+                        },
+                        in: {
+                          $and: [
+                            { $ne: ["$$parsed", null] },
+                            { $eq: [{ $month: { $ifNull: ["$$parsed", new Date(0)] } }, monthInt] }
+                          ]
                         }
-                      },
-                      in: {
-                        $and: [
-                          { $ne: ["$$parsed", null] },
-                          { $eq: [{ $month: { $ifNull: ["$$parsed", new Date(0)] } }, monthInt] }
-                        ]
                       }
                     }
                   }
@@ -404,7 +517,7 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
               }
             }
           }
-        },
+        ]),
         { $match: { matchedInMonth: { $gt: 0 } } },
         {
           $group: {
@@ -527,7 +640,8 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
 // Route: /api/report/freight-forwarding-monthly/:year/:month
 router.get("/api/report/freight-forwarding-monthly/:year/:month", async (req, res) => {
   const { year, month } = req.params;
-  const monthInt = parseInt(month);
+  const isWholeYear = month === "all" || month === "0" || month === "whole_year";
+  const monthInt = isWholeYear ? null : parseInt(month);
 
   try {
     const baseMatch = {
@@ -590,7 +704,7 @@ router.get("/api/report/freight-forwarding-monthly/:year/:month", async (req, re
         $match: {
           ...baseMatch,
           enquiryYearStr: year,
-          enquiryMonth: monthInt
+          ...(isWholeYear ? {} : { enquiryMonth: monthInt })
         }
       },
       {

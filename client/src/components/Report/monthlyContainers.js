@@ -247,6 +247,7 @@ const MonthlyContainers = () => {
   ];
 
   const months = [
+    { value: "all", label: "Whole Year" },
     { value: "1", label: "January" },
     { value: "2", label: "February" },
     { value: "3", label: "March" },
@@ -370,13 +371,21 @@ const MonthlyContainers = () => {
   };
 
   const handlePreviousMonth = () => {
+    if (month === "all") {
+      setMonth("12");
+      return;
+    }
     const prev = parseInt(month) - 1;
-    setMonth(prev < 1 ? "12" : String(prev));
+    setMonth(prev < 1 ? "all" : String(prev));
   };
 
   const handleNextMonth = () => {
+    if (month === "all") {
+      setMonth("1");
+      return;
+    }
     const next = parseInt(month) + 1;
-    setMonth(next > 12 ? "1" : String(next));
+    setMonth(next > 12 ? "all" : String(next));
   };
 
   const handleChartHover = (event, row) => {
@@ -492,7 +501,7 @@ const MonthlyContainers = () => {
                 Monthly Container Report
               </Typography>
               <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                {months.find(m => m.value === month)?.label} {year}
+                {month === "all" ? `Whole Year (${year})` : `${months.find(m => m.value === month)?.label} ${year}`}
               </Typography>
             </Box>
           </Box>
