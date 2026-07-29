@@ -328,4 +328,21 @@ router.get("/api/virtual-balance/jobs", async (req, res) => {
   }
 });
 
+// GET /api/virtual-balance/created-terminals - Fetch distinct terminal names (cfsName) that have virtual balance entries
+router.get(["/virtual-balance/created-terminals", "/api/virtual-balance/created-terminals"], async (req, res) => {
+  try {
+    const distinctTerminals = await VirtualBalanceModel.distinct("cfsName");
+    const validTerminals = (distinctTerminals || [])
+      .filter((t) => t && typeof t === "string" && t.trim() !== "")
+      .map((t) => t.trim().toUpperCase())
+      .sort();
+    const unique = [...new Set(validTerminals)];
+    res.status(200).json({ success: true, data: unique });
+  } catch (error) {
+    console.error("Error fetching created virtual balance terminals:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
 export default router;
+

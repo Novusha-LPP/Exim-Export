@@ -52,6 +52,7 @@ const EditChargeModal = ({
   const [cfsList, setCfsList] = useState([]);
   const [transporters, setTransporters] = useState([]);
   const [terminalCodes, setTerminalCodes] = useState([]);
+  const [createdVirtualTerminals, setCreatedVirtualTerminals] = useState([]);
   const [generalOrgList, setGeneralOrgList] = useState([]);
   const [forwarders, setForwarders] = useState([]);
   const [activeDropdown, setActiveDropdown] = useState({ index: null, section: null }); // Track which row/section has open dropdown
@@ -145,7 +146,7 @@ const EditChargeModal = ({
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
-        const [slRes, supRes, orgRes, cfsRes, transRes, termRes, genOrgRes, fwdRes] = await Promise.all([
+        const [slRes, supRes, orgRes, cfsRes, transRes, termRes, genOrgRes, fwdRes, vbRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
           axios.get(`${import.meta.env.VITE_API_STRING}/organization`),
@@ -153,7 +154,8 @@ const EditChargeModal = ({
           axios.get(`${import.meta.env.VITE_API_STRING}/get-transporters`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-terminal-codes`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-general-orgs`, { params: { limit: 1000 } }),
-          axios.get(`${import.meta.env.VITE_API_STRING}/get-forwarders`)
+          axios.get(`${import.meta.env.VITE_API_STRING}/get-forwarders`),
+          axios.get(`${import.meta.env.VITE_API_STRING}/virtual-balance/created-terminals`).catch(() => ({ data: { data: [] } }))
         ]);
         setShippingLines(addSourceLabel(slRes.data, 'Shipping Line'));
         setSuppliers(addSourceLabel(supRes.data, 'Vendor'));
@@ -163,6 +165,9 @@ const EditChargeModal = ({
         setTerminalCodes(addSourceLabel(termRes.data, 'Terminal'));
         setGeneralOrgList(addSourceLabel(genOrgRes.data.data || [], 'General Org'));
         setForwarders(addSourceLabel(fwdRes.data || [], 'Forwarder'));
+        if (vbRes?.data?.success && Array.isArray(vbRes.data.data)) {
+          setCreatedVirtualTerminals(vbRes.data.data.map(t => (t || '').trim().toUpperCase()));
+        }
       } catch (error) {
         console.error("Error fetching master data:", error);
       }
@@ -587,830 +592,837 @@ const EditChargeModal = ({
           )}
         </div>
         <div className="modal-body">
-          <fieldset disabled={viewOnly} style={{ border: 'none', padding: 0, margin: 0 }}>
-          {formData.map((row, i) => (
-            <div key={row._id || i} style={{ marginBottom: formData.length > 1 ? '30px' : '0' }}>
-              <div className="form-section-new">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {/* Row 1: CHARGE + CATEGORY */}
-                  <div style={{ display: 'flex', gap: '20px' }}>
-                    <div className="form-row" style={{ flex: 3 }}>
-                      <span className="form-label" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                        CHARGE
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <span style={{ fontSize: '10px', color: '#1565c0', fontWeight: 'bold', border: '1px solid currentColor', padding: '0 2px', borderRadius: '2px' }}>PB</span>
-                          {row.isPbMandatory && <span style={{ fontSize: '8px', color: '#d32f2f', fontWeight: 'bold' }}>MANDATORY</span>}
-                        </div>
-                      </span>
-                      <div className="form-input-search">
-                        <input type="text" readOnly className="form-input" style={{ background: '#f5f8fc', color: '#1a3a5c', fontWeight: 'bold' }} value={row.name || row.chargeHead || ''} />
-                        <button type="button" className="search-btn">🔍</button>
-                      </div>
-                    </div>
-                    <div className="form-row" style={{ flex: 2 }}>
-                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>CATEGORY <span style={{ color: 'red' }}>*</span></span>
-                      <select className="form-input" value={row.chargeType || 'Margin'} onChange={e => handleFieldChange(i, 'chargeType', e.target.value)}>
-                        <option value="Margin">Margin</option>
-                        <option value="Reimbursement">Reimbursement</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Row 2: INVOICE NUMBER + INV DATE + SAC/HSN */}
-                  <div style={{ display: 'flex', gap: '20px' }}>
-                    <div className="form-row" style={{ flex: 3 }}>
-                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INVOICE NUMBER <span style={{ color: 'red' }}>*</span></span>
-                      <input type="text" className="form-input" value={row.invoice_number || ''} onChange={e => handleFieldChange(i, 'invoice_number', e.target.value)} />
-                    </div>
-                    <div className="form-row" style={{ flex: 1 }}>
-                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INV DATE <span style={{ color: 'red' }}>*</span></span>
-                      <DateInput className="form-input" value={row.invoice_date || ''} onChange={e => handleFieldChange(i, 'invoice_date', e.target.value)} />
-                    </div>
-                    <div className="form-row" style={{ flex: 1 }}>
-                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC/HSN {row.chargeType !== 'Reimbursement' && <span style={{ color: 'red' }}>*</span>}</span>
-                      <input type="text" className="form-input" placeholder="HSN" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* Row 3: PB No + PR NO */}
-                  <div style={{ display: 'flex', gap: '20px' }}>
-                    <div className="form-row" style={{ flex: 1 }}>
-                      <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>PB NO</span>
-                      <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
-                        <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', margin: 0, fontWeight: 'bold', flex: 1, minWidth: 0 }} value={row.purchase_book_no || ''} />
-                      {row.purchase_book_no && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => {
-                              navigator.clipboard.writeText(row.purchase_book_no);
-                            }}
-                            title="Copy PB No"
-                            style={{ padding: '4px' }}
-                          >
-                            <ContentCopyIcon style={{ fontSize: '16px' }} />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={async () => {
-                              let data = paymentDetailsAudit[row.purchase_book_no];
-                              if (!data) {
-                                try {
-                                  const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-payment-request-details/${encodeURIComponent(row.purchase_book_no)}`);
-                                  data = res.data;
-                                  setPaymentDetailsAudit(prev => ({ ...prev, [row.purchase_book_no]: data }));
-                                } catch (err) { console.error(err); alert('Could not fetch details'); return; }
-                              }
-                              generatePurchaseBookPDF(data, logo);
-                            }}
-                            style={{ padding: '4px' }}
-                            title="Print Payment Advice"
-                          >
-                            <PrintIcon style={{ fontSize: '18px' }} />
-                          </IconButton>
-                        </div>
-                      )}
-                      <span className="ep-status-pill" style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.purchase_book_status ? '#e8f5e9' : '#f5f5f5', color: row.purchase_book_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd', whiteSpace: 'nowrap' }}>
-                        {row.purchase_book_status || 'PENDING'}
-                      </span>
-                      </div>
-                    </div>
-                    <div className="form-row" style={{ flex: 1 }}>
-                      <span className="form-label" style={{ color: '#d32f2f', fontWeight: 'bold' }}>PR NO</span>
-                      <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
-                        <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', margin: 0, fontWeight: 'bold', flex: 1, minWidth: 0 }} value={row.payment_request_no || ''} />
-                        {row.payment_request_no && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => {
-                                navigator.clipboard.writeText(row.payment_request_no);
-                                alert("PR No copied to clipboard!");
-                              }}
-                              title="Copy PR No"
-                              style={{ padding: '4px' }}
-                            >
-                              <ContentCopyIcon style={{ fontSize: '16px' }} />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={async () => {
-                                let data = paymentDetailsAudit[row.payment_request_no];
-                                if (!data) {
-                                  try {
-                                    const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-payment-request-details/${encodeURIComponent(row.payment_request_no)}`);
-                                    data = res.data;
-                                    setPaymentDetailsAudit(prev => ({ ...prev, [row.payment_request_no]: data }));
-                                  } catch (err) { console.error(err); alert('Could not fetch details'); return; }
-                                }
-                                generatePurchaseBookPDF(data, logo);
-                              }}
-                              style={{ padding: '4px' }}
-                              title="Print Payment Advice"
-                            >
-                              <PrintIcon style={{ fontSize: '18px' }} />
-                            </IconButton>
+          <div style={{ border: 'none', padding: 0, margin: 0 }}>
+            {formData.map((row, i) => (
+              <div key={row._id || i} style={{ marginBottom: formData.length > 1 ? '30px' : '0' }}>
+                <div className="form-section-new">
+                  <fieldset disabled={viewOnly} style={{ border: 'none', padding: 0, margin: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {/* Row 1: CHARGE + CATEGORY */}
+                      <div style={{ display: 'flex', gap: '20px' }}>
+                        <div className="form-row" style={{ flex: 3 }}>
+                          <span className="form-label" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            CHARGE
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <span style={{ fontSize: '10px', color: '#1565c0', fontWeight: 'bold', border: '1px solid currentColor', padding: '0 2px', borderRadius: '2px' }}>PB</span>
+                              {row.isPbMandatory && <span style={{ fontSize: '8px', color: '#d32f2f', fontWeight: 'bold' }}>MANDATORY</span>}
+                            </div>
+                          </span>
+                          <div className="form-input-search">
+                            <input type="text" readOnly className="form-input" style={{ background: '#f5f8fc', color: '#1a3a5c', fontWeight: 'bold' }} value={row.name || row.chargeHead || ''} />
+                            <button type="button" className="search-btn">🔍</button>
                           </div>
-                        )}
-                        <span className="ep-status-pill" style={{
-                          fontSize: '11px',
-                          padding: '2px 8px',
-                          borderRadius: '10px',
-                          background: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#e8f5e9' : '#fff3e0',
-                          color: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#2e7d32' : '#ef6c00',
-                          border: '1px solid #ffe0e0',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {(row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? 'PAYMENT DONE' : (row.payment_request_status || 'PENDING')}
-                        </span>
+                        </div>
+                        <div className="form-row" style={{ flex: 2 }}>
+                          <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>CATEGORY <span style={{ color: 'red' }}>*</span></span>
+                          <select className="form-input" value={row.chargeType || 'Margin'} onChange={e => handleFieldChange(i, 'chargeType', e.target.value)}>
+                            <option value="Margin">Margin</option>
+                            <option value="Reimbursement">Reimbursement</option>
+                          </select>
+                        </div>
                       </div>
-                      {paymentDetailsAudit[row.payment_request_no]?.utrNumber && (
-                        <div style={{ fontSize: '10px', color: '#2e7d32', marginTop: '4px', fontWeight: '500', display: 'flex', flexDirection: 'column' }}>
-                          <span>UTR: {paymentDetailsAudit[row.payment_request_no].utrNumber}</span>
-                          <span style={{ opacity: 0.8 }}>By {paymentDetailsAudit[row.payment_request_no].utrAddedBy || 'Accounts'} on {new Date(paymentDetailsAudit[row.payment_request_no].utrAddedAt).toLocaleString('en-GB')}</span>
-                          {paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl && (
-                            <a
-                              href={paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{
-                                color: '#1565c0',
-                                textDecoration: 'underline',
-                                marginTop: '4px',
-                                fontWeight: 'bold',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              <DescriptionIcon style={{ fontSize: '12px' }} /> VIEW PAYMENT RECEIPT
-                            </a>
+
+                      {/* Row 2: INVOICE NUMBER + INV DATE + SAC/HSN */}
+                      <div style={{ display: 'flex', gap: '20px' }}>
+                        <div className="form-row" style={{ flex: 3 }}>
+                          <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INVOICE NUMBER <span style={{ color: 'red' }}>*</span></span>
+                          <input type="text" className="form-input" value={row.invoice_number || ''} onChange={e => handleFieldChange(i, 'invoice_number', e.target.value)} />
+                        </div>
+                        <div className="form-row" style={{ flex: 1 }}>
+                          <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>INV DATE <span style={{ color: 'red' }}>*</span></span>
+                          <DateInput className="form-input" value={row.invoice_date || ''} onChange={e => handleFieldChange(i, 'invoice_date', e.target.value)} />
+                        </div>
+                        <div className="form-row" style={{ flex: 1 }}>
+                          <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold', whiteSpace: 'nowrap' }}>SAC/HSN {row.chargeType !== 'Reimbursement' && <span style={{ color: 'red' }}>*</span>}</span>
+                          <input type="text" className="form-input" placeholder="HSN" value={row.hsnCode || ''} onChange={e => handleFieldChange(i, 'hsnCode', e.target.value)} />
+                        </div>
+                      </div>
+
+                      {/* Row 3: PB No + PR NO */}
+                      <div style={{ display: 'flex', gap: '20px' }}>
+                        <div className="form-row" style={{ flex: 1 }}>
+                          <span className="form-label" style={{ color: '#1565c0', fontWeight: 'bold' }}>PB NO</span>
+                          <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                            <input type="text" readOnly className="form-input" style={{ background: '#e3f2fd', color: '#1565c0', margin: 0, fontWeight: 'bold', flex: 1, minWidth: 0 }} value={row.purchase_book_no || ''} />
+                            {row.purchase_book_no && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(row.purchase_book_no);
+                                  }}
+                                  title="Copy PB No"
+                                  style={{ padding: '4px' }}
+                                >
+                                  <ContentCopyIcon style={{ fontSize: '16px' }} />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={async () => {
+                                    let data = paymentDetailsAudit[row.purchase_book_no];
+                                    if (!data) {
+                                      try {
+                                        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-payment-request-details/${encodeURIComponent(row.purchase_book_no)}`);
+                                        data = res.data;
+                                        setPaymentDetailsAudit(prev => ({ ...prev, [row.purchase_book_no]: data }));
+                                      } catch (err) { console.error(err); alert('Could not fetch details'); return; }
+                                    }
+                                    generatePurchaseBookPDF(data, logo);
+                                  }}
+                                  style={{ padding: '4px' }}
+                                  title="Print Payment Advice"
+                                >
+                                  <PrintIcon style={{ fontSize: '18px' }} />
+                                </IconButton>
+                              </div>
+                            )}
+                            <span className="ep-status-pill" style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: row.purchase_book_status ? '#e8f5e9' : '#f5f5f5', color: row.purchase_book_status === 'Active' ? '#2e7d32' : '#757575', border: '1px solid #ddd', whiteSpace: 'nowrap' }}>
+                              {row.purchase_book_status || 'PENDING'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="form-row" style={{ flex: 1 }}>
+                          <span className="form-label" style={{ color: '#d32f2f', fontWeight: 'bold' }}>PR NO</span>
+                          <div className="ep-inline" style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                            <input type="text" readOnly className="form-input" style={{ background: '#ffebee', color: '#c62828', margin: 0, fontWeight: 'bold', flex: 1, minWidth: 0 }} value={row.payment_request_no || ''} />
+                            {row.payment_request_no && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(row.payment_request_no);
+                                    alert("PR No copied to clipboard!");
+                                  }}
+                                  title="Copy PR No"
+                                  style={{ padding: '4px' }}
+                                >
+                                  <ContentCopyIcon style={{ fontSize: '16px' }} />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={async () => {
+                                    let data = paymentDetailsAudit[row.payment_request_no];
+                                    if (!data) {
+                                      try {
+                                        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/get-payment-request-details/${encodeURIComponent(row.payment_request_no)}`);
+                                        data = res.data;
+                                        setPaymentDetailsAudit(prev => ({ ...prev, [row.payment_request_no]: data }));
+                                      } catch (err) { console.error(err); alert('Could not fetch details'); return; }
+                                    }
+                                    generatePurchaseBookPDF(data, logo);
+                                  }}
+                                  style={{ padding: '4px' }}
+                                  title="Print Payment Advice"
+                                >
+                                  <PrintIcon style={{ fontSize: '18px' }} />
+                                </IconButton>
+                              </div>
+                            )}
+                            <span className="ep-status-pill" style={{
+                              fontSize: '11px',
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              background: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#e8f5e9' : '#fff3e0',
+                              color: (row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? '#2e7d32' : '#ef6c00',
+                              border: '1px solid #ffe0e0',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {(row.payment_request_status === 'Paid' || paymentDetailsAudit[row.payment_request_no]?.utrNumber) ? 'PAYMENT DONE' : (row.payment_request_status || 'PENDING')}
+                            </span>
+                          </div>
+                          {paymentDetailsAudit[row.payment_request_no]?.utrNumber && (
+                            <div style={{ fontSize: '10px', color: '#2e7d32', marginTop: '4px', fontWeight: '500', display: 'flex', flexDirection: 'column' }}>
+                              <span>UTR: {paymentDetailsAudit[row.payment_request_no].utrNumber}</span>
+                              <span style={{ opacity: 0.8 }}>By {paymentDetailsAudit[row.payment_request_no].utrAddedBy || 'Accounts'} on {new Date(paymentDetailsAudit[row.payment_request_no].utrAddedAt).toLocaleString('en-GB')}</span>
+                              {paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl && (
+                                <a
+                                  href={paymentDetailsAudit[row.payment_request_no].paymentReceiptUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    color: '#1565c0',
+                                    textDecoration: 'underline',
+                                    marginTop: '4px',
+                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <DescriptionIcon style={{ fontSize: '12px' }} /> VIEW PAYMENT RECEIPT
+                                </a>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
+                      </div>
+
+
+
+                      {/* Row 5: REMARK */}
+                      <div className="form-row">
+                        <span className="form-label">REMARK</span>
+                        <input type="text" className="form-input" style={{ flex: 1 }} value={row.remark || ''} onChange={e => handleFieldChange(i, 'remark', e.target.value)} />
+                      </div>
                     </div>
-                  </div>
-
-
-
-                  {/* Row 5: REMARK */}
-                  <div className="form-row">
-                    <span className="form-label">REMARK</span>
-                    <input type="text" className="form-input" style={{ flex: 1 }} value={row.remark || ''} onChange={e => handleFieldChange(i, 'remark', e.target.value)} />
-                  </div>
+                  </fieldset>
                 </div>
-              </div>
 
-              <div className="charge-table-wrap">
-                <table className="charge-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '60px' }}></th>
-                      <th style={{ width: '80px' }}>BASIS</th>
-                      <th>QTY/UNIT</th>
-                      <th style={{ width: '40px' }}></th>
-                      <th>RATE</th>
-                      <th>TOTAL AMOUNT</th>
-                      <th>TOTAL AMOUNT(INR)</th>
-                      <th style={{ width: '34px' }}>OVRD</th>
-                      <th style={{ width: '34px' }}>PSTD</th>
-                      <th style={{ width: '26px' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* --- REVENUE ROW --- */}
-                    <tr style={{ cursor: 'pointer' }} onClick={() => togglePanel(i, 'rev')}>
-                      <td className="row-label">REVENUE</td>
-                      <td>{row.revenue?.basis || 'Per B/E - Per Shp'}</td>
-                      <td>{row.revenue?.qty || '1.00'}</td>
-                      <td>{row.revenue?.currency || 'INR'}</td>
-                      <td>{formatNumber(row.revenue?.rate)}</td>
-                      <td>{formatNumber(row.revenue?.amount)}</td>
-                      <td>{formatNumber(row.revenue?.amountINR)}</td>
-                      <td style={{ textAlign: 'center' }}><input type="checkbox" checked={row.revenue?.overrideAutoRate || false} readOnly /></td>
-                      <td style={{ textAlign: 'center' }}><input type="checkbox" checked={row.revenue?.isPosted || false} readOnly /></td>
-                      <td>
-                        <button type="button" className="arrow-btn" onClick={(e) => { e.stopPropagation(); togglePanel(i, 'rev'); }}>
-                          {panelOpen[i] === 'rev' ? '▲' : '▼'}
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* --- REVENUE EXPANDED --- */}
-                    {panelOpen[i] === 'rev' && (
-                      <tr className="expand-row">
-                        <td colSpan="10">
-                          <div className="expand-panel open">
-                            <div className="ep-desc-row">
-                              <span className="ep-label">CHARGE DESCRIPTION</span>
-                              <input type="text" className="ep-desc-input" value={row.revenue?.chargeDescription || ''} onChange={e => handleFieldChange(i, 'chargeDescription', e.target.value, 'revenue')} />
-                            </div>
-                            <div className="ep-desc-row">
-                              <span className="ep-label">ATTACHMENT</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
-                                {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? (
-                                  row.revenue.url.map((url, urlIdx) => (
-                                    <Chip
-                                      key={urlIdx}
-                                      icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
-                                      label={extractFileName(url)}
-                                      size="small"
-                                      onDelete={() => {
-                                        const newUrls = row.revenue.url.filter((_, i) => i !== urlIdx);
-                                        handleFieldChange(i, 'url', newUrls, 'revenue');
-                                      }}
-                                      component="a"
-                                      href={url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      clickable
-                                      sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
-                                    />
-                                  ))
-                                ) : (
-                                  <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>NO FILES ATTACHED</span>
-                                )}
-                                <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('revenue'); }}>
-                                  {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? 'EDIT FILES' : 'UPLOAD FILES'}
-                                </button>
-                              </div>
-                            </div>
-                            <div className="ep-grid">
-                              <div className="ep-row">
-                                <span className="ep-label">BASIS</span>
-                                <select className="ep-select" value={row.revenue?.basis || 'Per B/E - Per Shp'} onChange={e => handleFieldChange(i, 'basis', e.target.value, 'revenue')}>
-                                  <option>Per Package</option><option>By Gross Wt</option><option>By Chg Wt</option>
-                                  <option>By Volume</option><option>Per Container</option><option>Per TEU</option>
-                                  <option>Per FEU</option><option>% of Other Charges</option>
-                                  <option>% of Assessable Value</option><option>% of AV+Duty</option>
-                                  <option>% of CIF Value</option><option>Per Vehicle</option>
-                                  <option>% of Invoice Value</option><option>Per License</option>
-                                  <option>Per B/E - Per Shp</option>
-                                  <option>% of Product Value</option><option>Per Labour</option>
-                                  <option>Per Product</option><option>By Net Wt</option><option>Per Invoice</option>
-                                </select>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">OVERRIDE AUTO RATE</span>
-                                <input type="checkbox" checked={row.revenue?.overrideAutoRate || false} onChange={e => handleFieldChange(i, 'overrideAutoRate', e.target.checked, 'revenue')} />
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">QTY/UNIT</span>
-                                <div className="ep-inline">
-                                  <input type="number" step="0.01" value={row.revenue?.qty ?? 1.00} onChange={e => handleFieldChange(i, 'qty', e.target.value, 'revenue')} />
-                                  <input type="text" value={row.revenue?.unit || ''} onChange={e => handleFieldChange(i, 'unit', e.target.value, 'revenue')} />
-                                </div>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">RECEIVABLE TYPE</span>
-                                <select className="ep-select" value={row.revenue?.partyType || 'Customer'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'revenue')}>
-                                  <option>Customer</option><option>Agent</option><option>Carrier</option>
-                                </select>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">RATE</span>
-                                <div className="ep-inline">
-                                  <input type="number" step="0.01" value={row.revenue?.rate === 0 || row.revenue?.rate === "0" ? '' : (row.revenue?.rate ?? '')} onChange={e => handleFieldChange(i, 'rate', e.target.value, 'revenue')} />
-                                  <select value={row.revenue?.currency || 'INR'} onChange={e => handleFieldChange(i, 'currency', e.target.value, 'revenue')}>
-                                    {currencyList.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                                  </select>
-                                  {row.revenue?.currency && row.revenue.currency !== 'INR' && (
-                                    <>
-                                      <span style={{ fontSize: '10px', marginLeft: '8px', color: '#64748b', fontWeight: 'bold' }}>EX. RATE</span>
-                                      <input type="number" step="0.01" style={{ width: '60px', marginLeft: '4px' }} value={row.revenue?.exchangeRate ?? 1} onChange={e => handleFieldChange(i, 'exchangeRate', e.target.value, 'revenue')} />
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">RECEIVABLE FROM</span>
-                                <div className="ep-search-container">
-                                  <div className="ep-search-wrap">
-                                    <input
-                                      type="text"
-                                      value={row.revenue?.partyName || ''}
-                                      onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'revenue')}
-                                      onFocus={() => setActiveDropdown({ index: i, section: 'revenue' })}
-                                    />
-                                    <button type="button" className="ep-search-btn">🔍</button>
-                                  </div>
-                                  {activeDropdown.index === i && activeDropdown.section === 'revenue' && (row.revenue?.partyName?.length >= 1 || activeDropdown.clicked) && (
-                                    <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                      {(row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
-                                        row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations : [])
-                                        .filter(item => !row.revenue?.partyName || item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))
-                                        .slice(0, 20)
-                                        .map((item, idx) => (
-                                          <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
-                                            <span className="ep-item-name">{item.name || item.organization}</span>
-                                            <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
-                                          </li>
-                                        ))}
-                                      {((row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
-                                        row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations : [])
-                                        .filter(item => !row.revenue?.partyName || item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))
-                                        .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
-                                    </ul>
-                                  )}
-                                </div>
-                                {row.revenue?.branchCode && <span className="ep-link" style={{ marginLeft: '6px', whiteSpace: 'nowrap' }}>{row.revenue.branchCode}</span>}
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">TOTAL AMOUNT</span>
-                                <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={row.revenue?.amountINR || 0} />
-                                  <span style={{ fontSize: '11px', color: '#555', paddingLeft: '4px' }}>INR</span>
-                                </div>
-                              </div>
-                              <div className="ep-row" style={{ marginTop: '5px' }}>
-                                <span className="ep-label"></span>
-                                <button
-                                  type="button"
-                                  className="action-btn"
-                                  style={{ backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1', textTransform: 'none', height: '26px', fontSize: '10px' }}
-                                  onClick={() => syncSection(i, 'revenue', 'cost')}
-                                >
-                                  COPY TO COST ➔
-                                </button>
-                              </div>
-                              {(() => {
-                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders];
-                                const party = smartFindParty(allParties, row.revenue?.partyName);
-                                if (party && party.branches?.length > 1) {
-                                  return (
-                                    <div className="ep-row">
-                                      <span className="ep-label">BRANCH</span>
-                                      <select className="ep-select" value={row.revenue?.branchIndex || 0} onChange={e => handleFieldChange(i, 'branchIndex', parseInt(e.target.value), 'revenue')}>
-                                        {party.branches.map((b, bIdx) => (
-                                          <option key={bIdx} value={bIdx}>{b.branchName || `Branch ${bIdx + 1}`}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-
-                              {/* GST FIELDS FOR REVENUE */}
-                              <div className="ep-row">
-                                <span className="ep-label">INCLUDE GST?</span>
-                                <div className="ep-inline">
-                                  <input type="checkbox" checked={row.revenue?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'revenue')} />
-                                  {row.chargeType !== 'Reimbursement' && row.revenue?.isGst !== false && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <input type="number" style={{ width: '50px' }} value={row.revenue?.gstRate ?? 18} onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'revenue')} />
-                                      <span style={{ fontSize: '11px' }}>%</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              {row.chargeType !== 'Reimbursement' && (
-                                <>
-                                  <div className="ep-row">
-                                    <span className="ep-label">BASIC AMOUNT</span>
-                                    <div className="ep-inline">
-                                      <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.basicAmount)} />
-                                    </div>
-                                  </div>
-                                  <div className="ep-row">
-                                    <span className="ep-label">GST AMOUNT</span>
-                                    <div className="ep-inline">
-                                      <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.gstAmount)} />
-                                    </div>
-                                  </div>
-                                </>
-                              )}
-
-                              <div className="ep-row">
-                                <span className="ep-label">APPLY TDS?</span>
-                                <div className="ep-inline">
-                                  <input type="checkbox" checked={row.revenue?.isTds || false} onChange={e => handleFieldChange(i, 'isTds', e.target.checked, 'revenue')} />
-                                  {row.revenue?.isTds && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <input type="number" style={{ width: '50px' }} value={row.revenue?.tdsPercent ?? 0} onChange={e => handleFieldChange(i, 'tdsPercent', e.target.value, 'revenue')} />
-                                      <span style={{ fontSize: '11px' }}>%</span>
-                                      <select className="ep-select" style={{ width: '70px', marginLeft: '6px', fontSize: '10px' }} value={row.revenue?.tdsCategory || ''} onChange={e => handleFieldChange(i, 'tdsCategory', e.target.value, 'revenue')}>
-                                        <option value="">--</option>
-                                        <option value="TDS ON CONTRACT 94C 1023">TDS ON CONTRACT 94C 1023</option>
-                                        <option value="TDS ON CONTRACT 94C 1024">TDS ON CONTRACT 94C 1024</option>
-                                      </select>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">BASIC AMOUNT</span>
-                                <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.basicAmount)} />
-                                </div>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">GST AMOUNT</span>
-                                <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.gstAmount)} />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                <div className="charge-table-wrap">
+                  <table className="charge-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '60px' }}></th>
+                        <th style={{ width: '80px' }}>BASIS</th>
+                        <th>QTY/UNIT</th>
+                        <th style={{ width: '40px' }}></th>
+                        <th>RATE</th>
+                        <th>TOTAL AMOUNT</th>
+                        <th>TOTAL AMOUNT(INR)</th>
+                        <th style={{ width: '34px' }}>OVRD</th>
+                        <th style={{ width: '34px' }}>PSTD</th>
+                        <th style={{ width: '26px' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* --- REVENUE ROW --- */}
+                      <tr style={{ cursor: 'pointer' }} onClick={() => togglePanel(i, 'rev')}>
+                        <td className="row-label">REVENUE</td>
+                        <td>{row.revenue?.basis || 'Per B/E - Per Shp'}</td>
+                        <td>{row.revenue?.qty || '1.00'}</td>
+                        <td>{row.revenue?.currency || 'INR'}</td>
+                        <td>{formatNumber(row.revenue?.rate)}</td>
+                        <td>{formatNumber(row.revenue?.amount)}</td>
+                        <td>{formatNumber(row.revenue?.amountINR)}</td>
+                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked={row.revenue?.overrideAutoRate || false} readOnly /></td>
+                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked={row.revenue?.isPosted || false} readOnly /></td>
+                        <td>
+                          <button type="button" className="arrow-btn" onClick={(e) => { e.stopPropagation(); togglePanel(i, 'rev'); }}>
+                            {panelOpen[i] === 'rev' ? '▲' : '▼'}
+                          </button>
                         </td>
                       </tr>
-                    )}
 
-                    {/* --- COST ROW --- */}
-                    <tr style={{ cursor: 'pointer' }} onClick={() => togglePanel(i, 'cost')}>
-                      <td className="row-label">COST</td>
-                      <td>{row.cost?.basis || 'Per B/E - Per Shp'}</td>
-                      <td>{row.cost?.qty || '1.00'}</td>
-                      <td>{row.cost?.currency || 'INR'}</td>
-                      <td>{formatNumber(row.cost?.rate)}</td>
-                      <td>{formatNumber(row.cost?.amount)}</td>
-                      <td>{formatNumber(row.cost?.amountINR)}</td>
-                      <td style={{ textAlign: 'center' }}><input type="checkbox" checked={row.cost?.overrideAutoRate || false} readOnly /></td>
-                      <td style={{ textAlign: 'center' }}><input type="checkbox" checked={row.cost?.isPosted || false} readOnly /></td>
-                      <td>
-                        <button type="button" className="arrow-btn" onClick={(e) => { e.stopPropagation(); togglePanel(i, 'cost'); }}>
-                          {panelOpen[i] === 'cost' ? '▲' : '▼'}
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* --- COST EXPANDED --- */}
-                    {panelOpen[i] === 'cost' && (
-                      <tr className="expand-row">
-                        <td colSpan="10">
-                          <div className="expand-panel open">
-                            <div className="ep-desc-row">
-                              <span className="ep-label">CHARGE DESCRIPTION</span>
-                              <input type="text" className="ep-desc-input" value={row.cost?.chargeDescription || ''} onChange={e => handleFieldChange(i, 'chargeDescription', e.target.value, 'cost')} />
-                            </div>
-                            <div className="ep-desc-row">
-                              <span className="ep-label">ATTACHMENT</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
-                                {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? (
-                                  row.cost.url.map((url, urlIdx) => (
-                                    <Chip
-                                      key={urlIdx}
-                                      icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
-                                      label={extractFileName(url)}
-                                      size="small"
-                                      onDelete={() => {
-                                        const newUrls = row.cost.url.filter((_, i) => i !== urlIdx);
-                                        handleFieldChange(i, 'url', newUrls, 'cost');
-                                      }}
-                                      component="a"
-                                      href={url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      clickable
-                                      sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
-                                    />
-                                  ))
-                                ) : (
-                                  <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>NO FILES ATTACHED</span>
-                                )}
-                                <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('cost'); }}>
-                                  {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? 'EDIT FILES' : 'UPLOAD FILES'}
-                                </button>
+                      {/* --- REVENUE EXPANDED --- */}
+                      {panelOpen[i] === 'rev' && (
+                        <tr className="expand-row">
+                          <td colSpan="10">
+                            <div className="expand-panel open">
+                              <div className="ep-desc-row">
+                                <span className="ep-label">CHARGE DESCRIPTION</span>
+                                <input type="text" className="ep-desc-input" value={row.revenue?.chargeDescription || ''} onChange={e => handleFieldChange(i, 'chargeDescription', e.target.value, 'revenue')} />
                               </div>
-                            </div>
-                            <div className="ep-grid">
-                              <div className="ep-row">
-                                <span className="ep-label">BASIS</span>
-                                <select className="ep-select" value={row.cost?.basis || 'Per B/E - Per Shp'} onChange={e => handleFieldChange(i, 'basis', e.target.value, 'cost')}>
-                                  <option>Per Package</option><option>By Gross Wt</option><option>By Chg Wt</option>
-                                  <option>By Volume</option><option>Per Container</option><option>Per TEU</option>
-                                  <option>Per FEU</option><option>% of Other Charges</option>
-                                  <option>% of Assessable Value</option><option>% of AV+Duty</option>
-                                  <option>% of CIF Value</option><option>Per Vehicle</option>
-                                  <option>% of Invoice Value</option><option>Per License</option>
-                                  <option>Per B/E - Per Shp</option>
-                                  <option>% of Product Value</option><option>Per Labour</option>
-                                  <option>Per Product</option><option>By Net Wt</option><option>Per Invoice</option>
-                                </select>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">OVERRIDE AUTO RATE</span>
-                                <input type="checkbox" checked={row.cost?.overrideAutoRate || false} onChange={e => handleFieldChange(i, 'overrideAutoRate', e.target.checked, 'cost')} />
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">QTY/UNIT</span>
-                                <div className="ep-inline">
-                                  <input type="number" step="0.01" value={row.cost?.qty ?? 1.00} onChange={e => handleFieldChange(i, 'qty', e.target.value, 'cost')} />
-                                  <input type="text" value={row.cost?.unit || ''} onChange={e => handleFieldChange(i, 'unit', e.target.value, 'cost')} />
-                                </div>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">PAYABLE TYPE</span>
-                                <select className="form-input" value={row.cost?.partyType || 'Others'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
-                                  <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option><option>Forwarder</option><option>General Org</option>
-                                </select>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">RATE</span>
-                                <div className="ep-inline">
-                                  <input type="number" step="0.01" value={row.cost?.rate === 0 || row.cost?.rate === "0" ? '' : (row.cost?.rate ?? '')} onChange={e => handleFieldChange(i, 'rate', e.target.value, 'cost')} />
-                                  <select value={row.cost?.currency || 'INR'} onChange={e => handleFieldChange(i, 'currency', e.target.value, 'cost')}>
-                                    {currencyList.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                                  </select>
-                                  {row.cost?.currency && row.cost.currency !== 'INR' && (
-                                    <>
-                                      <span style={{ fontSize: '10px', marginLeft: '8px', color: '#64748b', fontWeight: 'bold' }}>EX. RATE</span>
-                                      <input type="number" step="0.01" style={{ width: '60px', marginLeft: '4px' }} value={row.cost?.exchangeRate ?? 1} onChange={e => handleFieldChange(i, 'exchangeRate', e.target.value, 'cost')} />
-                                    </>
+                              <div className="ep-desc-row">
+                                <span className="ep-label">ATTACHMENT</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+                                  {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? (
+                                    row.revenue.url.map((url, urlIdx) => (
+                                      <Chip
+                                        key={urlIdx}
+                                        icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
+                                        label={extractFileName(url)}
+                                        size="small"
+                                        onDelete={() => {
+                                          const newUrls = row.revenue.url.filter((_, i) => i !== urlIdx);
+                                          handleFieldChange(i, 'url', newUrls, 'revenue');
+                                        }}
+                                        component="a"
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        clickable
+                                        sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
+                                      />
+                                    ))
+                                  ) : (
+                                    <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>NO FILES ATTACHED</span>
                                   )}
-                                </div>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">PAYABLE TO</span>
-                                <div className="ep-search-container">
-                                  <div className="ep-search-wrap">
-                                    <input
-                                      type="text"
-                                      value={row.cost?.partyName || ''}
-                                      onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'cost')}
-                                      onFocus={() => setActiveDropdown({ index: i, section: 'cost' })}
-                                    />
-                                    <button type="button" className="ep-search-btn">🔍</button>
-                                  </div>
-                                  {activeDropdown.index === i && activeDropdown.section === 'cost' && (row.cost?.partyName?.length >= 1 || activeDropdown.clicked) && (
-                                    <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                      {(row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
-                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders] :
-                                          row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
-                                            row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
-                                              row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
-                                                row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
-                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes :
-                                                    row.cost?.partyType?.toUpperCase() === 'FORWARDER' ? forwarders :
-                                                      row.cost?.partyType?.toUpperCase() === 'GENERAL ORG' ? generalOrgList : [])
-                                        .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
-                                        .slice(0, 20)
-                                        .map((item, idx) => (
-                                          <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'cost', item)}>
-                                            <span className="ep-item-name">{item.name || item.organization}</span>
-                                            <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
-                                          </li>
-                                        ))}
-                                      {((row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
-                                        row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders] :
-                                          row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
-                                            row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
-                                              row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
-                                                row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
-                                                  row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes :
-                                                    row.cost?.partyType?.toUpperCase() === 'FORWARDER' ? forwarders :
-                                                      row.cost?.partyType?.toUpperCase() === 'GENERAL ORG' ? generalOrgList : [])
-                                        .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
-                                        .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
-                                    </ul>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">TOTAL AMOUNT</span>
-                                <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={row.cost?.amountINR || 0} />
-                                  <span style={{ fontSize: '11px', color: '#555', paddingLeft: '4px' }}>INR</span>
-                                </div>
-                              </div>
-                              {(() => {
-                                const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders];
-                                const party = smartFindParty(allParties, row.cost?.partyName);
-                                if (party && party.branches?.length > 1) {
-                                  return (
-                                    <div className="ep-row">
-                                      <span className="ep-label">BRANCH</span>
-                                      <select className="ep-select" value={row.cost?.branchIndex || 0} onChange={e => handleFieldChange(i, 'branchIndex', parseInt(e.target.value), 'cost')}>
-                                        {party.branches.map((b, bIdx) => (
-                                          <option key={bIdx} value={bIdx}>{b.branchName || `Branch ${bIdx + 1}`}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-
-                              {/* VIRTUAL BALANCE TERMINAL SELECTOR */}
-                              {(() => {
-                                const pType = (row.cost?.partyType || '').toUpperCase();
-                                const isTypeTerminal = pType === 'TERMINAL' || pType === 'CFS';
-                                const isPartyTerminal = terminalCodes.some(
-                                  t => (t.name || t.organization || '').trim().toUpperCase() === (row.cost?.partyName || '').trim().toUpperCase()
-                                );
-                                if (isTypeTerminal || isPartyTerminal) {
-                                  return (
-                                    <div className="ep-row">
-                                      <span className="ep-label" style={{ fontWeight: 'bold', color: '#0284c7' }}>VIRTUAL BALANCE TERMINAL</span>
-                                      <select
-                                        className="form-input"
-                                        style={{ borderColor: '#38bdf8', backgroundColor: '#f0f9ff', fontWeight: '500' }}
-                                        value={row.cost?.virtualBalanceTerminal || ''}
-                                        onChange={e => handleFieldChange(i, 'virtualBalanceTerminal', e.target.value, 'cost')}
-                                      >
-                                        <option value="">Same as Payable To ({row.cost?.partyName || 'Terminal'})</option>
-                                        {terminalCodes.map((term, tIdx) => {
-                                          const tName = term.name || term.organization;
-                                          return (
-                                            <option key={tIdx} value={tName}>
-                                              {tName}
-                                            </option>
-                                          );
-                                        })}
-                                      </select>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-
-                              {/* GST & TDS FIELDS FOR COST */}
-                              <div className="ep-row">
-                                <span className="ep-label">INCLUDE GST?</span>
-                                <div className="ep-inline">
-                                  <input type="checkbox" checked={row.cost?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'cost')} />
-                                  {row.chargeType !== 'Reimbursement' && row.cost?.isGst !== false && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <input type="number" style={{ width: '50px' }} value={row.cost?.gstRate ?? 18} onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'cost')} />
-                                      <span style={{ fontSize: '11px' }}>%</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              {row.chargeType !== 'Reimbursement' && (
-                                <>
-                                  <div className="ep-row">
-                                    <span className="ep-label">BASIC AMOUNT</span>
-                                    <div className="ep-inline">
-                                      <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.cost?.basicAmount)} />
-                                    </div>
-                                  </div>
-                                  <div className="ep-row">
-                                    <span className="ep-label">GST AMOUNT</span>
-                                    <div className="ep-inline">
-                                      <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.cost?.gstAmount)} />
-                                    </div>
-                                  </div>
-                                </>
-                              )}
-                              <div className="ep-row">
-                                <span className="ep-label">APPLY TDS?</span>
-                                <div className="ep-inline">
-                                  <input type="checkbox" checked={row.cost?.isTds || false} onChange={e => handleFieldChange(i, 'isTds', e.target.checked, 'cost')} />
-                                  {row.cost?.isTds && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <input type="number" style={{ width: '50px' }} value={row.cost?.tdsPercent ?? 0} onChange={e => handleFieldChange(i, 'tdsPercent', e.target.value, 'cost')} />
-                                      <span style={{ fontSize: '11px' }}>%</span>
-                                      <select className="ep-select" style={{ width: '70px', marginLeft: '6px', fontSize: '10px' }} value={row.cost?.tdsCategory || ''} onChange={e => handleFieldChange(i, 'tdsCategory', e.target.value, 'cost')}>
-                                        <option value="">--</option>
-                                        <option value="TDS ON CONTRACT 94C 1023">TDS ON CONTRACT 94C 1023</option>
-                                        <option value="TDS ON CONTRACT 94C 1024">TDS ON CONTRACT 94C 1024</option>
-                                      </select>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label">TDS AMOUNT</span>
-                                <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={roundWholeAmount(row.cost?.tdsAmount)} />
-                                </div>
-                              </div>
-                              <div className="ep-row">
-                                <span className="ep-label" style={{ fontWeight: 'bold', color: '#d32f2f' }}>NET PAYABLE</span>
-                                <div className="ep-inline">
-                                  <input type="number" readOnly className="ep-read" style={{ background: '#fff9f9', fontWeight: 'bold', color: '#d32f2f', border: '1px solid #ffcdd2' }} value={row.cost?.netPayable} />
-                                  <button
-                                    type="button"
-                                    className="action-btn"
-                                    style={{ backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1', textTransform: 'none', height: '26px', fontSize: '10px', marginLeft: '10px' }}
-                                    onClick={() => syncSection(i, 'cost', 'revenue')}
-                                  >
-                                    Copy to Revenue ➔
+                                  <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('revenue'); }}>
+                                    {Array.isArray(row.revenue?.url) && row.revenue.url.length > 0 ? 'EDIT FILES' : 'UPLOAD FILES'}
                                   </button>
                                 </div>
                               </div>
-                              <div className="ep-row">
-                                <span className="ep-label"></span>
-                                <div className="ep-inline">
-                                  {/* Conditionally show based on workMode or if already exists */}
-                                  {(!row.purchase_book_no && (workMode === 'Purchase Book' || !row.payment_request_no)) ? (
-                                    <button
-                                      type="button"
-                                      className="action-btn action-btn-blue"
-                                      style={{ marginLeft: '10px' }}
-                                      onClick={() => {
-                                        const partyName = row.cost?.partyName;
-                                        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
-                                        const partyDetails = smartFindParty(allParties, partyName);
+                              <div className="ep-grid">
+                                <div className="ep-row">
+                                  <span className="ep-label">BASIS</span>
+                                  <select className="ep-select" value={row.revenue?.basis || 'Per B/E - Per Shp'} onChange={e => handleFieldChange(i, 'basis', e.target.value, 'revenue')}>
+                                    <option>Per Package</option><option>By Gross Wt</option><option>By Chg Wt</option>
+                                    <option>By Volume</option><option>Per Container</option><option>Per TEU</option>
+                                    <option>Per FEU</option><option>% of Other Charges</option>
+                                    <option>% of Assessable Value</option><option>% of AV+Duty</option>
+                                    <option>% of CIF Value</option><option>Per Vehicle</option>
+                                    <option>% of Invoice Value</option><option>Per License</option>
+                                    <option>Per B/E - Per Shp</option>
+                                    <option>% of Product Value</option><option>Per Labour</option>
+                                    <option>Per Product</option><option>By Net Wt</option><option>Per Invoice</option>
+                                  </select>
+                                </div>
+                                <div className="ep-row">
+                                  <span className="ep-label">OVERRIDE AUTO RATE</span>
+                                  <input type="checkbox" checked={row.revenue?.overrideAutoRate || false} onChange={e => handleFieldChange(i, 'overrideAutoRate', e.target.checked, 'revenue')} />
+                                </div>
+                                <div className="ep-row">
+                                  <span className="ep-label">QTY/UNIT</span>
+                                  <div className="ep-inline">
+                                    <input type="number" step="0.01" value={row.revenue?.qty ?? 1.00} onChange={e => handleFieldChange(i, 'qty', e.target.value, 'revenue')} />
+                                    <input type="text" value={row.revenue?.unit || ''} onChange={e => handleFieldChange(i, 'unit', e.target.value, 'revenue')} />
+                                  </div>
+                                </div>
+                                <div className="ep-row">
+                                  <span className="ep-label">RECEIVABLE TYPE</span>
+                                  <select className="ep-select" value={row.revenue?.partyType || 'Customer'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'revenue')}>
+                                    <option>Customer</option><option>Agent</option><option>Carrier</option>
+                                  </select>
+                                </div>
+                                <div className="ep-row">
+                                  <span className="ep-label">RATE</span>
+                                  <div className="ep-inline">
+                                    <input type="number" step="0.01" value={row.revenue?.rate === 0 || row.revenue?.rate === "0" ? '' : (row.revenue?.rate ?? '')} onChange={e => handleFieldChange(i, 'rate', e.target.value, 'revenue')} />
+                                    <select value={row.revenue?.currency || 'INR'} onChange={e => handleFieldChange(i, 'currency', e.target.value, 'revenue')}>
+                                      {currencyList.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                    </select>
+                                    {row.revenue?.currency && row.revenue.currency !== 'INR' && (
+                                      <>
+                                        <span style={{ fontSize: '10px', marginLeft: '8px', color: '#64748b', fontWeight: 'bold' }}>EX. RATE</span>
+                                        <input type="number" step="0.01" style={{ width: '60px', marginLeft: '4px' }} value={row.revenue?.exchangeRate ?? 1} onChange={e => handleFieldChange(i, 'exchangeRate', e.target.value, 'revenue')} />
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="ep-row">
+                                  <span className="ep-label">RECEIVABLE FROM</span>
+                                  <div className="ep-search-container">
+                                    <div className="ep-search-wrap">
+                                      <input
+                                        type="text"
+                                        value={row.revenue?.partyName || ''}
+                                        onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'revenue')}
+                                        onFocus={() => setActiveDropdown({ index: i, section: 'revenue' })}
+                                      />
+                                      <button type="button" className="ep-search-btn">🔍</button>
+                                    </div>
+                                    {activeDropdown.index === i && activeDropdown.section === 'revenue' && (row.revenue?.partyName?.length >= 1 || activeDropdown.clicked) && (
+                                      <ul className="ep-dropdown-list" ref={dropdownRef}>
+                                        {(row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
+                                          row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations : [])
+                                          .filter(item => !row.revenue?.partyName || item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))
+                                          .slice(0, 20)
+                                          .map((item, idx) => (
+                                            <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
+                                              <span className="ep-item-name">{item.name || item.organization}</span>
+                                              <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
+                                            </li>
+                                          ))}
+                                        {((row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
+                                          row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations : [])
+                                          .filter(item => !row.revenue?.partyName || item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))
+                                          .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
+                                      </ul>
+                                    )}
+                                  </div>
+                                  {row.revenue?.branchCode && <span className="ep-link" style={{ marginLeft: '6px', whiteSpace: 'nowrap' }}>{row.revenue.branchCode}</span>}
+                                </div>
+                                <div className="ep-row">
+                                  <span className="ep-label">TOTAL AMOUNT</span>
+                                  <div className="ep-inline">
+                                    <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={row.revenue?.amountINR || 0} />
+                                    <span style={{ fontSize: '11px', color: '#555', paddingLeft: '4px' }}>INR</span>
+                                  </div>
+                                </div>
+                                <div className="ep-row" style={{ marginTop: '5px' }}>
+                                  <span className="ep-label"></span>
+                                  <button
+                                    type="button"
+                                    className="action-btn"
+                                    style={{ backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1', textTransform: 'none', height: '26px', fontSize: '10px' }}
+                                    onClick={() => syncSection(i, 'revenue', 'cost')}
+                                  >
+                                    COPY TO COST ➔
+                                  </button>
+                                </div>
+                                {(() => {
+                                  const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders];
+                                  const party = smartFindParty(allParties, row.revenue?.partyName);
+                                  if (party && party.branches?.length > 1) {
+                                    return (
+                                      <div className="ep-row">
+                                        <span className="ep-label">BRANCH</span>
+                                        <select className="ep-select" value={row.revenue?.branchIndex || 0} onChange={e => handleFieldChange(i, 'branchIndex', parseInt(e.target.value), 'revenue')}>
+                                          {party.branches.map((b, bIdx) => (
+                                            <option key={bIdx} value={bIdx}>{b.branchName || `Branch ${bIdx + 1}`}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
 
-                                        setPurchaseBookData(() => {
-                                          const cost = row.cost || {};
-                                          return {
-                                            partyName: cost.partyName,
-                                            partyDetails,
-                                            amount: cost.amount,
-                                            basicAmount: cost.basicAmount,
-                                            gstAmount: cost.gstAmount,
-                                            gstRate: cost.gstRate,
-                                            cgst: cost.cgst,
-                                            sgst: cost.sgst,
-                                            igst: cost.igst,
-                                            tdsAmount: cost.tdsAmount,
-                                            netPayable: cost.netPayable,
-                                            amountINR: cost.amountINR,
-                                            totalAmount: cost.amountINR,
-                                            chargeHead: row.name || row.chargeHead,
-                                            chargeType: row.chargeType,
-                                            category: row.category,
-                                            tdsCategory: cost.tdsCategory,
-                                            invoice_number: row.invoice_number,
-                                            invoice_date: row.invoice_date,
-                                            jobDisplayNumber: jobDisplayNumber,
-                                            cthNo: row.hsnCode,
-                                            chargeId: row._id,
-                                            jobId: parentId,
-                                            branchIndex: cost.branchIndex || 0,
-                                            isClubJob: row.isClubJob || false,
-                                            clubbedJobs: row.clubbedJobs || [],
-                                            virtualBalanceTerminal: cost.virtualBalanceTerminal || ''
-                                          };
-                                        });
-                                      }}
-                                    >
-                                      Purchase book
-                                    </button>
-                                  ) : row.purchase_book_no ? (
-                                    <button
-                                      type="button"
-                                      className="action-btn"
-                                      style={{ marginLeft: '10px', backgroundColor: '#fff', color: '#d32f2f', borderColor: '#d32f2f' }}
-                                      onClick={() => handleReject('PB', row.purchase_book_no)}
-                                    >
-                                      Reject PB
-                                    </button>
-                                  ) : null}
+                                {/* GST FIELDS FOR REVENUE */}
+                                <div className="ep-row">
+                                  <span className="ep-label">INCLUDE GST?</span>
+                                  <div className="ep-inline">
+                                    <input type="checkbox" checked={row.revenue?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'revenue')} />
+                                    {row.chargeType !== 'Reimbursement' && row.revenue?.isGst !== false && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <input type="number" style={{ width: '50px' }} value={row.revenue?.gstRate ?? 18} onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'revenue')} />
+                                        <span style={{ fontSize: '11px' }}>%</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                {row.chargeType !== 'Reimbursement' && (
+                                  <>
+                                    <div className="ep-row">
+                                      <span className="ep-label">BASIC AMOUNT</span>
+                                      <div className="ep-inline">
+                                        <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.basicAmount)} />
+                                      </div>
+                                    </div>
+                                    <div className="ep-row">
+                                      <span className="ep-label">GST AMOUNT</span>
+                                      <div className="ep-inline">
+                                        <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.gstAmount)} />
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
 
-                                  {(!row.payment_request_no && (workMode === 'Payment' || !row.purchase_book_no)) ? (
-                                    <button
-                                      type="button"
-                                      className="action-btn action-btn-red"
-                                      style={{ marginLeft: '10px' }}
-                                      onClick={() => {
-                                        const partyName = row.cost?.partyName;
-                                        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
-                                        const partyDetails = allParties.find(p => (p.name || p.organization)?.trim().toUpperCase() === partyName?.trim().toUpperCase());
-
-                                        setPaymentRequestData({
-                                          partyName,
-                                          partyDetails,
-                                          jobDisplayNumber,
-                                          branchIndex: row.cost?.branchIndex || 0,
-                                          netPayable: row.cost?.netPayable,
-                                          chargeHead: row.name || row.chargeHead,
-                                          chargeId: row._id,
-                                          jobId: parentId,
-                                          virtualBalanceTerminal: row.cost?.virtualBalanceTerminal || ''
-                                        });
-                                      }}
-                                    >
-                                      Request Payment
-                                    </button>
-                                  ) : row.payment_request_no ? (
-                                    <button
-                                      type="button"
-                                      className="action-btn"
-                                      style={{ marginLeft: '10px', backgroundColor: '#fff', color: '#d32f2f', borderColor: '#d32f2f' }}
-                                      onClick={() => handleReject('PR', row.payment_request_no)}
-                                    >
-                                      Reject PR
-                                    </button>
-                                  ) : null}
+                                <div className="ep-row">
+                                  <span className="ep-label">APPLY TDS?</span>
+                                  <div className="ep-inline">
+                                    <input type="checkbox" checked={row.revenue?.isTds || false} onChange={e => handleFieldChange(i, 'isTds', e.target.checked, 'revenue')} />
+                                    {row.revenue?.isTds && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <input type="number" style={{ width: '50px' }} value={row.revenue?.tdsPercent ?? 0} onChange={e => handleFieldChange(i, 'tdsPercent', e.target.value, 'revenue')} />
+                                        <span style={{ fontSize: '11px' }}>%</span>
+                                        <select className="ep-select" style={{ width: '70px', marginLeft: '6px', fontSize: '10px' }} value={row.revenue?.tdsCategory || ''} onChange={e => handleFieldChange(i, 'tdsCategory', e.target.value, 'revenue')}>
+                                          <option value="">--</option>
+                                          <option value="TDS ON CONTRACT 94C 1023">TDS ON CONTRACT 94C 1023</option>
+                                          <option value="TDS ON CONTRACT 94C 1024">TDS ON CONTRACT 94C 1024</option>
+                                        </select>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="ep-row">
+                                  <span className="ep-label">BASIC AMOUNT</span>
+                                  <div className="ep-inline">
+                                    <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.basicAmount)} />
+                                  </div>
+                                </div>
+                                <div className="ep-row">
+                                  <span className="ep-label">GST AMOUNT</span>
+                                  <div className="ep-inline">
+                                    <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.revenue?.gstAmount)} />
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
+                          </td>
+                        </tr>
+                      )}
+
+                      {/* --- COST ROW --- */}
+                      <tr style={{ cursor: 'pointer' }} onClick={() => togglePanel(i, 'cost')}>
+                        <td className="row-label">COST</td>
+                        <td>{row.cost?.basis || 'Per B/E - Per Shp'}</td>
+                        <td>{row.cost?.qty || '1.00'}</td>
+                        <td>{row.cost?.currency || 'INR'}</td>
+                        <td>{formatNumber(row.cost?.rate)}</td>
+                        <td>{formatNumber(row.cost?.amount)}</td>
+                        <td>{formatNumber(row.cost?.amountINR)}</td>
+                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked={row.cost?.overrideAutoRate || false} readOnly /></td>
+                        <td style={{ textAlign: 'center' }}><input type="checkbox" checked={row.cost?.isPosted || false} readOnly /></td>
+                        <td>
+                          <button type="button" className="arrow-btn" onClick={(e) => { e.stopPropagation(); togglePanel(i, 'cost'); }}>
+                            {panelOpen[i] === 'cost' ? '▲' : '▼'}
+                          </button>
                         </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+
+                      {/* --- COST EXPANDED --- */}
+                      {panelOpen[i] === 'cost' && (
+                        <tr className="expand-row">
+                          <td colSpan="10">
+                            <div className="expand-panel open">
+                              <div className="ep-desc-row">
+                                <span className="ep-label">CHARGE DESCRIPTION</span>
+                                <input type="text" className="ep-desc-input" value={row.cost?.chargeDescription || ''} onChange={e => handleFieldChange(i, 'chargeDescription', e.target.value, 'cost')} />
+                              </div>
+                              <div className="ep-desc-row">
+                                <span className="ep-label">ATTACHMENT</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+                                  {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? (
+                                    row.cost.url.map((url, urlIdx) => (
+                                      <Chip
+                                        key={urlIdx}
+                                        icon={<DescriptionIcon style={{ fontSize: "14px" }} />}
+                                        label={extractFileName(url)}
+                                        size="small"
+                                        onDelete={() => {
+                                          const newUrls = row.cost.url.filter((_, i) => i !== urlIdx);
+                                          handleFieldChange(i, 'url', newUrls, 'cost');
+                                        }}
+                                        component="a"
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        clickable
+                                        sx={{ maxWidth: "180px", fontSize: "10px", height: "22px", backgroundColor: "#e3f2fd", color: "#1565c0" }}
+                                      />
+                                    ))
+                                  ) : (
+                                    <span style={{ fontSize: '11px', color: '#8aA0b0', fontStyle: 'italic' }}>NO FILES ATTACHED</span>
+                                  )}
+                                  <button type="button" className="upload-btn" style={{ padding: '2px 8px' }} onClick={() => { setUploadIndex(i); setUploadSection('cost'); }}>
+                                    {Array.isArray(row.cost?.url) && row.cost.url.length > 0 ? 'EDIT FILES' : 'UPLOAD FILES'}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="ep-grid">
+                                <fieldset disabled={viewOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'contents' }}>
+                                  <div className="ep-row">
+                                    <span className="ep-label">BASIS</span>
+                                    <select className="ep-select" value={row.cost?.basis || 'Per B/E - Per Shp'} onChange={e => handleFieldChange(i, 'basis', e.target.value, 'cost')}>
+                                      <option>Per Package</option><option>By Gross Wt</option><option>By Chg Wt</option>
+                                      <option>By Volume</option><option>Per Container</option><option>Per TEU</option>
+                                      <option>Per FEU</option><option>% of Other Charges</option>
+                                      <option>% of Assessable Value</option><option>% of AV+Duty</option>
+                                      <option>% of CIF Value</option><option>Per Vehicle</option>
+                                      <option>% of Invoice Value</option><option>Per License</option>
+                                      <option>Per B/E - Per Shp</option>
+                                      <option>% of Product Value</option><option>Per Labour</option>
+                                      <option>Per Product</option><option>By Net Wt</option><option>Per Invoice</option>
+                                    </select>
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label">OVERRIDE AUTO RATE</span>
+                                    <input type="checkbox" checked={row.cost?.overrideAutoRate || false} onChange={e => handleFieldChange(i, 'overrideAutoRate', e.target.checked, 'cost')} />
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label">QTY/UNIT</span>
+                                    <div className="ep-inline">
+                                      <input type="number" step="0.01" value={row.cost?.qty ?? 1.00} onChange={e => handleFieldChange(i, 'qty', e.target.value, 'cost')} />
+                                      <input type="text" value={row.cost?.unit || ''} onChange={e => handleFieldChange(i, 'unit', e.target.value, 'cost')} />
+                                    </div>
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label">PAYABLE TYPE</span>
+                                    <select className="form-input" value={row.cost?.partyType || 'Others'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
+                                      <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option><option>Forwarder</option><option>General Org</option>
+                                    </select>
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label">RATE</span>
+                                    <div className="ep-inline">
+                                      <input type="number" step="0.01" value={row.cost?.rate === 0 || row.cost?.rate === "0" ? '' : (row.cost?.rate ?? '')} onChange={e => handleFieldChange(i, 'rate', e.target.value, 'cost')} />
+                                      <select value={row.cost?.currency || 'INR'} onChange={e => handleFieldChange(i, 'currency', e.target.value, 'cost')}>
+                                        {currencyList.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                      </select>
+                                      {row.cost?.currency && row.cost.currency !== 'INR' && (
+                                        <>
+                                          <span style={{ fontSize: '10px', marginLeft: '8px', color: '#64748b', fontWeight: 'bold' }}>EX. RATE</span>
+                                          <input type="number" step="0.01" style={{ width: '60px', marginLeft: '4px' }} value={row.cost?.exchangeRate ?? 1} onChange={e => handleFieldChange(i, 'exchangeRate', e.target.value, 'cost')} />
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label">PAYABLE TO</span>
+                                    <div className="ep-search-container">
+                                      <div className="ep-search-wrap">
+                                        <input
+                                          type="text"
+                                          value={row.cost?.partyName || ''}
+                                          onChange={e => handleFieldChange(i, 'partyName', e.target.value, 'cost')}
+                                          onFocus={() => setActiveDropdown({ index: i, section: 'cost' })}
+                                        />
+                                        <button type="button" className="ep-search-btn">🔍</button>
+                                      </div>
+                                      {activeDropdown.index === i && activeDropdown.section === 'cost' && (row.cost?.partyName?.length >= 1 || activeDropdown.clicked) && (
+                                        <ul className="ep-dropdown-list" ref={dropdownRef}>
+                                          {(row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
+                                            row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders] :
+                                              row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
+                                                row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
+                                                  row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
+                                                    row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
+                                                      row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes :
+                                                        row.cost?.partyType?.toUpperCase() === 'FORWARDER' ? forwarders :
+                                                          row.cost?.partyType?.toUpperCase() === 'GENERAL ORG' ? generalOrgList : [])
+                                            .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
+                                            .slice(0, 20)
+                                            .map((item, idx) => (
+                                              <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'cost', item)}>
+                                                <span className="ep-item-name">{item.name || item.organization}</span>
+                                                <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
+                                              </li>
+                                            ))}
+                                          {((row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
+                                            row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders] :
+                                              row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
+                                                row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
+                                                  row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
+                                                    row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
+                                                      row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes :
+                                                        row.cost?.partyType?.toUpperCase() === 'FORWARDER' ? forwarders :
+                                                          row.cost?.partyType?.toUpperCase() === 'GENERAL ORG' ? generalOrgList : [])
+                                            .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
+                                            .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
+                                        </ul>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label">TOTAL AMOUNT</span>
+                                    <div className="ep-inline">
+                                      <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={row.cost?.amountINR || 0} />
+                                      <span style={{ fontSize: '11px', color: '#555', paddingLeft: '4px' }}>INR</span>
+                                    </div>
+                                  </div>
+                                  {(() => {
+                                    const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders];
+                                    const party = smartFindParty(allParties, row.cost?.partyName);
+                                    if (party && party.branches?.length > 1) {
+                                      return (
+                                        <div className="ep-row">
+                                          <span className="ep-label">BRANCH</span>
+                                          <select className="ep-select" value={row.cost?.branchIndex || 0} onChange={e => handleFieldChange(i, 'branchIndex', parseInt(e.target.value), 'cost')}>
+                                            {party.branches.map((b, bIdx) => (
+                                              <option key={bIdx} value={bIdx}>{b.branchName || `Branch ${bIdx + 1}`}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+
+                                </fieldset>
+
+                                {/* VIRTUAL BALANCE TERMINAL SELECTOR */}
+                                {(() => {
+                                  const pType = (row.cost?.partyType || '').toUpperCase();
+                                  const isTypeTerminal = pType === 'TERMINAL' || pType === 'CFS';
+                                  const isPartyTerminal = terminalCodes.some(
+                                    t => (t.name || t.organization || '').trim().toUpperCase() === (row.cost?.partyName || '').trim().toUpperCase()
+                                  );
+                                  if (isTypeTerminal || isPartyTerminal) {
+                                    const partyNameUpper = (row.cost?.partyName || '').trim().toUpperCase();
+                                    const allAvailableNames = [...new Set([
+                                      ...createdVirtualTerminals,
+                                      ...(row.cost?.virtualBalanceTerminal ? [row.cost.virtualBalanceTerminal] : [])
+                                    ])].filter((name) => Boolean(name) && name.trim().toUpperCase() !== partyNameUpper);
+
+                                    return (
+                                      <div className="ep-row" style={{ position: 'relative', zIndex: 10 }}>
+                                        <span className="ep-label" style={{ fontWeight: 'bold', color: '#0284c7' }}>VIRTUAL BALANCE TERMINAL</span>
+                                        <select
+                                          className="form-input"
+                                          style={{ borderColor: '#38bdf8', backgroundColor: '#f0f9ff', fontWeight: '500' }}
+                                          value={row.cost?.virtualBalanceTerminal || ''}
+                                          onChange={e => handleFieldChange(i, 'virtualBalanceTerminal', e.target.value, 'cost')}
+                                        >
+                                          <option value="">Same as Payable To ({row.cost?.partyName || 'Terminal'})</option>
+                                          {allAvailableNames.map((tName, tIdx) => (
+                                            <option key={tIdx} value={tName}>
+                                              {tName}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+
+                                <fieldset disabled={viewOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'contents' }}>
+
+                                  {/* GST & TDS FIELDS FOR COST */}
+                                  <div className="ep-row">
+                                    <span className="ep-label">INCLUDE GST?</span>
+                                    <div className="ep-inline">
+                                      <input type="checkbox" checked={row.cost?.isGst !== false} onChange={e => handleFieldChange(i, 'isGst', e.target.checked, 'cost')} />
+                                      {row.chargeType !== 'Reimbursement' && row.cost?.isGst !== false && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                          <input type="number" style={{ width: '50px' }} value={row.cost?.gstRate ?? 18} onChange={e => handleFieldChange(i, 'gstRate', e.target.value, 'cost')} />
+                                          <span style={{ fontSize: '11px' }}>%</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {row.chargeType !== 'Reimbursement' && (
+                                    <>
+                                      <div className="ep-row">
+                                        <span className="ep-label">BASIC AMOUNT</span>
+                                        <div className="ep-inline">
+                                          <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.cost?.basicAmount)} />
+                                        </div>
+                                      </div>
+                                      <div className="ep-row">
+                                        <span className="ep-label">GST AMOUNT</span>
+                                        <div className="ep-inline">
+                                          <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={formatNumber(row.cost?.gstAmount)} />
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+                                  <div className="ep-row">
+                                    <span className="ep-label">APPLY TDS?</span>
+                                    <div className="ep-inline">
+                                      <input type="checkbox" checked={row.cost?.isTds || false} onChange={e => handleFieldChange(i, 'isTds', e.target.checked, 'cost')} />
+                                      {row.cost?.isTds && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                          <input type="number" style={{ width: '50px' }} value={row.cost?.tdsPercent ?? 0} onChange={e => handleFieldChange(i, 'tdsPercent', e.target.value, 'cost')} />
+                                          <span style={{ fontSize: '11px' }}>%</span>
+                                          <select className="ep-select" style={{ width: '70px', marginLeft: '6px', fontSize: '10px' }} value={row.cost?.tdsCategory || ''} onChange={e => handleFieldChange(i, 'tdsCategory', e.target.value, 'cost')}>
+                                            <option value="">--</option>
+                                            <option value="TDS ON CONTRACT 94C 1023">TDS ON CONTRACT 94C 1023</option>
+                                            <option value="TDS ON CONTRACT 94C 1024">TDS ON CONTRACT 94C 1024</option>
+                                          </select>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label">TDS AMOUNT</span>
+                                    <div className="ep-inline">
+                                      <input type="number" readOnly className="ep-read" style={{ background: '#f4f8fc' }} value={roundWholeAmount(row.cost?.tdsAmount)} />
+                                    </div>
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label" style={{ fontWeight: 'bold', color: '#d32f2f' }}>NET PAYABLE</span>
+                                    <div className="ep-inline">
+                                      <input type="number" readOnly className="ep-read" style={{ background: '#fff9f9', fontWeight: 'bold', color: '#d32f2f', border: '1px solid #ffcdd2' }} value={row.cost?.netPayable} />
+                                      <button
+                                        type="button"
+                                        className="action-btn"
+                                        style={{ backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1', textTransform: 'none', height: '26px', fontSize: '10px', marginLeft: '10px' }}
+                                        onClick={() => syncSection(i, 'cost', 'revenue')}
+                                      >
+                                        Copy to Revenue ➔
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div className="ep-row">
+                                    <span className="ep-label"></span>
+                                    <div className="ep-inline">
+                                      {/* Conditionally show based on workMode or if already exists */}
+                                      {(!row.purchase_book_no && (workMode === 'Purchase Book' || !row.payment_request_no)) ? (
+                                        <button
+                                          type="button"
+                                          className="action-btn action-btn-blue"
+                                          style={{ marginLeft: '10px' }}
+                                          onClick={() => {
+                                            const partyName = row.cost?.partyName;
+                                            const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+                                            const partyDetails = smartFindParty(allParties, partyName);
+
+                                            setPurchaseBookData(() => {
+                                              const cost = row.cost || {};
+                                              return {
+                                                partyName: cost.partyName,
+                                                partyDetails,
+                                                amount: cost.amount,
+                                                basicAmount: cost.basicAmount,
+                                                gstAmount: cost.gstAmount,
+                                                gstRate: cost.gstRate,
+                                                cgst: cost.cgst,
+                                                sgst: cost.sgst,
+                                                igst: cost.igst,
+                                                tdsAmount: cost.tdsAmount,
+                                                netPayable: cost.netPayable,
+                                                amountINR: cost.amountINR,
+                                                totalAmount: cost.amountINR,
+                                                chargeHead: row.name || row.chargeHead,
+                                                chargeType: row.chargeType,
+                                                category: row.category,
+                                                tdsCategory: cost.tdsCategory,
+                                                invoice_number: row.invoice_number,
+                                                invoice_date: row.invoice_date,
+                                                jobDisplayNumber: jobDisplayNumber,
+                                                cthNo: row.hsnCode,
+                                                chargeId: row._id,
+                                                jobId: parentId,
+                                                branchIndex: cost.branchIndex || 0,
+                                                isClubJob: row.isClubJob || false,
+                                                clubbedJobs: row.clubbedJobs || [],
+                                                virtualBalanceTerminal: cost.virtualBalanceTerminal || ''
+                                              };
+                                            });
+                                          }}
+                                        >
+                                          Purchase book
+                                        </button>
+                                      ) : row.purchase_book_no ? (
+                                        <button
+                                          type="button"
+                                          className="action-btn"
+                                          style={{ marginLeft: '10px', backgroundColor: '#fff', color: '#d32f2f', borderColor: '#d32f2f' }}
+                                          onClick={() => handleReject('PB', row.purchase_book_no)}
+                                        >
+                                          Reject PB
+                                        </button>
+                                      ) : null}
+
+                                      {(!row.payment_request_no && (workMode === 'Payment' || !row.purchase_book_no)) ? (
+                                        <button
+                                          type="button"
+                                          className="action-btn action-btn-red"
+                                          style={{ marginLeft: '10px' }}
+                                          onClick={() => {
+                                            const partyName = row.cost?.partyName;
+                                            const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes];
+                                            const partyDetails = allParties.find(p => (p.name || p.organization)?.trim().toUpperCase() === partyName?.trim().toUpperCase());
+
+                                            setPaymentRequestData({
+                                              partyName,
+                                              partyDetails,
+                                              jobDisplayNumber,
+                                              branchIndex: row.cost?.branchIndex || 0,
+                                              netPayable: row.cost?.netPayable,
+                                              chargeHead: row.name || row.chargeHead,
+                                              chargeId: row._id,
+                                              jobId: parentId,
+                                              virtualBalanceTerminal: row.cost?.virtualBalanceTerminal || ''
+                                            });
+                                          }}
+                                        >
+                                          Request Payment
+                                        </button>
+                                      ) : row.payment_request_no ? (
+                                        <button
+                                          type="button"
+                                          className="action-btn"
+                                          style={{ marginLeft: '10px', backgroundColor: '#fff', color: '#d32f2f', borderColor: '#d32f2f' }}
+                                          onClick={() => handleReject('PR', row.payment_request_no)}
+                                        >
+                                          Reject PR
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </fieldset>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          ))}
-          </fieldset>
+            ))}
+          </div>
         </div>
         <div className="modal-footer">
-          {!viewOnly && (
-            <>
-              <button type="button" className="btn" onClick={() => handleSave(false)}>Update</button>
-              <button type="button" className="btn" onClick={() => handleSave(true)}>Update & Close</button>
-            </>
-          )}
+          <button type="button" className="btn" onClick={() => handleSave(false)}>Update</button>
+          <button type="button" className="btn" onClick={() => handleSave(true)}>Update & Close</button>
           <button type="button" className="btn" onClick={onClose} style={{ marginRight: '30px' }}>{viewOnly ? 'Close' : 'Cancel'}</button>
         </div>
       </div>
