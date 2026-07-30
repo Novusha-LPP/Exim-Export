@@ -24,6 +24,21 @@ const BillOfLadingGenerator = ({ jobNo, children }) => {
       .replace(/ /g, "-");
   };
 
+  // Helper to convert number to words (for package count display like "40(FORTY)")
+  const numberToWords = (num) => {
+    const n = parseInt(num, 10);
+    if (isNaN(n)) return "";
+    const ones = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE",
+      "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
+    const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
+    if (n === 0) return "ZERO";
+    if (n < 20) return ones[n];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
+    if (n < 1000) return ones[Math.floor(n / 100)] + " HUNDRED" + (n % 100 ? " " + numberToWords(n % 100) : "");
+    if (n < 100000) return numberToWords(Math.floor(n / 1000)) + " THOUSAND" + (n % 1000 ? " " + numberToWords(n % 1000) : "");
+    return String(n);
+  };
+
   const generateHTML = async (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     
@@ -42,8 +57,10 @@ const BillOfLadingGenerator = ({ jobNo, children }) => {
       const products = invoice.products || [];
       const firstProduct = products[0] || {};
       
-      const containerSummary = data.containers?.length 
-        ? `${data.containers.length}x${data.containers[0].size || '20'}' FCL` 
+      const containerCount = data.containers?.length || 0;
+      const containerSize = data.containers?.[0]?.size || data.containers?.[0]?.containerSize || data.container_size || '20';
+      const containerSummary = containerCount > 0 
+        ? `${containerCount}x${containerSize}' FCL` 
         : "";
 
       // Address Strings
@@ -53,167 +70,256 @@ const BillOfLadingGenerator = ({ jobNo, children }) => {
       const consigneeText = (consigneeObj.consignee_name || data.consignee_name || "") + 
                            (consigneeObj.consignee_address ? `<br/>${consigneeObj.consignee_address}` : "");
 
-      const notifyText = (data.notify_party_name || "") + (data.notify_party_address ? `<br/>${data.notify_party_address}` : "");
-      const notifyText2 = ""; // No field usually for this
+      // 1. Notify Party = Exporter Address (per user request)
+      const notifyText = (data.exporter || "") + (data.exporter_address ? `<br/>${data.exporter_address}` : "");
+
+      // 2. 2nd Notify Party = Third Party Address (per user request)
+      const thirdParty = data.buyerThirdPartyInfo || {};
+      const thirdPartyName = thirdParty.buyer_name || thirdParty.name || data.third_party_name || "";
+      const thirdPartyAddr = thirdParty.buyer_address || thirdParty.address || data.third_party_address || "";
+      const notifyText2 = (thirdPartyName ? thirdPartyName + "<br/>" : "") + thirdPartyAddr;
+
+      // Routing
+      const vesselVoyage = (data.vessel_name || data.vesselName || "") + (data.voyage_no || data.voyageNo ? ` / ${data.voyage_no || data.voyageNo}` : "");
+      // Place of Receipt = Custom House Location (per user request)
+      const placeOfReceipt = data.custom_house || data.customHouse || data.place_of_receipt || "";
+      const portOfLoading = data.port_of_loading || "";
+      const portOfDischarge = data.port_of_discharge || "";
+      // Place of Delivery = Same as Destination Port (per user request)
+      const placeOfDelivery = data.destination_port || data.port_of_discharge || data.final_destination || "";
+
+      // Clean Product Description: remove "as per invoice" in capital or small cases
+      let rawDesc = firstProduct.description || data.commodity || data.goods_description || data.description || "";
+      let productDesc = rawDesc.replace(/as\s+per\s+invoice/gi, "").trim();
+
+      // HSN Code
+      const hsnCode = firstProduct.hsn_code || firstProduct.hsnCode || firstProduct.ritc || "";
+
+      // Invoice info
+      const invoiceNo = invoice.invoiceNumber || data.invoice_no || "";
+      const invoiceDt = invoice.invoiceDate || data.invoice_date || "";
+      const invoiceInfo = invoiceNo ? `INVOICE NO. ${invoiceNo}${invoiceDt ? ' DT.' + formatDate(invoiceDt) : ''}` : "";
 
       // Shipping Bill Info
-      const sbInfo = data.sb_no ? `SB NO. ${data.sb_no} dt ${formatDate(data.sb_date)}` : "";
+      const sbNo = data.sb_no || data.shipping_bill_no || "";
+      const sbDt = data.sb_date || data.shipping_bill_date || "";
+      const sbInfo = sbNo ? `SB NO. ${sbNo}${sbDt ? ' dt ' + formatDate(sbDt) : ''}` : "";
 
-      // Goods Desc
-      const goodsDesc = (data.goods_description || "").replace(/\n/g, "<br/>") || 
-                        ((containerSummary ? containerSummary + " SAID TO CONTAIN<br/>" : "") + 
-                         `Total Packages: ${data.total_packages || ""} ${data.package_unit || "PACKAGES"}<br/><br/>` + 
-                         (firstProduct.description || data.commodity || "") +
-                         (sbInfo ? `<br/>${sbInfo}` : ""));
+      // Packages & Weight
+      const totalPkgs = data.total_packages || data.total_no_of_pkgs || "";
+      const pkgUnit = data.package_unit || "BAGS";
+      const totalGrossWt = data.gross_weight_kg ? `${data.gross_weight_kg} MT` : "";
+      const totalNetWt = data.net_weight_kg ? `${data.net_weight_kg} MT` : "";
 
       // Container Rows
       let containerTableRows = "";
-      (data.containers || []).forEach((c, i) => {
+      const containers = data.containers || [];
+      containers.forEach((c, i) => {
+        const pkgs = c.package_count || c.noOfPackages || c.pkgsStuffed || "";
+        const grossWt = c.gross_weight || c.grossWeightKgs || c.grossWeight || "";
+        const netWt = c.net_weight || c.netWeightKgs || c.netWeight || "";
+        const cbm = c.cbm || c.volumeCbm || "";
+
+        // SB number only (without "SB NO." prefix)
+        const containerSbNo = c.sb_no || c.shippingBillNo || sbNo || "";
+        // SB date in DD/MM/YY format
+        const containerSbDt = c.sb_date || c.shippingBillDate || sbDt || "";
+        let sbDateFormatted = "";
+        if (containerSbDt) {
+          const d = new Date(containerSbDt);
+          if (!isNaN(d.getTime())) {
+            sbDateFormatted = d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" });
+          } else {
+            sbDateFormatted = containerSbDt;
+          }
+        }
+
         containerTableRows += `
           <tr>
-            <td style="padding: 4px; border: 1px solid #ccc;">${i + 1}</td>
-            <td style="padding: 4px; border: 1px solid #ccc;">${c.container_number || ""}</td>
-            <td style="padding: 4px; border: 1px solid #ccc;">${c.seal_number || ""}</td>
-            <td style="padding: 4px; border: 1px solid #ccc;">${c.custom_seal || ""}</td>
-            <td style="padding: 4px; border: 1px solid #ccc;">${c.package_count || (c.pkgsStuffed || "")}</td>
-            <td style="padding: 4px; border: 1px solid #ccc;">${c.gross_weight || (c.grossWeight || "")}</td>
-            <td style="padding: 4px; border: 1px solid #ccc;">${c.net_weight || ""}</td>
-            <td style="padding: 4px; border: 1px solid #ccc; color: red;">${sbInfo}</td>
+            <td style="padding: 4px; border: 1px solid #000; text-align: center;">${i + 1}</td>
+            <td style="padding: 4px; border: 1px solid #000; font-weight: bold;">${c.container_number || c.containerNo || ""}</td>
+            <td style="padding: 4px; border: 1px solid #000;">${c.seal_number || c.shippingLineSealNo || c.line_seal || ""}</td>
+            <td style="padding: 4px; border: 1px solid #000;">${c.custom_seal || c.customSealNo || ""}</td>
+            <td style="padding: 4px; border: 1px solid #000;">${pkgs ? pkgs + " " + pkgUnit : ""}</td>
+            <td style="padding: 4px; border: 1px solid #000;">${grossWt ? grossWt + " MT" : ""}</td>
+            <td style="padding: 4px; border: 1px solid #000;">${netWt ? netWt + " MT" : ""}</td>
+            <td style="padding: 4px; border: 1px solid #000; color: red; font-size: 11px;">${containerSbNo}${sbDateFormatted ? "<br/>" + sbDateFormatted : ""}</td>
+            <td style="padding: 4px; border: 1px solid #000;">${cbm}</td>
           </tr>
         `;
       });
-      // Fill empty rows if needed
-      if ((data.containers || []).length === 0) {
-           containerTableRows = `<tr><td colspan="8" style="text-align:center; padding: 10px;">No Container Details</td></tr>`;
+      // Pad to minimum 3 rows
+      const minRows = 3;
+      for (let i = containers.length; i < minRows; i++) {
+        containerTableRows += `
+          <tr>
+            <td style="padding: 4px; border: 1px solid #000; text-align: center;">${i + 1}</td>
+            <td style="padding: 4px; border: 1px solid #000;"></td>
+            <td style="padding: 4px; border: 1px solid #000;"></td>
+            <td style="padding: 4px; border: 1px solid #000;"></td>
+            <td style="padding: 4px; border: 1px solid #000;"></td>
+            <td style="padding: 4px; border: 1px solid #000;"></td>
+            <td style="padding: 4px; border: 1px solid #000;"></td>
+            <td style="padding: 4px; border: 1px solid #000;"></td>
+            <td style="padding: 4px; border: 1px solid #000;"></td>
+          </tr>
+        `;
       }
 
       // --- HTML Template ---
-      // Styles are inline to ensure they are captured by doc.html() or the editor
       const template = `
-        <div style="font-family: 'Times New Roman', serif; color: #000; padding: 10px; max-width: 800px; margin: 0 auto; line-height: 1.4;">
-            
-            <!-- Header -->
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h2 style="margin: 0; text-decoration: underline; font-weight: bold; font-size: 20px;">BILL OF LADING (DRAFT)</h2>
-                <div style="margin-top: 5px; font-weight: bold;">BL TYPE: OBL / SEAWAY (Please Specify)</div>
-            </div>
+        <div style="font-family: Arial, sans-serif; color: #000; padding: 10px; max-width: 780px; margin: 0 auto; line-height: 1.35; font-size: 12px;">
 
-            <!-- Parties Row 1 -->
-            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                <div style="width: 48%; vertical-align: top;">
-                    <div style="font-weight: bold; margin-bottom: 5px;">Shipper (Max 5 Lines):</div>
-                    <div style="min-height: 80px; white-space: pre-wrap; word-wrap: break-word;">${shipperText}</div>
-                </div>
-                <div style="width: 48%; vertical-align: top;">
-                    <div style="font-weight: bold; margin-bottom: 5px;">Consignee:</div>
-                    <div style="min-height: 80px; white-space: pre-wrap; word-wrap: break-word;">${consigneeText}</div>
-                </div>
-            </div>
+          <!-- ===== UPPER TABLE: Shipper to Ports ===== -->
+          <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #000; table-layout: fixed;">
+            <colgroup>
+              <col style="width: 55%;" />
+              <col style="width: 45%;" />
+            </colgroup>
 
-            <!-- Parties Row 2 -->
-            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                <div style="width: 48%; vertical-align: top;">
-                    <div style="font-weight: bold; margin-bottom: 5px;">Notify Party:</div>
-                    <div style="min-height: 60px; white-space: pre-wrap; word-wrap: break-word;">${notifyText}</div>
-                </div>
-                <div style="width: 48%; vertical-align: top;">
-                    <div style="font-weight: bold; margin-bottom: 5px;">2nd Notify Party (If Any):</div>
-                    <div style="min-height: 60px; white-space: pre-wrap; word-wrap: break-word;">${notifyText2}</div>
-                </div>
-            </div>
+            <tr>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px; font-size: 11px;">SHIPPER</div>
+                <div style="font-weight: bold; line-height: 1.4;">${shipperText}</div>
+              </td>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="font-weight: bold; padding-bottom: 6px;">BL FORMAT</td>
+                    <td style="font-weight: bold; padding-bottom: 6px; text-align: right;">${data.job_no || jobNo || ""}</td>
+                  </tr>
+                </table>
+                <div style="background: yellow; color: red; font-weight: bold; padding: 4px 6px; border: 1px solid red; text-align: center; font-size: 11px; line-height: 1.3;">MENTION REQUIRE BL TYPE IN DRAFT ITSELF: OBL / SEAWAY</div>
+              </td>
+            </tr>
 
-            <!-- Routing Details -->
-            <div style="margin-bottom: 15px; line-height: 1.6;">
-                <div style="margin-bottom: 5px;">
-                    <strong>Vessel & Voyage No:</strong> 
-                    <span style="display: inline-block; border-bottom: 1px solid #000; padding: 0 10px; min-width: 200px;">${data.vessel_name || ""} / ${data.voyage_no || ""}</span>
-                </div>
-                <div style="margin-bottom: 5px;">
-                    <strong>Place of Receipt:</strong> 
-                    <span style="display: inline-block; border-bottom: 1px solid #000; padding: 0 10px; min-width: 200px;">${data.place_of_receipt || ""}</span>
-                </div>
-                <div style="margin-bottom: 5px;">
-                    <strong>Port of Loading:</strong> 
-                    <span style="display: inline-block; border-bottom: 1px solid #000; padding: 0 10px; min-width: 200px;">${data.port_of_loading || ""}</span>
-                </div>
-                <div style="margin-bottom: 5px;">
-                    <strong>Port of Discharge:</strong> 
-                    <span style="display: inline-block; border-bottom: 1px solid #000; padding: 0 10px; min-width: 200px;">${data.port_of_discharge || ""}</span>
-                </div>
-                <div style="margin-bottom: 5px;">
-                    <strong>Place of Delivery:</strong> 
-                    <span style="display: inline-block; border-bottom: 1px solid #000; padding: 0 10px; min-width: 200px;">${data.final_place_of_delivery || ""}</span>
-                </div>
-            </div>
+            <tr>
+              <td colspan="2" style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px; font-size: 11px;">Consignee:</div>
+                <div style="font-weight: bold; line-height: 1.4;">${consigneeText}</div>
+              </td>
+            </tr>
 
-            <!-- Cargo Particulars Header -->
-            <div style="margin-bottom: 5px; font-weight: bold; text-decoration: underline;">CARGO PARTICULARS:</div>
+            <tr>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px; font-size: 11px;">Notify Party:</div>
+                <div style="font-weight: bold; line-height: 1.4;">${notifyText}</div>
+              </td>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px; font-size: 11px;">2.Notify Party:</div>
+                <div style="font-weight: bold; line-height: 1.4;">${notifyText2}</div>
+              </td>
+            </tr>
 
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 1px solid #000;">
-                <thead>
-                    <tr style="text-align: left; background-color: #f0f0f0;">
-                        <th style="width: 20%; padding: 5px; border: 1px solid #000;">Container No / Marks</th>
-                        <th style="width: 15%; padding: 5px; border: 1px solid #000;">No. & Kind of Pkgs</th>
-                        <th style="width: 40%; padding: 5px; border: 1px solid #000;">Description of Goods</th>
-                        <th style="width: 15%; padding: 5px; border: 1px solid #000;">Gross Weight</th>
-                        <th style="width: 10%; padding: 5px; border: 1px solid #000;">CBM</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style="padding: 5px; vertical-align: top; border: 1px solid #000;">${data.marks_and_numbers || "N/M"}</td>
-                        <td style="padding: 5px; vertical-align: top; border: 1px solid #000;">${data.total_packages || ""} ${data.package_unit || "PKGS"}</td>
-                        <td style="padding: 5px; vertical-align: top; border: 1px solid #000; white-space: pre-wrap; word-wrap: break-word;">${goodsDesc}</td>
-                        <td style="padding: 5px; vertical-align: top; border: 1px solid #000;">${data.gross_weight_kg ? data.gross_weight_kg + " KGS" : ""}</td>
-                        <td style="padding: 5px; vertical-align: top; border: 1px solid #000;">${data.total_volume_cbm || ""}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <tr>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px; font-size: 11px;">Vessel and Voyage No:</div>
+                <div style="font-weight: bold;">${vesselVoyage}</div>
+              </td>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px; font-size: 11px;">Place of Receipt:</div>
+                <div style="font-weight: bold;">${placeOfReceipt}</div>
+              </td>
+            </tr>
 
-            <div style="margin-bottom: 20px;">
-                <div style="margin-bottom: 5px;"><strong>Total No. of Packages:</strong> ______________________ ${data.total_packages || ""}</div>
-                <div style="margin-bottom: 5px;"><strong>Total Gross Weight:</strong> ______________________ ${data.gross_weight_kg ? data.gross_weight_kg + " KGS" : ""}</div>
-            </div>
+            <tr>
+              <td style="border: 1px solid #000; padding: 0; vertical-align: top;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="width: 50%; border-right: 1px solid #000; padding: 8px; vertical-align: top;">
+                      <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px; font-size: 11px;">Port of Loading:</div>
+                      <div style="font-weight: bold;">${portOfLoading}</div>
+                    </td>
+                    <td style="width: 50%; padding: 8px; vertical-align: top;">
+                      <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px; font-size: 11px;">Port of Discharge:</div>
+                      <div style="font-weight: bold;">${portOfDischarge}</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px; font-size: 11px;">Place of Delivery:</div>
+                <div style="font-weight: bold;">${placeOfDelivery}</div>
+              </td>
+            </tr>
+          </table>
 
-            <!-- Container Details -->
-            <div style="margin-bottom: 5px; font-weight: bold;">CONTAINER DETAILS:</div>
-            
-            <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px; border: 1px solid #ccc;">
-                <thead>
-                    <tr style="background-color: #eee;">
-                        <th style="padding: 3px; border: 1px solid #ccc; text-align: left;">Sr</th>
-                        <th style="padding: 3px; border: 1px solid #ccc; text-align: left;">Container No</th>
-                        <th style="padding: 3px; border: 1px solid #ccc; text-align: left;">Line Seal</th>
-                        <th style="padding: 3px; border: 1px solid #ccc; text-align: left;">Custom Seal</th>
-                        <th style="padding: 3px; border: 1px solid #ccc; text-align: left;">Pkgs</th>
-                        <th style="padding: 3px; border: 1px solid #ccc; text-align: left;">Gross Wt</th>
-                        <th style="padding: 3px; border: 1px solid #ccc; text-align: left;">Net Wt</th>
-                        <th style="padding: 3px; border: 1px solid #ccc; text-align: left; color: red;">SB No & Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${containerTableRows}
-                </tbody>
-            </table>
+          <!-- ===== CARGO TABLE: 3 columns ===== -->
+          <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #000; border-top: none; table-layout: fixed;">
+            <colgroup>
+              <col style="width: 28%;" />
+              <col style="width: 52%;" />
+              <col style="width: 20%;" />
+            </colgroup>
 
-            <!-- Footer -->
-            <div style="margin-top: 10px;">
-                 <div style="margin-bottom: 15px;">
-                    <div><strong>Freight:</strong> PREPAID / COLLECT (Specify)</div>
-                     <div style="margin-top: 2px;"><strong>Status:</strong> <u>PREPAID</u></div>
-                 </div>
-                 
-                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                     <div>
-                        <div><strong>Place & Date of Issue:</strong> _______________________</div>
-                        <div style="margin-top: 5px;">AHMEDABAD / ${formatDate(new Date())}</div>
-                     </div>
-                     <div style="text-align: right;">
-                        <div style="margin-bottom: 30px;">For and on behalf of Carrier / NVOCC</div>
-                        <div><strong>Authorized Signatory:</strong> _______________________</div>
-                     </div>
-                 </div>
-            </div>
+            <tr>
+              <td style="border: 1px solid #000; border-top: none; padding: 6px; vertical-align: top; font-weight: bold; font-size: 11px;">Container Nos. Marks &amp; Numbers</td>
+              <td style="border: 1px solid #000; border-top: none; padding: 6px; vertical-align: top; font-weight: bold; font-size: 11px;">Number and Kind of Packages<br/>Description of Goods</td>
+              <td style="border: 1px solid #000; border-top: none; padding: 6px; vertical-align: top; font-weight: bold; font-size: 11px;">Gross<br/>Weight</td>
+            </tr>
+
+            <tr>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <div style="font-weight: bold;">${data.marks_and_numbers || "N/M"}</div>
+              </td>
+              <td style="border: 1px solid #000; padding: 8px 10px; vertical-align: top; line-height: 1.6;">
+                ${containerSummary ? '<strong>' + containerSummary + ' SAID TO CONTAIN</strong><br/>' : ""}
+                ${totalPkgs ? 'Total Packages: <strong>' + totalPkgs + '(' + numberToWords(totalPkgs) + ') ' + pkgUnit + '</strong><br/><br/>' : ""}
+                ${productDesc ? '<div style="font-weight: bold;">' + productDesc + '</div>' : ""}
+                ${hsnCode ? '<div>HSN CODE: ' + hsnCode + '</div>' : ""}
+                <div>PURCHASE ORDER:</div>
+                <div>SALES CONTRACT NO.</div>
+                ${invoiceInfo ? '<div>' + invoiceInfo + '</div>' : ""}
+                ${sbInfo ? '<div>' + sbInfo + '</div>' : ""}
+                <br/>
+                ${totalGrossWt ? '<div>Total Gross Weight: <strong>' + totalGrossWt + '</strong></div>' : ""}
+                ${totalNetWt ? '<div>Total Net Weight: <strong>' + totalNetWt + '</strong></div>' : ""}
+                <br/>
+                <div>Freight: <strong>PREPAID</strong></div>
+              </td>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top; font-weight: bold;">
+                ${totalGrossWt}
+              </td>
+            </tr>
+
+            <tr style="font-weight: bold;">
+              <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">Total No. of /Packages:<br/>${totalPkgs} ${pkgUnit}</td>
+              <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">Total Weight:<br/>${totalGrossWt ? totalGrossWt + "S" : ""}</td>
+              <td style="border: 1px solid #000; padding: 6px; vertical-align: top;">Freight:<br/>PREPAID</td>
+            </tr>
+          </table>
+
+          <!-- ===== CONTAINER DETAILS TABLE ===== -->
+          <div style="height: 12px;"></div>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 11px; table-layout: fixed;">
+            <colgroup>
+              <col style="width: 5%;" />
+              <col style="width: 15%;" />
+              <col style="width: 11%;" />
+              <col style="width: 13%;" />
+              <col style="width: 10%;" />
+              <col style="width: 10%;" />
+              <col style="width: 10%;" />
+              <col style="width: 14%;" />
+              <col style="width: 12%;" />
+            </colgroup>
+            <thead>
+              <tr style="font-weight: bold; text-align: left;">
+                <th style="padding: 4px; border: 1px solid #000;">Sr<br/>no.</th>
+                <th style="padding: 4px; border: 1px solid #000;">Container No</th>
+                <th style="padding: 4px; border: 1px solid #000;">Line Seal<br/>No.</th>
+                <th style="padding: 4px; border: 1px solid #000;">Custom Seal<br/>no</th>
+                <th style="padding: 4px; border: 1px solid #000;">No. of<br/>Packages</th>
+                <th style="padding: 4px; border: 1px solid #000;">Gross<br/>Weight</th>
+                <th style="padding: 4px; border: 1px solid #000;">Net<br/>Weight</th>
+                <th style="padding: 4px; border: 1px solid #000; color: red;"><em>Shipping<br/>Bill No &amp;<br/>Date*</em></th>
+                <th style="padding: 4px; border: 1px solid #000;">CBM if<br/>required</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${containerTableRows}
+            </tbody>
+          </table>
 
         </div>
       `;

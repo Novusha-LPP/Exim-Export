@@ -1188,10 +1188,7 @@ const TableSection = ({
                             <input
                               type={col.type || "text"}
                               value={
-                                item[col.field] === undefined ||
-                                  item[col.field] === null ||
-                                  (col.type === "number" &&
-                                    Number(item[col.field] || 0) === 0)
+                                item[col.field] === undefined || item[col.field] === null
                                   ? ""
                                   : item[col.field]
                               }

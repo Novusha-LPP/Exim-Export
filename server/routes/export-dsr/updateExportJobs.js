@@ -95,8 +95,9 @@ function validateSendForBilling(job, updates) {
                   String(job.job_no).toUpperCase().includes("/AIR/") ||
                   String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "AIR";
     const isLCL = String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "LCL";
+    const isGen = String(job.job_no || "").toUpperCase().startsWith("GEN");
 
-    if (!isAir && !isLCL) {
+    if (!isAir && !isLCL && !isGen) {
       const ops = updates.operations || job.operations || [];
       const firstOp = ops[0] || {};
       const status = firstOp.statusDetails?.[0] || {};
@@ -1125,7 +1126,7 @@ router.get("/global-search-jobs", async (req, res) => {
           "operations.statusDetails.billingDocsSentDt": 1,
           "operations.statusDetails.billing_details": 1,
           "operations.statusDetails.status": 1,
-          "operations.transporterDetails.images": 1,
+          "operations.transporterDetails": 1,
           lockedBy: 1,
           lockedAt: 1,
           is_club_job_parent: 1,
@@ -1794,7 +1795,7 @@ router.get("/exports/:status?", async (req, res) => {
       "operations.statusDetails.billingDocsSentDt": 1,
       "operations.statusDetails.billing_details": 1,
       "operations.statusDetails.status": 1,
-      "operations.transporterDetails.images": 1,
+      "operations.transporterDetails": 1,
       lockedBy: 1,
       lockedAt: 1,
       is_club_job_parent: 1,
@@ -2776,18 +2777,34 @@ router.put("/:job_no(.*)/lock", async (req, res) => {
 
     if (!job) return res.status(404).json({ message: "Job not found" });
 
-    // Check if already locked by someone else
-    const LOCK_TIMEOUT = 30 * 60 * 1000;
-    const isStale =
-      job.lockedAt && new Date() - new Date(job.lockedAt) > LOCK_TIMEOUT;
-
     const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];
     let isAdmin = userRoleHeader === "Admin";
     if (!isAdmin && username) {
-      const requester = await UserModel.findOne({ username }).lean();
+      const requester = await UserModel.findOne({
+        username: { $regex: `^${username}$`, $options: "i" }
+      }).lean();
       isAdmin = requester?.role === "Admin";
     }
 
+    // IF AN ADMIN IS OPENING THE JOB:
+    // Admin opening/editing a job MUST NOT lock it for other users
+    if (isAdmin) {
+      let isLockerAdmin = false;
+      if (job.lockedBy) {
+        const locker = await UserModel.findOne({
+          username: { $regex: `^${job.lockedBy}$`, $options: "i" }
+        }).lean();
+        isLockerAdmin = locker?.role === "Admin";
+      }
+      if (isLockerAdmin) {
+        job.lockedBy = null;
+        job.lockedAt = null;
+        await job.save();
+      }
+      return res.json({ message: "Job locked successfully", lockedBy: null, isAdmin: true });
+    }
+
+    // FOR REGULAR (NON-ADMIN) USERS:
     let isLockerAdmin = false;
     if (job.lockedBy) {
       const locker = await UserModel.findOne({
@@ -2796,11 +2813,14 @@ router.put("/:job_no(.*)/lock", async (req, res) => {
       isLockerAdmin = locker?.role === "Admin";
     }
 
+    const LOCK_TIMEOUT = 30 * 60 * 1000;
+    const isStale =
+      job.lockedAt && new Date() - new Date(job.lockedAt) > LOCK_TIMEOUT;
+
     if (
       job.lockedBy &&
       (job.lockedBy || "").toLowerCase() !== (username || "").toLowerCase() &&
       !isStale &&
-      !isAdmin &&
       !isLockerAdmin
     ) {
       return res.status(423).json({

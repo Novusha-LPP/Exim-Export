@@ -2792,6 +2792,12 @@ const ExportJobsTable = () => {
       }
     ];
 
+    const extractUrls = (val) => {
+      if (Array.isArray(val)) return val.filter(v => typeof v === "string" && v.trim());
+      if (typeof val === "string" && val.trim()) return [val.trim()];
+      return [];
+    };
+
     categories.forEach(cat => {
       links.push({ title: cat.name, isHeader: true });
       cat.files.forEach(f => {
@@ -2801,7 +2807,7 @@ const ExportJobsTable = () => {
             links.push({ title: f.title, url: null, field: f.field, uploadType: "container", idx: 0 });
           } else {
             containers.forEach((c, cIdx) => {
-              const urls = Array.isArray(c[f.field]) ? c[f.field] : [];
+              const urls = extractUrls(c[f.field]);
               const cNo = c.containerNo || c.container_no || `#${cIdx + 1}`;
               const displayTitle = containers.length > 1 ? `${f.title} (${cNo})` : f.title;
               if (urls.length > 0) {
@@ -2819,7 +2825,7 @@ const ExportJobsTable = () => {
             links.push({ title: f.title, url: null, field: f.field, uploadType: "section", idx: 0 });
           } else {
             sectionData.forEach((sItem, sIdx) => {
-              const urls = Array.isArray(sItem.images) ? sItem.images : [];
+              const urls = extractUrls(sItem.images);
               const sName = sItem.transporterName || sItem.name || `${sIdx + 1}`;
               const displayTitle = sectionData.length > 1 ? `${f.title} (${sName})` : f.title;
               if (urls.length > 0) {
@@ -2832,7 +2838,12 @@ const ExportJobsTable = () => {
             });
           }
         } else if (f.source === "toplevel") {
-          const urls = Array.isArray(job[f.field]) ? job[f.field] : [];
+          let urls = extractUrls(job[f.field]);
+          if (f.field === "booking_copy") {
+            const statusBookingUrls = extractUrls(status.booking_copy);
+            const statusUploadUrls = extractUrls(status.bookingUpload);
+            urls = Array.from(new Set([...urls, ...statusBookingUrls, ...statusUploadUrls]));
+          }
           if (urls.length > 0) {
             urls.forEach(url => {
               if (url) links.push({ title: f.title, url, field: f.field, uploadType: "toplevel" });
@@ -2842,7 +2853,10 @@ const ExportJobsTable = () => {
           }
         } else {
           // source === "status"
-          const urls = Array.isArray(status[f.field]) ? status[f.field] : [];
+          let urls = extractUrls(status[f.field]);
+          if (urls.length === 0 && job[f.field]) {
+            urls = extractUrls(job[f.field]);
+          }
           if (urls.length > 0) {
             urls.forEach(url => {
               if (url) links.push({ title: f.title, url, field: f.field, uploadType: "status" });

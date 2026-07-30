@@ -803,8 +803,9 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
                     (values.job_no || "").toUpperCase().includes("/AIR/") ||
                     (values.consignmentType || "").toUpperCase() === "AIR";
       const isLCL = (values.consignmentType || "").toUpperCase() === "LCL";
+      const isGen = (values.job_no || "").toUpperCase().startsWith("GEN");
 
-      if (values.send_for_billing === true && !isAir && !isLCL) {
+      if (values.send_for_billing === true && !isAir && !isLCL && !isGen) {
         const firstOp = values.operations?.[0] || {};
         const status = firstOp.statusDetails?.[0] || {};
         const railRoadOutDate = status.handoverConcorTharSanganaRailRoadDate;
@@ -1320,6 +1321,14 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
                 containerPlacementDate: formatDate(safeValue(s.containerPlacementDate)),
                 gateInDate: formatDate(safeValue(s.gateInDate)),
                 railOutReachedDate: formatDate(safeValue(s.railOutReachedDate)),
+              };
+            }),
+
+            transporterDetails: safeArray(op.transporterDetails || op["0"]?.transporterDetails).map((t) => {
+              const item = t && t["0"] ? { ...t, ...t["0"] } : t;
+              return {
+                ...item,
+                cartingDate: formatDate(safeValue(item?.cartingDate)),
               };
             }),
 

@@ -4,8 +4,8 @@
   "description": "Export job backend (Express/MongoDB)",
   "main": "app.js",
   "scripts": {
-    "start": "nodemon app.js",
-    "dev": "nodemon app.js",
+    "start": "node --max-old-space-size=4096 app.js",
+    "dev": "nodemon --max-old-space-size=4096 app.js",
     "convert:drawback": "node scripts/convertDrawbackExcelToJson.mjs",
     "convert:rodtep": "node scripts/convertRodtepExcelToJson.mjs",
     "pull:data": "node scripts/pull_prod_data.mjs"

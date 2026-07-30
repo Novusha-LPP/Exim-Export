@@ -9,5 +9,5 @@
     ".env"
   ],
   "ext": "js,json,mjs",
-  "exec": "node app.js"
+  "exec": "node --max-old-space-size=4096 app.js"
 }

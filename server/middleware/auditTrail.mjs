@@ -58,11 +58,9 @@ function isOnlyDetailedStatusChange(oldDoc, newDoc) {
   const fieldsToIgnore = ["detailed_status", "updatedAt", "__v"];
 
   function cleanDoc(doc) {
-    const cleaned = JSON.parse(JSON.stringify(doc));
-    fieldsToIgnore.forEach((field) => {
-      delete cleaned[field];
-    });
-    return cleaned;
+    if (!doc) return {};
+    const { detailed_status, updatedAt, __v, ...cleaned } = doc;
+    return JSON.parse(JSON.stringify(cleaned));
   }
 
   const cleanedOld = cleanDoc(oldDoc);

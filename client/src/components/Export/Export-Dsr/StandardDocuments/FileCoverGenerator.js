@@ -106,7 +106,16 @@ const FileCoverGenerator = ({ jobNo, children, onTrackSuccess }) => {
       const normalizedTransportMode = (data.transportMode || "").toString().toUpperCase();
       const isLCL = normalizedMode.includes("LCL");
       const isAir = normalizedMode === "AIR" || normalizedTransportMode === "AIR";
-      const hideContainerSizeColumn = isLCL || isAir;
+
+      const stuffedAt = (
+        data.goods_stuffed_at ||
+        data.goods_stuffed ||
+        data.operations?.[0]?.goods_stuffed_at ||
+        ""
+      ).toString().toUpperCase().trim();
+      const isDockStuffed = stuffedAt.includes("DOCK");
+
+      const hideContainerSizeColumn = isLCL || isAir || isDockStuffed;
       const railing = statusDetails.railRoad || statusDetails.concorPrivate || "";
 
       doc.autoTable({

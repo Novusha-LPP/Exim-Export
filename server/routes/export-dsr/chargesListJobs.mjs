@@ -363,7 +363,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
             "operations.statusDetails.form13CopyUpload": 1,
             "operations.statusDetails.assessmentCopy": 1,
             "eSanchitDocuments.fileUrl": 1, "eSanchitDocuments.documentType": 1, "eSanchitDocuments.icegateFilename": 1, "eSanchitDocuments.icegateFileName": 1,
-            "operations.transporterDetails.images": 1,
+            "operations.transporterDetails": 1,
             booking_copy: 1,
             containers: 1,
             isLocked: 1, lockedBy: 1, lockedAt: 1,

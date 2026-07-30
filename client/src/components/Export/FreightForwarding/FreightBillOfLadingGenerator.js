@@ -145,7 +145,8 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
   const isOriginal = mode === 'original';
 
   // Split logic for description overflow
-  const desc = bl.description_of_goods || "";
+  const rawDesc = bl.description_of_goods || "";
+  const desc = rawDesc.replace(/as\s+per\s+invoice/gi, "").trim();
   const packagesDesc = bl.packages_description || "[NUMBER & KIND OF PACKAGES]";
   const hsnCode = bl.hsn_code || "";
   const { p1: p1_desc, p2: p2_desc } = splitDescription(desc, packagesDesc, hsnCode);
