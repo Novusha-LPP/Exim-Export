@@ -1154,10 +1154,10 @@ const formatTallyBillNumber = (rawBillNo, job = {}, fallbackType = "EXPORT", bil
 };
 
 /**
- * @api {put} /api/tally/billing-details Push/Update billing details from Tally
+ * @api {post} /api/tally/billing-details Push/Update billing details from Tally
  * Protected by authApiKey middleware (Header: x-api-key: <TALLY_KEY> or Authorization: Bearer <TALLY_KEY>)
  */
-router.put("/billing-details", authApiKey, async (req, res) => {
+const updateBillingDetailsHandler = async (req, res) => {
     try {
         const {
             job_no,
@@ -1416,15 +1416,12 @@ router.put("/billing-details", authApiKey, async (req, res) => {
         });
 
     } catch (error) {
-        console.error("PUT Billing Details Error:", error);
+        console.error("POST Billing Details Error:", error);
         res.status(500).json({ error: "Internal Server Error updating billing details" });
     }
-});
+};
 
-// Alias POST route for clients sending POST instead of PUT
-router.post("/billing-details", authApiKey, async (req, res, next) => {
-    req.url = "/billing-details";
-    router.handle(req, res, next);
-});
+router.post("/billing-details", authApiKey, updateBillingDetailsHandler);
+router.put("/billing-details", authApiKey, updateBillingDetailsHandler);
 
 export default router;

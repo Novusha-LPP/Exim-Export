@@ -1,237 +1,528 @@
 {
 	"info": {
 		"_postman_id": "c1f7b8d4-5a6b-4e8c-9d1e-2f3a4b5c6d7e",
-		"name": "Tally Integration API",
-		"description": "API collection for Tally integration with the Exim-Export system. Includes endpoints for job data, purchase book entries, and payment requests.",
+		"name": "Tally Integration API Collection (Import & Export)",
+		"description": "Complete API collection for Tally integration with Exim system. Supports both Import & Export projects, including Job Data retrieval, Sequence Generation, Purchase Book Entries, Payment Requests, and Billing Details push sync endpoint using POST.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "Test Connection",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/api/tally/test",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"api",
-						"tally",
-						"test"
-					]
-				},
-				"description": "Check if the Tally API is up and running."
-			},
-			"response": []
-		},
-		{
-			"name": "Get Job Data",
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "x-api-key",
-						"value": "{{api_key}}",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{base_url}}/api/tally/job-data?job_number=BOM/EXP/SEA/001/24-25",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"api",
-						"tally",
-						"job-data"
-					],
-					"query": [
-						{
-							"key": "job_number",
-							"value": "BOM/EXP/SEA/001/24-25",
-							"description": "The full job number to retrieve details for"
-						}
-					]
-				},
-				"description": "Retrieve comprehensive job details for a specific job number."
-			},
-			"response": []
-		},
-		{
-			"name": "Get Next Sequence",
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "x-api-key",
-						"value": "{{api_key}}",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{base_url}}/api/tally/next-sequence?type=purchase&jobNo=BOM/EXP/SEA/001/24-25",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"api",
-						"tally",
-						"next-sequence"
-					],
-					"query": [
-						{
-							"key": "type",
-							"value": "purchase",
-							"description": "Type of sequence: 'purchase' or 'payment'"
+			"name": "01. Connection Test",
+			"item": [
+				{
+					"name": "Test Tally Connection",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/tally/test",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"test"
+							]
 						},
-						{
-							"key": "jobNo",
-							"value": "BOM/EXP/SEA/001/24-25",
-							"description": "The job number to generate sequence for"
-						}
-					]
-				},
-				"description": "Retrieve the next available sequence number for Purchase Book or Payment Request."
-			},
-			"response": []
-		},
-		{
-			"name": "Create Purchase Entry",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "x-api-key",
-						"value": "{{api_key}}",
-						"type": "text"
+						"description": "Check if the Tally API server is online and responding."
 					},
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"Entry No\": \"PB/01/BOM/EXP/SEA/001/24-25\",\n    \"Entry Date\": \"2024-05-04\",\n    \"Supplier Inv No\": \"INV-123\",\n    \"Supplier Inv Date\": \"2024-05-01\",\n    \"Job No\": \"BOM/EXP/SEA/001/24-25\",\n    \"Supplier Name\": \"ABC LOGISTICS\",\n    \"GSTIN NO\": \"27AAAAA0000A1Z5\",\n    \"Taxable Value\": 1000,\n    \"GST%\": 18,\n    \"CGST\": 90,\n    \"SGST\": 90,\n    \"Total\": 1180,\n    \"Description of Services\": \"Freight Charges\",\n    \"Charge Heading\": \"Ocean Freight\",\n    \"Status\": \"Pending\"\n}"
-				},
-				"url": {
-					"raw": "{{base_url}}/api/tally/purchase-entry",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"api",
-						"tally",
-						"purchase-entry"
-					]
-				},
-				"description": "Create a new Purchase Book Entry in the system."
-			},
-			"response": []
+					"response": []
+				}
+			]
 		},
 		{
-			"name": "Get Purchase Entry",
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "x-api-key",
-						"value": "{{api_key}}",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{base_url}}/api/tally/purchase-entry?entry_no=PB/01/BOM/EXP/SEA/001/24-25",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"api",
-						"tally",
-						"purchase-entry"
-					],
-					"query": [
-						{
-							"key": "entry_no",
-							"value": "PB/01/BOM/EXP/SEA/001/24-25",
-							"description": "The entry number to retrieve"
-						}
-					]
-				},
-				"description": "Retrieve details of a specific Purchase Book Entry."
-			},
-			"response": []
-		},
-		{
-			"name": "Create Payment Request",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "x-api-key",
-						"value": "{{api_key}}",
-						"type": "text"
+			"name": "02. Job Data (Export & Import)",
+			"item": [
+				{
+					"name": "Get Export Job Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tally/job-data?job_number=AMD/EXP/SEA/00302/26-27",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"job-data"
+							],
+							"query": [
+								{
+									"key": "job_number",
+									"value": "AMD/EXP/SEA/00302/26-27",
+									"description": "Export job number (full format or short bill ref e.g. GEA/0863/26-27)"
+								},
+								{
+									"key": "freight",
+									"value": "false",
+									"description": "Optional: Override freight job flag (true/false)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Retrieve formatted Export job and invoice details for Tally integration (supports single or clubbed jobs)."
 					},
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"Request No\": \"R1/01/BOM/EXP/SEA/001/24-25\",\n    \"Request Date\": \"2024-05-04\",\n    \"Payment To\": \"ABC LOGISTICS\",\n    \"Amount\": 1180,\n    \"Job No\": \"BOM/EXP/SEA/001/24-25\",\n    \"Transaction Type\": \"NEFT\",\n    \"Bank Name\": \"HDFC BANK\",\n    \"Status\": \"Pending\"\n}"
+					"response": []
 				},
-				"url": {
-					"raw": "{{base_url}}/api/tally/payment-request",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"api",
-						"tally",
-						"payment-request"
-					]
+				{
+					"name": "Get Import Job Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tally/job-data?job_number=AMD/IMP/SEA/00100/26-27",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"job-data"
+							],
+							"query": [
+								{
+									"key": "job_number",
+									"value": "AMD/IMP/SEA/00100/26-27",
+									"description": "Import job number (full format or short bill ref e.g. GIA/00001/26-27)"
+								}
+							]
+						},
+						"description": "Retrieve formatted Import job details for Tally integration."
+					},
+					"response": []
 				},
-				"description": "Create a new Payment Request in the system."
-			},
-			"response": []
+				{
+					"name": "Get Job Data by Specific Invoice",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tally/job-data?job_number=AMD/EXP/SEA/00302/26-27&invoice_number=EIN26-27/00092",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"job-data"
+							],
+							"query": [
+								{
+									"key": "job_number",
+									"value": "AMD/EXP/SEA/00302/26-27",
+									"description": "The job number"
+								},
+								{
+									"key": "invoice_number",
+									"value": "EIN26-27/00092",
+									"description": "Specific invoice number to filter"
+								}
+							]
+						},
+						"description": "Retrieve job data filtered for a specific invoice number."
+					},
+					"response": []
+				}
+			]
 		},
 		{
-			"name": "Get Payment Request",
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "x-api-key",
-						"value": "{{api_key}}",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{base_url}}/api/tally/payment-request?request_no=R1/01/BOM/EXP/SEA/001/24-25",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"api",
-						"tally",
-						"payment-request"
-					],
-					"query": [
-						{
-							"key": "request_no",
-							"value": "R1/01/BOM/EXP/SEA/001/24-25",
-							"description": "The request number to retrieve"
-						}
-					]
+			"name": "03. Sequence Generator",
+			"item": [
+				{
+					"name": "Get Next Sequence - Purchase Entry",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tally/next-sequence?type=purchase&jobNo=AMD/EXP/SEA/00302/26-27",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"next-sequence"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "purchase",
+									"description": "Sequence type: 'purchase'"
+								},
+								{
+									"key": "jobNo",
+									"value": "AMD/EXP/SEA/00302/26-27",
+									"description": "Job number to generate PB sequence for"
+								}
+							]
+						},
+						"description": "Retrieve the next incremented sequence number for a Purchase Book entry (returns prefix PB/01/...)."
+					},
+					"response": []
 				},
-				"description": "Retrieve details of a specific Payment Request."
-			},
-			"response": []
+				{
+					"name": "Get Next Sequence - Payment Request",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tally/next-sequence?type=payment&jobNo=AMD/EXP/SEA/00302/26-27",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"next-sequence"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "payment",
+									"description": "Sequence type: 'payment'"
+								},
+								{
+									"key": "jobNo",
+									"value": "AMD/EXP/SEA/00302/26-27",
+									"description": "Job number to generate R1 sequence for"
+								}
+							]
+						},
+						"description": "Retrieve the next incremented sequence number for a Payment Request (returns prefix R1/01/...)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "04. Purchase Book Entry",
+			"item": [
+				{
+					"name": "Create Purchase Entry",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Entry No\": \"PB/01/AMD/EXP/SEA/00302/26-27\",\n    \"Entry Date\": \"2026-05-04\",\n    \"Supplier Inv No\": \"INV-12345\",\n    \"Supplier Inv Date\": \"2026-05-01\",\n    \"Job No\": \"AMD/EXP/SEA/00302/26-27\",\n    \"Supplier Name\": \"ABC LOGISTICS PVT LTD\",\n    \"Address 1\": \"123 Port Road\",\n    \"Address 2\": \"Near Customs House\",\n    \"State\": \"Gujarat\",\n    \"Country\": \"India\",\n    \"Pin Code\": \"380009\",\n    \"GSTIN NO\": \"24AAAAA0000A1Z5\",\n    \"PAN\": \"AAAAA0000A\",\n    \"Place of Supply\": \"24-Gujarat\",\n    \"Description of Services\": \"Freight Charges\",\n    \"Charge Heading\": \"Ocean Freight\",\n    \"Charge Head Category\": \"Freight\",\n    \"SAC\": \"996511\",\n    \"Taxable Value\": 10000.00,\n    \"GST%\": 18,\n    \"CGST\": 900.00,\n    \"SGST\": 900.00,\n    \"IGST\": 0.00,\n    \"TDS\": 200.00,\n    \"Total\": 11800.00,\n    \"Net Amount\": 11600.00,\n    \"Status\": \"Pending\",\n    \"isClubJob\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tally/purchase-entry",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"purchase-entry"
+							]
+						},
+						"description": "Create a new Purchase Book Entry record in the database."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Purchase Entry Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tally/purchase-entry?entry_no=PB/01/AMD/EXP/SEA/00302/26-27",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"purchase-entry"
+							],
+							"query": [
+								{
+									"key": "entry_no",
+									"value": "PB/01/AMD/EXP/SEA/00302/26-27",
+									"description": "The entry number to fetch"
+								},
+								{
+									"key": "freight",
+									"value": "true",
+									"description": "Optional: Override freight flag",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Retrieve details of a specific Purchase Book entry enriched with job & TDS calculations."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "05. Payment Request",
+			"item": [
+				{
+					"name": "Create Payment Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"Request No\": \"R1/01/AMD/EXP/SEA/00302/26-27\",\n    \"Request Date\": \"2026-05-04\",\n    \"Bank From\": \"HDFC BANK - 50200012345678\",\n    \"Payment To\": \"ABC LOGISTICS PVT LTD\",\n    \"Against Bill\": \"INV-12345\",\n    \"Amount\": 11600.00,\n    \"Gross Amount\": 11800.00,\n    \"TDS Amount\": 200.00,\n    \"TDS Category\": \"TDS ON CONTRACT 94C 1023\",\n    \"Transaction Type\": \"NEFT\",\n    \"Account No\": \"98765432101234\",\n    \"IFSC Code\": \"HDFC0001234\",\n    \"Bank Name\": \"HDFC BANK\",\n    \"Job No\": \"AMD/EXP/SEA/00302/26-27\",\n    \"Transfer Mode\": \"NEFT\",\n    \"Beneficiary Code\": \"ABCLOG\",\n    \"Status\": \"Pending\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tally/payment-request",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"payment-request"
+							]
+						},
+						"description": "Create a new Payment Request in the system."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Payment Request Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tally/payment-request?request_no=R1/01/AMD/EXP/SEA/00302/26-27",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"payment-request"
+							],
+							"query": [
+								{
+									"key": "request_no",
+									"value": "R1/01/AMD/EXP/SEA/00302/26-27",
+									"description": "Payment Request number to fetch"
+								}
+							]
+						},
+						"description": "Retrieve details of a specific Payment Request enriched with charge details & directory supplier info."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "06. Billing Details Sync (POST - Import & Export)",
+			"item": [
+				{
+					"name": "Update Billing Details - Export Job (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"job_no\": \"AMD/EXP/SEA/00302/26-27\",\n    \"agency_bill_no\": \"GEA/0863/26-27\",\n    \"agency_bill_date\": \"2026-05-04\",\n    \"agency_bill_amount\": 15000,\n    \"agency_bill_doc\": \"https://example.com/docs/agency_bill_0863.pdf\",\n    \"reimbursement_bill_no\": \"GER/0863/26-27\",\n    \"reimbursement_bill_date\": \"2026-05-04\",\n    \"reimbursement_bill_amount\": 4500,\n    \"reimbursement_bill_doc\": \"https://example.com/docs/reimb_bill_0863.pdf\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tally/billing-details",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"billing-details"
+							]
+						},
+						"description": "Push/Update billing numbers, dates, amounts, and documents from Tally for an Export job using POST. Also updates all child jobs if target is a club job parent."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Billing Details - Import Job (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"job_no\": \"AMD/IMP/SEA/00100/26-27\",\n    \"agency_bill_no\": \"GIA/00001/26-27\",\n    \"agency_bill_date\": \"2026-05-04\",\n    \"agency_bill_amount\": 18500,\n    \"agency_bill_doc\": \"\",\n    \"reimbursement_bill_no\": \"GIR/00001/26-27\",\n    \"reimbursement_bill_date\": \"2026-05-04\",\n    \"reimbursement_bill_amount\": 3200,\n    \"reimbursement_bill_doc\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tally/billing-details",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"billing-details"
+							]
+						},
+						"description": "Push/Update billing numbers, dates, and amounts from Tally into an Import job using POST (searches jobs, importjobs, import_jobs collections)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Billing Details - Auto Short Bill Format (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"job_no\": \"0863\",\n    \"bill_no\": \"0863\",\n    \"bill_date\": \"2026-05-04\",\n    \"bill_amount\": 15000,\n    \"reimbursement_bill_no\": \"0863\",\n    \"reimbursement_bill_date\": \"2026-05-04\",\n    \"reimbursement_bill_amount\": 4500\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tally/billing-details",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"billing-details"
+							]
+						},
+						"description": "Example using short sequence numbers (e.g. '0863') with POST. The API automatically detects branch and trade type to expand into official format (e.g. GEA/0863/26-27 and GER/0863/26-27)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Billing Details - PUT Alias",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"job_no\": \"AMD/EXP/SEA/00302/26-27\",\n    \"agency_bill_no\": \"GEA/0863/26-27\",\n    \"agency_bill_date\": \"2026-05-04\",\n    \"agency_bill_amount\": 15000,\n    \"reimbursement_bill_no\": \"GER/0863/26-27\",\n    \"reimbursement_bill_date\": \"2026-05-04\",\n    \"reimbursement_bill_amount\": 4500\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tally/billing-details",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tally",
+								"billing-details"
+							]
+						},
+						"description": "Alias PUT endpoint supported by the backend router."
+					},
+					"response": []
+				}
+			]
 		}
 	],
 	"event": [
