@@ -640,6 +640,7 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
 // Route: /api/report/freight-forwarding-monthly/:year/:month
 router.get("/api/report/freight-forwarding-monthly/:year/:month", async (req, res) => {
   const { year, month } = req.params;
+  const { shipment_type } = req.query;
   const isWholeYear = month === "all" || month === "0" || month === "whole_year";
   const monthInt = isWholeYear ? null : parseInt(month);
 
@@ -647,6 +648,10 @@ router.get("/api/report/freight-forwarding-monthly/:year/:month", async (req, re
     const baseMatch = {
       organization_name: { $ne: null, $ne: "" }
     };
+
+    if (shipment_type && shipment_type !== "all" && shipment_type !== "") {
+      baseMatch.shipment_type = { $regex: new RegExp(`^${shipment_type.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, "i") };
+    }
 
     const stats = await FreightEnquiryModel.aggregate([
       {

@@ -89,11 +89,113 @@ async function syncToClientDatabase(jobNo, updateObject) {
   }
 }
 
+function extractJobNoFromPath(req, suffix) {
+  const rawPath = req.path || req.originalUrl || "";
+  const cleaned = rawPath.split("?")[0];
+  const regex = new RegExp(`(?:/api)?/(.+)/${suffix}$`, "i");
+  const match = cleaned.match(regex);
+  if (match && match[1]) {
+    return decodeURIComponent(match[1]);
+  }
+  const raw = req.params.job_no || req.params[0] || "";
+  return decodeURIComponent(raw);
+}
+
+async function findJobByJobNoOrEnquiry(job_no) {
+  if (!job_no) return null;
+  const rawNo = decodeURIComponent(job_no);
+  const escaped = rawNo.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+  let job = await ExJobModel.findOne({
+    $or: [
+      { job_no: { $regex: `^${escaped}$`, $options: "i" } },
+      { jobNumber: { $regex: `^${escaped}$`, $options: "i" } }
+    ]
+  });
+
+  if (!job && rawNo.startsWith("FF")) {
+    const enquiry = await FreightEnquiryModel.findOne({
+      $or: [
+        { enquiry_no: rawNo },
+        { success_no: rawNo }
+      ]
+    });
+    if (enquiry) {
+      const altJobNos = [enquiry.enquiry_no, enquiry.success_no].filter(Boolean);
+      job = await ExJobModel.findOne({
+        $or: [
+          { job_no: { $in: altJobNos } },
+          { jobNumber: { $in: altJobNos } }
+        ]
+      });
+
+      // If job STILL does not exist in ExJobModel, create JIT job record from FreightEnquiry
+      if (!job) {
+        console.log(`[JIT findJob] Creating job record for Freight Enquiry: ${rawNo}`);
+        const actualJobNo = enquiry.success_no || enquiry.enquiry_no;
+        const isImport = String(enquiry.shipment_type || "").startsWith("Import");
+        job = new ExJobModel({
+          job_no: actualJobNo,
+          jobNumber: actualJobNo,
+          year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
+          job_date: enquiry.enquiry_date || new Date().toISOString().split("T")[0],
+          exporter: isImport ? "" : enquiry.organization_name,
+          shipper: isImport ? "" : enquiry.organization_name,
+          consignees: isImport ? [{
+            consignee_name: enquiry.organization_name,
+            consignee_address: "",
+            consignee_country: ""
+          }] : [{
+            consignee_name: "",
+            consignee_address: "",
+            consignee_country: ""
+          }],
+          consignmentType: enquiry.consignment_type,
+          port_of_loading: enquiry.port_of_loading,
+          port_of_discharge: enquiry.port_of_destination,
+          isGeneralJob: true,
+          status: "Pending",
+          detailedStatus: "Created from Freight Enquiry",
+          movement_type: enquiry.movement_type,
+          gross_weight_kg: enquiry.gross_weight,
+          gross_weight_unit: enquiry.gross_weight_unit,
+          net_weight_kg: enquiry.net_weight,
+          net_weight_unit: enquiry.net_weight_unit,
+          chargeable_weight: enquiry.chargeable_weight,
+          chargeable_weight_unit: enquiry.chargeable_weight_unit,
+          volume_cbm: enquiry.volume_cbm,
+          volume_unit: enquiry.volume_unit,
+          total_no_of_pkgs: enquiry.no_packages,
+          package_unit: enquiry.package_unit,
+          volume_weight: enquiry.volume_weight,
+        });
+        try {
+          await job.save();
+        } catch (saveErr) {
+          if (saveErr.code === 11000) {
+            job = await ExJobModel.findOne({
+              $or: [
+                { job_no: actualJobNo },
+                { jobNumber: actualJobNo },
+                { job_no: rawNo },
+                { jobNumber: rawNo }
+              ]
+            });
+          } else {
+            throw saveErr;
+          }
+        }
+      }
+    }
+  }
+
+  return job;
+}
+
 function validateSendForBilling(job, updates) {
   if (updates.send_for_billing === true || updates.send_for_billing === "true") {
     const isAir = String(updates.transportMode || job.transportMode || "").toUpperCase() === "AIR" ||
-                  String(job.job_no).toUpperCase().includes("/AIR/") ||
-                  String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "AIR";
+      String(job.job_no).toUpperCase().includes("/AIR/") ||
+      String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "AIR";
     const isLCL = String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "LCL";
     const isGen = String(job.job_no || "").toUpperCase().startsWith("GEN");
 
@@ -2580,8 +2682,30 @@ router.get("/:job_no(.*)", async (req, res, next) => {
     const username = req.headers["username"]; // Identify who is requesting
 
     let exportJob = await ExJobModel.findOne({
-      job_no: { $regex: `^${job_no}$`, $options: "i" },
+      $or: [
+        { job_no: { $regex: `^${job_no.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, $options: "i" } },
+        { jobNumber: { $regex: `^${job_no.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, $options: "i" } }
+      ]
     });
+
+    // If job not found directly, check if an enquiry maps this job_no to an alternate success_no / enquiry_no
+    if (!exportJob && String(job_no).startsWith("FF")) {
+      const existingEnquiry = await FreightEnquiryModel.findOne({
+        $or: [
+          { enquiry_no: job_no },
+          { success_no: job_no }
+        ]
+      });
+      if (existingEnquiry) {
+        const altJobNos = [existingEnquiry.enquiry_no, existingEnquiry.success_no].filter(Boolean);
+        exportJob = await ExJobModel.findOne({
+          $or: [
+            { job_no: { $in: altJobNos } },
+            { jobNumber: { $in: altJobNos } }
+          ]
+        });
+      }
+    }
 
     // JIT CREATION: If not found and it's a Freight Forwarding enquiry, create from FreightEnquiry
     if (!exportJob && job_no.startsWith("FF")) {
@@ -2589,43 +2713,64 @@ router.get("/:job_no(.*)", async (req, res, next) => {
         $or: [
           { enquiry_no: job_no },
           { success_no: job_no }
-        ],
-        $or: [
-          { status: "Converted" },
-          { source_job_no: { $exists: true, $ne: "" } },
-          { success_no: { $exists: true, $ne: "" } }
         ]
       });
       if (enquiry) {
-        console.log(`[JIT] Creating job record for converted enquiry: ${job_no}`);
         const actualJobNo = enquiry.success_no || enquiry.enquiry_no;
-        exportJob = new ExJobModel({
-          job_no: actualJobNo,
-          jobNumber: actualJobNo,
-          year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
-          job_date: enquiry.enquiry_date || new Date().toISOString().split("T")[0],
-          exporter: enquiry.organization_name,
-          shipper: enquiry.organization_name,
-          consignmentType: enquiry.consignment_type,
-          port_of_loading: enquiry.port_of_loading,
-          port_of_discharge: enquiry.port_of_destination,
-          isGeneralJob: true,
-          status: "Pending",
-          detailedStatus: "Created from Freight Enquiry",
-          movement_type: enquiry.movement_type,
-          gross_weight_kg: enquiry.gross_weight,
-          gross_weight_unit: enquiry.gross_weight_unit,
-          net_weight_kg: enquiry.net_weight,
-          net_weight_unit: enquiry.net_weight_unit,
-          chargeable_weight: enquiry.chargeable_weight,
-          chargeable_weight_unit: enquiry.chargeable_weight_unit,
-          volume_cbm: enquiry.volume_cbm,
-          volume_unit: enquiry.volume_unit,
-          total_no_of_pkgs: enquiry.no_packages,
-          package_unit: enquiry.package_unit,
-          volume_weight: enquiry.volume_weight,
+
+        // Check again if a job record with actualJobNo already exists in ExJobModel
+        exportJob = await ExJobModel.findOne({
+          $or: [
+            { job_no: actualJobNo },
+            { jobNumber: actualJobNo }
+          ]
         });
-        await exportJob.save();
+
+        if (!exportJob) {
+          exportJob = new ExJobModel({
+            job_no: actualJobNo,
+            jobNumber: actualJobNo,
+            year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
+            job_date: enquiry.enquiry_date || new Date().toISOString().split("T")[0],
+            exporter: enquiry.organization_name,
+            shipper: enquiry.organization_name,
+            consignmentType: enquiry.consignment_type,
+            port_of_loading: enquiry.port_of_loading,
+            port_of_discharge: enquiry.port_of_destination,
+            isGeneralJob: true,
+            status: "Pending",
+            detailedStatus: "Created from Freight Enquiry",
+            movement_type: enquiry.movement_type,
+            gross_weight_kg: enquiry.gross_weight,
+            gross_weight_unit: enquiry.gross_weight_unit,
+            net_weight_kg: enquiry.net_weight,
+            net_weight_unit: enquiry.net_weight_unit,
+            chargeable_weight: enquiry.chargeable_weight,
+            chargeable_weight_unit: enquiry.chargeable_weight_unit,
+            volume_cbm: enquiry.volume_cbm,
+            volume_unit: enquiry.volume_unit,
+            total_no_of_pkgs: enquiry.no_packages,
+            package_unit: enquiry.package_unit,
+            volume_weight: enquiry.volume_weight,
+          });
+          try {
+            await exportJob.save();
+          } catch (saveErr) {
+            if (saveErr.code === 11000) {
+              console.warn(`[JIT] Duplicate key on save for ${actualJobNo}, retrieving existing job...`);
+              exportJob = await ExJobModel.findOne({
+                $or: [
+                  { job_no: actualJobNo },
+                  { jobNumber: actualJobNo },
+                  { job_no: job_no },
+                  { jobNumber: job_no }
+                ]
+              });
+            } else {
+              throw saveErr;
+            }
+          }
+        }
       }
     } else if (exportJob && String(job_no).startsWith("FF")) {
       // JIT BACKFILL: If job exists but lacks the mapped enquiry fields (e.g. created before schema mapping updates), backfill them from enquiry
@@ -2763,17 +2908,14 @@ router.get("/:job_no(.*)", async (req, res, next) => {
 // Lock a job
 router.put("/:job_no(.*)/lock", async (req, res) => {
   try {
-    const raw = req.params.job_no || "";
-    const job_no = decodeURIComponent(raw);
+    const job_no = extractJobNoFromPath(req, "lock");
     const { username } = req.body;
 
     if (!username) {
       return res.status(400).json({ message: "Username is required to lock" });
     }
 
-    const job = await ExJobModel.findOne({
-      job_no: { $regex: `^${job_no}$`, $options: "i" },
-    });
+    const job = await findJobByJobNoOrEnquiry(job_no);
 
     if (!job) return res.status(404).json({ message: "Job not found" });
 
@@ -2842,13 +2984,10 @@ router.put("/:job_no(.*)/lock", async (req, res) => {
 // Unlock a job (Supports both PUT and POST for sendBeacon support)
 router.route("/:job_no(.*)/unlock").all(async (req, res) => {
   try {
-    const raw = req.params.job_no || "";
-    const job_no = decodeURIComponent(raw);
+    const job_no = extractJobNoFromPath(req, "unlock");
     const { username } = req.body;
 
-    const job = await ExJobModel.findOne({
-      job_no: { $regex: `^${job_no}$`, $options: "i" },
-    });
+    const job = await findJobByJobNoOrEnquiry(job_no);
 
     if (!job) return res.status(404).json({ message: "Job not found" });
 
@@ -2870,8 +3009,7 @@ router.route("/:job_no(.*)/unlock").all(async (req, res) => {
 // Track click on a document (esanchit, checklist, file_cover)
 router.put("/:job_no(.*)/track-click", async (req, res) => {
   try {
-    const raw = req.params.job_no || "";
-    const job_no = decodeURIComponent(raw);
+    const job_no = extractJobNoFromPath(req, "track-click");
     const { docType } = req.body;
     const username = req.headers["username"] || "unknown";
 
@@ -2879,9 +3017,7 @@ router.put("/:job_no(.*)/track-click", async (req, res) => {
       return res.status(400).json({ message: "Invalid or missing docType" });
     }
 
-    const job = await ExJobModel.findOne({
-      job_no: { $regex: `^${job_no}$`, $options: "i" },
-    });
+    const job = await findJobByJobNoOrEnquiry(job_no);
 
     if (!job) return res.status(404).json({ message: "Job not found" });
 
@@ -2910,10 +3046,9 @@ router.put(
   auditMiddleware("Job"),
   async (req, res) => {
     try {
-      const raw = req.params.job_no || "";
-      const job_no = decodeURIComponent(raw);
+      const job_no = extractJobNoFromPath(req, "documents");
 
-      const existingJob = await ExJobModel.findOne({ job_no: { $regex: `^${job_no}$`, $options: "i" } });
+      const existingJob = await findJobByJobNoOrEnquiry(job_no);
       if (existingJob) {
         const usernameHeader = req.headers["username"] || req.headers["x-username"];
         const userRoleHeader = req.headers["user-role"] || req.headers["x-user-role"];

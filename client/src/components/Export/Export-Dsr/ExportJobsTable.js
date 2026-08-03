@@ -4530,56 +4530,71 @@ const ExportJobsTable = () => {
 
                             {/* Column 4: Invoice */}
                             <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#c6f6d5" : "inherit" }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontWeight: "600",
-                                    marginBottom: "2px",
-                                  }}
-                                >
-                                  {job.invoices?.[0]?.invoiceNumber || "-"}
-                                </div>
-                                {job.invoices?.[0]?.invoiceNumber && (
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) =>
-                                      handleCopyText(
-                                        job.invoices?.[0]?.invoiceNumber,
-                                        e
-                                      )
-                                    }
-                                    style={{ padding: 2 }}
-                                    title="Copy Invoice No"
+                              {(job.invoices && job.invoices.length > 0) ? (
+                                job.invoices.map((inv, invIdx) => (
+                                  <div
+                                    key={inv._id || inv.invoiceNumber || invIdx}
+                                    style={{
+                                      borderBottom: invIdx < job.invoices.length - 1 ? "1px dashed #cbd5e1" : "none",
+                                      paddingBottom: invIdx < job.invoices.length - 1 ? "6px" : "0px",
+                                      marginBottom: invIdx < job.invoices.length - 1 ? "6px" : "0px",
+                                    }}
                                   >
-                                    <ContentCopyIcon style={{ fontSize: 12 }} />
-                                  </IconButton>
-                                )}
-                              </div>
-                              <div style={{ color: "#4b5563", fontSize: "10px" }}>
-                                {formatDate(job.invoices?.[0]?.invoiceDate)}
-                              </div>
-                              <div
-                                style={{
-                                  color: "#1e293b",
-                                  fontSize: "11px",
-                                  fontWeight: "800",
-                                  marginTop: "4px",
-                                  backgroundColor: "rgba(0,0,0,0.03)",
-                                  padding: "2px 4px",
-                                  borderRadius: "4px",
-                                  display: "inline-block"
-                                }}
-                              >
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>{job.invoices?.[0]?.termsOfInvoice}</span>{" "}
-                                {job.invoices?.[0]?.currency}{" "}
-                                {job.invoices?.[0]?.invoiceValue?.toLocaleString()}
-                              </div>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          fontWeight: "600",
+                                          marginBottom: "2px",
+                                        }}
+                                      >
+                                        {inv.invoiceNumber || inv.invoiceNo || "-"}
+                                      </div>
+                                      {(inv.invoiceNumber || inv.invoiceNo) && (
+                                        <IconButton
+                                          size="small"
+                                          onClick={(e) =>
+                                            handleCopyText(
+                                              inv.invoiceNumber || inv.invoiceNo,
+                                              e
+                                            )
+                                          }
+                                          style={{ padding: 2 }}
+                                          title="Copy Invoice No"
+                                        >
+                                          <ContentCopyIcon style={{ fontSize: 12 }} />
+                                        </IconButton>
+                                      )}
+                                    </div>
+                                    <div style={{ color: "#4b5563", fontSize: "10px" }}>
+                                      {formatDate(inv.invoiceDate || inv.invoice_date)}
+                                    </div>
+                                    <div
+                                      style={{
+                                        color: "#1e293b",
+                                        fontSize: "11px",
+                                        fontWeight: "800",
+                                        marginTop: "4px",
+                                        backgroundColor: "rgba(0,0,0,0.03)",
+                                        padding: "2px 4px",
+                                        borderRadius: "4px",
+                                        display: "inline-block"
+                                      }}
+                                    >
+                                      <span style={{ color: "#64748b", fontWeight: "600" }}>{inv.termsOfInvoice || inv.terms_of_invoice}</span>{" "}
+                                      {inv.currency}{" "}
+                                      {(inv.invoiceValue ?? inv.amount ?? 0)?.toLocaleString()}
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div style={{ color: "#94a3b8" }}>-</div>
+                              )}
                               {job.operations?.[0]?.statusDetails?.[0]?.billing_details?.agency_bill_no && (
                                 <div style={{ fontSize: "9.5px", color: "#0f766e", fontWeight: "700", marginTop: "4px" }}>
                                   Bill (A): {job.operations[0].statusDetails[0].billing_details.agency_bill_no}

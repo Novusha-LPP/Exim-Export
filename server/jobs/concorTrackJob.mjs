@@ -54,10 +54,6 @@ function parseDepartedGateDetails(details) {
  * Main function to run CONCOR Container Tracking Job
  */
 export async function runConcorTrackJob(force = false) {
-    console.log(`${LOG_PREFIX} ═══════════════════════════════════════════`);
-    console.log(`${LOG_PREFIX} Started at ${new Date().toISOString()}`);
-    if (force) console.log(`${LOG_PREFIX} ⚠️ FORCE MODE ENABLED`);
-
     try {
         // Query active export jobs that are pending Rail Out or Rail Reached
         const pendingJobs = await ExJobModel.find({
@@ -70,8 +66,6 @@ export async function runConcorTrackJob(force = false) {
                 { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } }
             ]
         });
-
-        console.log(`${LOG_PREFIX} Total pending jobs matching candidate criteria: ${pendingJobs.length}`);
 
         // Map container number -> array of jobs referencing that container
         const containerToJobsMap = new Map();
@@ -90,10 +84,7 @@ export async function runConcorTrackJob(force = false) {
         }
 
         const allContainers = Array.from(containerToJobsMap.keys());
-        console.log(`${LOG_PREFIX} Total unique container numbers to track: ${allContainers.length}`);
-
         if (allContainers.length === 0) {
-            console.log(`${LOG_PREFIX} No containers found for CONCOR tracking. Exiting.`);
             return { totalJobs: pendingJobs.length, updatedJobs: 0, trackedContainers: 0 };
         }
 
@@ -103,8 +94,6 @@ export async function runConcorTrackJob(force = false) {
         // Process containers in batches
         for (let i = 0; i < allContainers.length; i += BATCH_SIZE) {
             const batch = allContainers.slice(i, i + BATCH_SIZE);
-            console.log(`${LOG_PREFIX} Polling CONCOR API batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} containers)...`);
-
             try {
                 const apiRes = await axios.post(
                     CONCOR_API_URL,
@@ -128,8 +117,6 @@ export async function runConcorTrackJob(force = false) {
 
                     const parsedDates = parseDepartedGateDetails(details);
                     if (!parsedDates) continue;
-
-                    console.log(`${LOG_PREFIX} 🎯 Found "Departed from Gate" for container ${cNo}: Rail Out=${parsedDates.railOutDate}, Reached=${parsedDates.railReachedDate}`);
                     matchedCount++;
 
                     const jobsToUpdate = containerToJobsMap.get(cNo.toUpperCase()) || [];
@@ -165,7 +152,6 @@ export async function runConcorTrackJob(force = false) {
                             dbJob.markModified("operations");
                             await dbJob.save();
                             updatedCount++;
-                            console.log(`${LOG_PREFIX} ✅ Updated Job ${dbJob.job_no} with Rail Out (${parsedDates.railOutDate}) & Rail Reached (${parsedDates.railReachedDate})`);
 
                             // If parent club job, also update clubbed child jobs
                             if (dbJob.is_club_job_parent && Array.isArray(dbJob.clubbed_jobs) && dbJob.clubbed_jobs.length > 0) {
@@ -195,7 +181,6 @@ export async function runConcorTrackJob(force = false) {
             }
         }
 
-        console.log(`${LOG_PREFIX} Finished CONCOR tracking job. Matched: ${matchedCount}, Updated Jobs: ${updatedCount}`);
         return { totalJobs: pendingJobs.length, updatedJobs: updatedCount, matchedContainers: matchedCount };
     } catch (error) {
         console.error(`${LOG_PREFIX} Error running CONCOR tracking job:`, error);
@@ -211,7 +196,6 @@ export const initConcorTrackCronJob = () => {
         "0 12 * * *",
         async () => {
             try {
-                console.log(`${LOG_PREFIX} Daily 12:00 PM IST Cron Triggered`);
                 await runConcorTrackJob();
             } catch (err) {
                 console.error(`${LOG_PREFIX} Cron Execution Error:`, err);
@@ -219,7 +203,6 @@ export const initConcorTrackCronJob = () => {
         },
         { timezone: "Asia/Kolkata" }
     );
-    console.log(`${LOG_PREFIX} Registered — runs daily at 12:00 PM IST (Asia/Kolkata)`);
 };
 
 // ── Manual Admin Router ────────────────────────────────────────────────────────
@@ -232,7 +215,6 @@ export const concorTrackJobRouter = express.Router();
  */
 concorTrackJobRouter.post("/api/admin/run-concor-track-job", (req, res) => {
     const force = req.query.force === "true";
-    console.log(`${LOG_PREFIX} Manual admin trigger received.${force ? " (FORCE)" : ""}`);
 
     res.status(202).json({
         success: true,
@@ -241,7 +223,6 @@ concorTrackJobRouter.post("/api/admin/run-concor-track-job", (req, res) => {
 
     setImmediate(() => {
         runConcorTrackJob(force).catch((err) => {
-            console.error(`${LOG_PREFIX} Background job error:`, err);
         });
     });
 });

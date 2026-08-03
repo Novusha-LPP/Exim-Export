@@ -2825,8 +2825,8 @@ const ProductGeneralTab = ({
                   <td style={styles.td}>
                     <input
                       style={styles.input}
-                      type="number"
-                      value={rowProduct.unitPrice || 0}
+                      type="text"
+                      value={rowProduct.unitPrice || ""}
                       readOnly
                     />
                   </td>

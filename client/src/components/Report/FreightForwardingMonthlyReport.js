@@ -29,7 +29,8 @@ import {
   useTheme,
   ClickAwayListener,
   Popper,
-  Chip
+  Chip,
+  CircularProgress
 } from "@mui/material";
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -41,6 +42,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid, Legend, ResponsiveContainer
 } from 'recharts';
@@ -199,9 +201,19 @@ const FreightForwardingMonthlyReport = () => {
   const [error, setError] = useState("");
   const [sortColumn, setSortColumn] = useState('teu');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [shipmentType, setShipmentType] = useState("all");
+  const [downloading, setDownloading] = useState(false);
   const [popperOpen, setPopperOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedRowData, setSelectedRowData] = useState(null);
+
+  const categories = [
+    { value: "all", label: "All Job Types" },
+    { value: "Import-Sea", label: "Import Sea" },
+    { value: "Import-Air", label: "Import Air" },
+    { value: "Export-Sea", label: "Export Sea" },
+    { value: "Export-Air", label: "Export Air" },
+  ];
 
   const years = [
     { value: "26-27", label: "26-27" },
@@ -258,7 +270,12 @@ const FreightForwardingMonthlyReport = () => {
     setError("");
     try {
       const apiBase = import.meta.env.VITE_API_STRING || "";
-      const res = await axios.get(`${apiBase}/report/freight-forwarding-monthly/${year}/${month}`);
+      const params = new URLSearchParams();
+      if (shipmentType && shipmentType !== "all") {
+        params.append("shipment_type", shipmentType);
+      }
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+      const res = await axios.get(`${apiBase}/report/freight-forwarding-monthly/${year}/${month}${queryString}`);
       setData(res.data || []);
     } catch (err) {
       console.error(err);
@@ -268,9 +285,50 @@ const FreightForwardingMonthlyReport = () => {
     }
   };
 
+  const handleDownloadReport = async () => {
+    setDownloading(true);
+    try {
+      const apiBase = import.meta.env.VITE_API_STRING || "";
+      const params = new URLSearchParams();
+      params.append("year", year);
+      if (shipmentType && shipmentType !== "all") {
+        params.append("shipment_type", shipmentType);
+      }
+      if (shipmentType.toLowerCase().includes("import")) {
+        params.append("mode", "Import");
+      } else if (shipmentType.toLowerCase().includes("export")) {
+        params.append("mode", "Export");
+      } else {
+        params.append("mode", "All");
+      }
+
+      const response = await axios.get(`${apiBase}/freight-forwarding/generate-dsr?${params.toString()}`, {
+        responseType: "blob"
+      });
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const categoryText = shipmentType !== "all" ? shipmentType : "All";
+      link.setAttribute("download", `Freight_Forwarding_Report_${categoryText}_${year}_M${month}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Error downloading Freight Forwarding detailed report:", err);
+      alert("Failed to download detailed Freight Forwarding report. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
-  }, [year, month]);
+  }, [year, month, shipmentType]);
 
   const handleSort = (column) => {
     const isAsc = sortColumn === column && sortDirection === 'asc';
@@ -538,6 +596,21 @@ const FreightForwardingMonthlyReport = () => {
                 </Tooltip>
               </Box>
 
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel id="category-label">Category</InputLabel>
+                <Select
+                  labelId="category-label"
+                  value={shipmentType}
+                  onChange={(e) => setShipmentType(e.target.value)}
+                  label="Category"
+                  sx={{ borderRadius: 1.5 }}
+                >
+                  {categories.map((c) => (
+                    <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
               <Button
                 variant="outlined"
                 color="primary"
@@ -547,6 +620,18 @@ const FreightForwardingMonthlyReport = () => {
                 sx={{ borderRadius: 1.5, height: 38 }}
               >
                 Refresh
+              </Button>
+
+              <Button
+                variant="contained"
+                color="success"
+                size="small"
+                startIcon={downloading ? <CircularProgress size={16} color="inherit" /> : <FileDownloadIcon />}
+                onClick={handleDownloadReport}
+                disabled={downloading}
+                sx={{ borderRadius: 1.5, height: 38, fontWeight: 'bold', textTransform: 'none', ml: 'auto' }}
+              >
+                {downloading ? "Preparing Excel..." : "Download Detailed Report"}
               </Button>
             </Box>
           </CardContent>

@@ -4,63 +4,73 @@
 const norm = (s) => String(s || "").trim().toUpperCase();
 
 /**
- * Check if container seal numbers have changed between two lists of containers
+ * Helper to check if a job is Factory Stuffed
  */
-export function hasContainerSealChanged(oldContainers, newContainers) {
+export function isFactoryStuffedJob(job = {}, incomingUpdates = {}) {
+  const val = String(
+    incomingUpdates.goods_stuffed_at ??
+    incomingUpdates.goods_stuffed ??
+    job.goods_stuffed_at ??
+    job.goods_stuffed ??
+    ""
+  ).toUpperCase().trim();
+
+  if (!val) return false;
+
+  return (
+    val.includes("FACTORY") ||
+    val === "F" ||
+    val === "YES" ||
+    val === "TRUE" ||
+    val === "Y"
+  );
+}
+
+/**
+ * Check if custom seal numbers have changed between two lists of containers
+ * (Only customSealNo is checked; shippingLineSealNo and sealNo are ignored)
+ */
+export function hasCustomSealChanged(oldContainers, newContainers) {
   const oldList = Array.isArray(oldContainers) ? oldContainers : [];
   const newList = Array.isArray(newContainers) ? newContainers : [];
 
-  // Create maps of seal numbers for comparison
   const oldMap = {};
   oldList.forEach((c) => {
-    if (c.containerNo) {
-      oldMap[norm(c.containerNo)] = {
-        customSealNo: norm(c.customSealNo),
-        shippingLineSealNo: norm(c.shippingLineSealNo),
-        sealNo: norm(c.sealNo)
-      };
+    if (c && c.containerNo) {
+      oldMap[norm(c.containerNo)] = norm(c.customSealNo);
     }
   });
 
   const newMap = {};
   newList.forEach((c) => {
-    if (c.containerNo) {
-      newMap[norm(c.containerNo)] = {
-        customSealNo: norm(c.customSealNo),
-        shippingLineSealNo: norm(c.shippingLineSealNo),
-        sealNo: norm(c.sealNo)
-      };
+    if (c && c.containerNo) {
+      newMap[norm(c.containerNo)] = norm(c.customSealNo);
     }
   });
 
   const oldNos = Object.keys(oldMap);
   const newNos = Object.keys(newMap);
 
-  // 1. Compare new vs old
+  // 1. Compare new vs old customSealNo
   for (const no of newNos) {
-    const oldSeals = oldMap[no];
-    const newSeals = newMap[no];
-    if (oldSeals) {
-      if (
-        oldSeals.customSealNo !== newSeals.customSealNo ||
-        oldSeals.shippingLineSealNo !== newSeals.shippingLineSealNo ||
-        oldSeals.sealNo !== newSeals.sealNo
-      ) {
+    const oldCustom = oldMap[no];
+    const newCustom = newMap[no];
+    if (oldCustom !== undefined) {
+      if (oldCustom !== newCustom) {
         return true;
       }
     } else {
-      // New container added with seal number
-      if (newSeals.customSealNo || newSeals.shippingLineSealNo || newSeals.sealNo) {
+      // New container added with custom seal number
+      if (newCustom !== "") {
         return true;
       }
     }
   }
 
-  // 2. Compare if any deleted container had seal numbers
+  // 2. Compare if any deleted container had a custom seal number
   for (const no of oldNos) {
-    if (!newMap[no]) {
-      const oldSeals = oldMap[no];
-      if (oldSeals.customSealNo || oldSeals.shippingLineSealNo || oldSeals.sealNo) {
+    if (newMap[no] === undefined) {
+      if (oldMap[no] !== "") {
         return true;
       }
     }
@@ -69,18 +79,14 @@ export function hasContainerSealChanged(oldContainers, newContainers) {
   // 3. Fallback for index-by-index comparison if container numbers are not specified
   if (oldNos.length === 0 && newNos.length === 0) {
     if (oldList.length !== newList.length) {
-      const oldSealsStr = oldList.map(c => norm(c.customSealNo) + '|' + norm(c.shippingLineSealNo) + '|' + norm(c.sealNo)).join(',');
-      const newSealsStr = newList.map(c => norm(c.customSealNo) + '|' + norm(c.shippingLineSealNo) + '|' + norm(c.sealNo)).join(',');
-      if (oldSealsStr !== newSealsStr) return true;
+      const oldCustomStr = oldList.map(c => norm(c?.customSealNo)).join(',');
+      const newCustomStr = newList.map(c => norm(c?.customSealNo)).join(',');
+      if (oldCustomStr !== newCustomStr) return true;
     } else {
       for (let i = 0; i < oldList.length; i++) {
         const c = oldList[i];
         const orig = newList[i];
-        if (orig && (
-          norm(c.customSealNo) !== norm(orig.customSealNo) ||
-          norm(c.shippingLineSealNo) !== norm(orig.shippingLineSealNo) ||
-          norm(c.sealNo) !== norm(orig.sealNo)
-        )) {
+        if (orig && norm(c?.customSealNo) !== norm(orig?.customSealNo)) {
           return true;
         }
       }
@@ -91,58 +97,34 @@ export function hasContainerSealChanged(oldContainers, newContainers) {
 }
 
 /**
- * Check if container seal numbers have changed and a seal number was already available (not empty)
+ * Check if custom seal number was already available (not empty) and has changed
  */
-export function hasAvailableSealChanged(oldContainers, newContainers) {
+export function hasAvailableCustomSealChanged(oldContainers, newContainers) {
   const oldList = Array.isArray(oldContainers) ? oldContainers : [];
   const newList = Array.isArray(newContainers) ? newContainers : [];
 
-  // Create maps of seal numbers for comparison by containerNo
   const oldMap = {};
   oldList.forEach((c) => {
-    if (c.containerNo) {
-      oldMap[norm(c.containerNo)] = {
-        customSealNo: norm(c.customSealNo),
-        shippingLineSealNo: norm(c.shippingLineSealNo),
-        sealNo: norm(c.sealNo)
-      };
+    if (c && c.containerNo) {
+      oldMap[norm(c.containerNo)] = norm(c.customSealNo);
     }
   });
 
   const newMap = {};
   newList.forEach((c) => {
-    if (c.containerNo) {
-      newMap[norm(c.containerNo)] = {
-        customSealNo: norm(c.customSealNo),
-        shippingLineSealNo: norm(c.shippingLineSealNo),
-        sealNo: norm(c.sealNo)
-      };
+    if (c && c.containerNo) {
+      newMap[norm(c.containerNo)] = norm(c.customSealNo);
     }
   });
 
   const oldNos = Object.keys(oldMap);
 
   for (const no of oldNos) {
-    const oldSeals = oldMap[no];
-    const newSeals = newMap[no];
+    const oldCustom = oldMap[no];
+    const newCustom = newMap[no];
     
-    // Check if container seal no is available in old container
-    const oldCustom = oldSeals.customSealNo;
-    const oldShipping = oldSeals.shippingLineSealNo;
-    const oldSeal = oldSeals.sealNo;
-    const hasOldSeal = oldCustom !== "" || oldShipping !== "" || oldSeal !== "";
-
-    if (hasOldSeal && newSeals) {
-      const newCustom = newSeals.customSealNo;
-      const newShipping = newSeals.shippingLineSealNo;
-      const newSeal = newSeals.sealNo;
-      
-      // If the user changed any of the available seals to a different value
-      if (
-        (oldCustom !== "" && oldCustom !== newCustom) ||
-        (oldShipping !== "" && oldShipping !== newShipping) ||
-        (oldSeal !== "" && oldSeal !== newSeal)
-      ) {
+    if (oldCustom !== "" && newCustom !== undefined) {
+      if (oldCustom !== newCustom) {
         return true;
       }
     }
@@ -156,21 +138,9 @@ export function hasAvailableSealChanged(oldContainers, newContainers) {
       const newC = newList[i];
       if (oldC && newC) {
         const oldCustom = norm(oldC.customSealNo);
-        const oldShipping = norm(oldC.shippingLineSealNo);
-        const oldSeal = norm(oldC.sealNo);
-        const hasOldSeal = oldCustom !== "" || oldShipping !== "" || oldSeal !== "";
-        
-        if (hasOldSeal) {
-          const newCustom = norm(newC.customSealNo);
-          const newShipping = norm(newC.shippingLineSealNo);
-          const newSeal = norm(newC.sealNo);
-          if (
-            (oldCustom !== "" && oldCustom !== newCustom) ||
-            (oldShipping !== "" && oldShipping !== newShipping) ||
-            (oldSeal !== "" && oldSeal !== newSeal)
-          ) {
-            return true;
-          }
+        const newCustom = norm(newC.customSealNo);
+        if (oldCustom !== "" && oldCustom !== newCustom) {
+          return true;
         }
       }
     }
@@ -178,6 +148,10 @@ export function hasAvailableSealChanged(oldContainers, newContainers) {
 
   return false;
 }
+
+// Backward compatibility exports
+export const hasContainerSealChanged = hasCustomSealChanged;
+export const hasAvailableSealChanged = hasAvailableCustomSealChanged;
 
 /**
  * Get nested value by path
@@ -196,7 +170,7 @@ function getNestedValue(obj, path) {
 }
 
 /**
- * Main detector to see if SB or seal changed after there was an SB number in the job
+ * Main detector to see if SB or custom seal changed after there was an SB number in the job
  */
 export function detectSbOrSealChange(existingJob, incomingUpdates, username) {
   if (!existingJob || !existingJob.sb_no || String(existingJob.sb_no).trim() === "") {
@@ -226,11 +200,14 @@ export function detectSbOrSealChange(existingJob, incomingUpdates, username) {
     }
   }
 
-  // 3. Check containers (array)
-  if (!changed && incomingUpdates.containers !== undefined) {
-    if (hasContainerSealChanged(existingJob.containers, incomingUpdates.containers)) {
+  // Check if job is Factory Stuffed
+  const isFactoryStuffed = isFactoryStuffedJob(existingJob, incomingUpdates);
+
+  // 3. Check containers (array) - ONLY IF FACTORY STUFFED and ONLY FOR CUSTOM SEAL NO
+  if (!changed && isFactoryStuffed && incomingUpdates.containers !== undefined) {
+    if (hasCustomSealChanged(existingJob.containers, incomingUpdates.containers)) {
       changed = true;
-      if (hasAvailableSealChanged(existingJob.containers, incomingUpdates.containers)) {
+      if (hasAvailableCustomSealChanged(existingJob.containers, incomingUpdates.containers)) {
         detailMsg = `the seal is opened for one day`;
       } else {
         detailMsg = `Container Seal No was updated`;
@@ -238,11 +215,14 @@ export function detectSbOrSealChange(existingJob, incomingUpdates, username) {
     }
   }
 
-  // 4. Check nested keys (fields patch)
-  if (!changed) {
+  // 4. Check nested keys (fields patch) - ONLY IF FACTORY STUFFED and ONLY FOR CUSTOM SEAL NO
+  if (!changed && isFactoryStuffed) {
     for (const key of Object.keys(incomingUpdates)) {
       if (key.startsWith("containers.") || key.startsWith("containers[")) {
-        if (key.includes("customSealNo") || key.includes("shippingLineSealNo") || key.includes("sealNo") || key.includes("custom_seal") || key.includes("line_seal")) {
+        if (
+          (key.includes("customSealNo") || key.includes("custom_seal")) &&
+          !key.includes("shippingLineSealNo") && !key.includes("line_seal")
+        ) {
           const oldVal = norm(getNestedValue(existingJob, key));
           const newVal = norm(incomingUpdates[key]);
           if (oldVal !== newVal) {
