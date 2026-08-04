@@ -1,5 +1,6 @@
 import express from "express";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
+import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
 import authApiKey from "../../middleware/authApiKey.mjs";
 import PurchaseBookEntryModel from "../../model/export/purchaseBookEntryModel.mjs";
 import PaymentRequestModel from "../../model/export/paymentRequestModel.mjs";
@@ -310,7 +311,7 @@ const isFreightJob = (job) => {
 /**
  * Internal helper to format job and invoice data for Tally
  */
-const mapJobAndInvoiceToTally = (job, inv, explicitFreight) => {
+const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
     const isFreight = explicitFreight !== undefined 
         ? Boolean(explicitFreight) 
         : isFreightJob(job);
@@ -382,14 +383,177 @@ const mapJobAndInvoiceToTally = (job, inv, explicitFreight) => {
     };
 };
 
+const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
+    const isFreight = explicitFreight !== undefined 
+        ? Boolean(explicitFreight) 
+        : isFreightJob(job);
+
+    const grossVal = job.gross_weight_kg || job.gross_weight || job.bl_details?.gross_weight;
+    const netVal = job.net_weight_kg || job.net_weight || job.bl_details?.net_weight;
+
+    return {
+        "freight": isFreight,
+        "Freight": isFreight,
+        "Job Number": job.tally_club_ref_no || job.job_no,
+        "Job Year": job.year || "",
+        "Job Type": "EXPORT",
+        "Job Date": normalizeDate(job.createdAt),
+        "ImporterExporter Name": job.exporter || job.organization_name || "",
+        "Consignee": job.consignees?.[0]?.consignee_name || job.consignee_name || job.bl_details?.consignee || "",
+        "Shipper": job.shipper || job.exporter || job.organization_name || "",
+        "Origin Port": job.port_of_loading || job.place_of_receipt || "",
+        "Destination Port": job.port_of_discharge || job.port_of_destination || "",
+        "Custom House": job.custom_house || "",
+        "Gross Weight": grossVal ? String(Math.round(parseFloat(String(grossVal).replace(/KGS?/gi, "")))) : "",
+        "Net Wt": netVal ? String(Math.round(parseFloat(String(netVal).replace(/KGS?/gi, "")))) : "",
+        "Package Count": job.total_no_of_pkgs || job.no_packages || "",
+        "Package Unit": job.package_unit || "",
+        "Container Count": (() => {
+            const containers = job.containers || [];
+            if (containers.length === 0) return job.no_of_containers || "0";
+            const counts = {};
+            containers.forEach(c => {
+                const detail = c.type || c.size || "20";
+                counts[detail] = (counts[detail] || 0) + 1;
+            });
+            return Object.entries(counts)
+                .map(([detail, count]) => `${count} X ${detail}`)
+                .join(", ");
+        })(),
+        "Containers": (job.containers || []).map(c => c.containerNo || c.container_number).filter(Boolean).join(", "),
+        "BE No": "",
+        "BE Date": "",
+        "SB No": job.sb_no || "",
+        "SB Date": normalizeDate(job.sb_date),
+        "MBL NO": job.awb_bl_no || job.mbl_no || "",
+        "MBL Date": normalizeDate(job.awb_bl_date),
+        "HBL No": job.hbl_no || job.bl_details?.shipment_ref_no || "",
+        "HBL Date": normalizeDate(job.hbl_date || job.bl_details?.date_of_issue),
+        "Vessel": job.vessel || job.vessel_name || job.bl_details?.vessel_name || "",
+        "Voyage": job.voyage_no || job.bl_details?.voyage_no || "",
+        "Invoice Number": inv?.invoiceNumber || inv?.invoice_number || "",
+        "Inv Date": normalizeDate(inv?.invoiceDate || inv?.invoice_date),
+        "Branch": job.branch_code || "",
+        "Status": (job.status || "Pending").toLowerCase(),
+        "Sb type": (() => {
+            const eximCode = inv?.products?.[0]?.eximCode || "";
+            return eximCode.includes("-") ? eximCode.split("-").slice(1).join("-").trim() : eximCode;
+        })(),
+        "Consignment Type": job.consignmentType || job.consignment_type || "",
+        "Customer Ref No": job.exporter_ref_no || "",
+        "TOI": inv?.termsOfInvoice || "",
+        "Invoice Value": (() => {
+            if (!inv) return "";
+            return `${inv.invoiceValue || 0}(${inv.currency || ""})`;
+        })(),
+        "Invoice Currency": inv?.currency || "",
+        "FOB Value": (() => {
+            if (!inv) return "0.00";
+            if (inv.precalculatedFob) return inv.precalculatedFob;
+            const fob = inv.freightInsuranceCharges?.fobValue?.amount || inv.invoiceValue || 0;
+            const rate = parseFloat(job.exchange_rate || inv.freightInsuranceCharges?.freight?.exchangeRate || 1);
+            return (fob * rate).toFixed(2);
+        })(),
+        "Sb Heading": inv?.products?.[0]?.description || ""
+    };
+};
+
 /**
  * Internal helper to retrieve and format job data for Tally
  */
 const getJobDetailsInternal = async (job_number, explicitFreight) => {
     if (!job_number) return null;
+    const cleanNo = job_number.trim();
+    const isFFRequest = cleanNo.toUpperCase().startsWith("FF") || cleanNo.toUpperCase().includes("FF/");
+
+    if (isFFRequest) {
+        // FREIGHT FORWARDING SPECIFIC LOOKUP
+        const safeNo = cleanNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        let job = await ExJobModel.findOne({
+            $or: [
+                { job_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                { tally_club_ref_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                { enquiry_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                { success_no: { $regex: new RegExp("^" + safeNo + "$", "i") } }
+            ]
+        }).lean();
+
+        if (!job) {
+            const enq = await FreightEnquiryModel.findOne({
+                $or: [
+                    { enquiry_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                    { success_no: { $regex: new RegExp("^" + safeNo + "$", "i") } }
+                ]
+            }).lean();
+            if (enq) {
+                job = await ExJobModel.findOne({
+                    $or: [
+                        { job_no: enq.enquiry_no },
+                        { job_no: enq.success_no },
+                        { job_no: enq.source_job_no }
+                    ].filter(Boolean)
+                }).lean() || {
+                    job_no: enq.enquiry_no,
+                    exporter: enq.organization_name,
+                    consignees: [{ consignee_name: enq.consignee_name || enq.bl_details?.consignee }],
+                    gross_weight_kg: enq.gross_weight_kg || enq.gross_weight,
+                    net_weight_kg: enq.net_weight_kg || enq.net_weight,
+                    port_of_loading: enq.port_of_loading,
+                    port_of_discharge: enq.port_of_destination || enq.port_of_discharge,
+                    bl_details: enq.bl_details,
+                    containers: enq.containers
+                };
+            }
+        }
+
+        if (!job) return null;
+
+        const enq = await FreightEnquiryModel.findOne({
+            $or: [{ enquiry_no: job.job_no }, { success_no: job.job_no }, { enquiry_no: cleanNo }, { success_no: cleanNo }]
+        }).lean();
+        if (enq) {
+            if (!job.exporter && enq.organization_name) job.exporter = enq.organization_name;
+            if (!job.shipper && enq.organization_name) job.shipper = enq.organization_name;
+            if ((!job.consignees || job.consignees.length === 0) && (enq.consignee_name || enq.bl_details?.consignee)) {
+                job.consignees = [{ consignee_name: enq.consignee_name || enq.bl_details?.consignee }];
+            }
+            if (!job.port_of_loading && enq.port_of_loading) job.port_of_loading = enq.port_of_loading;
+            if (!job.port_of_discharge && (enq.port_of_destination || enq.port_of_discharge)) job.port_of_discharge = enq.port_of_destination || enq.port_of_discharge;
+            if (!job.gross_weight_kg && (enq.gross_weight_kg || enq.gross_weight)) job.gross_weight_kg = enq.gross_weight_kg || enq.gross_weight;
+            if (!job.net_weight_kg && (enq.net_weight_kg || enq.net_weight)) job.net_weight_kg = enq.net_weight_kg || enq.net_weight;
+            if (!job.hbl_no && (enq.hbl_no || enq.bl_details?.shipment_ref_no)) job.hbl_no = enq.hbl_no || enq.bl_details?.shipment_ref_no;
+            if (!job.vessel && (enq.vessel_name || enq.bl_details?.vessel_name)) job.vessel = enq.vessel_name || enq.bl_details?.vessel_name;
+            if (!job.voyage_no && (enq.voyage_no || enq.bl_details?.voyage_no)) job.voyage_no = enq.voyage_no || enq.bl_details?.voyage_no;
+            if (enq.bl_details) job.bl_details = enq.bl_details;
+        }
+
+        const invoices = job.invoices || [];
+        if (invoices.length === 0) {
+            return [mapFFJobAndInvoiceToTally(job, null, explicitFreight)];
+        }
+        return invoices.map(inv => mapFFJobAndInvoiceToTally(job, inv, explicitFreight));
+    }
+
+    // LOGIC FOR NORMAL EXPORT DSR JOBS
+    // 1. Try exact match FIRST across key identifier fields
+    const safeNo = cleanNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     let job = await ExJobModel.findOne({
-        $or: resolveJobNumberQuery(job_number)
-    }).sort({ is_club_job_parent: -1 }).lean();
+        $or: [
+            { job_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+            { tally_club_ref_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+            { agency_bill_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+            { reimbursement_bill_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+            { tally_bill_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+            { custom_job_no: { $regex: new RegExp("^" + safeNo + "$", "i") } }
+        ]
+    }).lean();
+
+    // 2. If no exact match found, fallback to sequence / regex matching
+    if (!job) {
+        job = await ExJobModel.findOne({
+            $or: resolveJobNumberQuery(job_number)
+        }).sort({ is_club_job_parent: -1 }).lean();
+    }
     if (!job) return null;
 
     // If it's a child job of a club job, resolve and retrieve the parent job details instead
@@ -471,9 +635,9 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
 
     const invoices = job.invoices || [];
     if (invoices.length === 0) {
-        return [mapJobAndInvoiceToTally(job, null, explicitFreight)];
+        return [mapNormalJobAndInvoiceToTally(job, null, explicitFreight)];
     }
-    return invoices.map(inv => mapJobAndInvoiceToTally(job, inv, explicitFreight));
+    return invoices.map(inv => mapNormalJobAndInvoiceToTally(job, inv, explicitFreight));
 };
 
 router.get("/job-data", authApiKey, async (req, res) => {
