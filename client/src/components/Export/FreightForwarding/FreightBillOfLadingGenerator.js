@@ -26,6 +26,44 @@ const formatAddress = (val) => {
     .join("<br/>");
 };
 
+const formatIssueDate = (dateInput) => {
+  if (!dateInput) return "";
+  let dateObj = null;
+
+  if (typeof dateInput === "string") {
+    const trimmed = dateInput.trim();
+    if (/^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(trimmed)) {
+      return trimmed.toUpperCase();
+    }
+
+    const parts = trimmed.split(/[/.-]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD
+        dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      } else if (parts[2].length === 4) {
+        // DD-MM-YYYY
+        dateObj = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      }
+    }
+  }
+
+  if (!dateObj || isNaN(dateObj.getTime())) {
+    dateObj = new Date(dateInput);
+  }
+
+  if (isNaN(dateObj.getTime())) {
+    return String(dateInput).toUpperCase();
+  }
+
+  const day = String(dateObj.getDate()).padStart(2, "0");
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const month = months[dateObj.getMonth()];
+  const year = dateObj.getFullYear();
+
+  return `${day}-${month}-${year}`;
+};
+
 const estimateLines = (text, maxCharsPerLine = 33) => {
   if (!text) return 0;
   return text.split('\n').reduce((totalLines, line) => {
@@ -166,6 +204,8 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 150px; color: rgba(0,0,0,0.08); font-weight: 900; pointer-events: none; z-index: 0; text-transform: uppercase;">DRAFT</div>
   ` : '';
 
+  const rawMtdNo = bl.shipment_ref_no || enquiry?.shipment_ref_no || enquiry?.bl_details?.shipment_ref_no || enquiry?.hbl_no || enquiry?.job_no || enquiry?.enquiry_no || "";
+
   return `
     <div style="font-family: 'Helvetica', 'Arial', sans-serif; color: #000; width: 750px; margin: 0 auto; background-color: #fff; line-height: 1.15; padding-left: 0px; padding-right: 0px; box-sizing: border-box;">
       
@@ -184,7 +224,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
                     <td style="padding: 2px 10px 0px; ${bb2}; height: 32px; box-sizing: border-box;">
                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: ${isOriginal ? '10px' : '0px'};">
                           <span style="font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'};">MTD. No.</span>
-                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; height: 22px; line-height: 18px; box-sizing: border-box; display: inline-block; font-size: 13px; position: relative; top: ${isOriginal ? '-10px' : '-2px'};">${enquiry?.hbl_no || ""}</span>
+                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; height: 22px; line-height: 18px; box-sizing: border-box; display: inline-block; font-size: 13px; position: relative; top: ${isOriginal ? '-10px' : '-2px'};">${rawMtdNo}</span>
                        </div>
                     </td>
                   </tr>
@@ -192,7 +232,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
                     <td style="padding: ${isOriginal ? '6px 10px' : '2px 10px 0px'}; height: 32px; box-sizing: border-box;">
                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                           <span style="font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'};">Shipment Ref. No.</span>
-                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; height: 22px; line-height: 18px; box-sizing: border-box; display: inline-block; font-size: 13px; position: relative; top: ${isOriginal ? '0px' : '-2px'};">${bl.shipment_ref_no || ""}</span>
+                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; height: 22px; line-height: 18px; box-sizing: border-box; display: inline-block; font-size: 13px; position: relative; top: ${isOriginal ? '0px' : '-2px'};"></span>
                        </div>
                     </td>
                   </tr>
@@ -330,7 +370,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
             <td style="${br18} vertical-align: top; padding: ${isOriginal ? '8px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">
                ${bl.gross_weight || enquiry?.gross_weight || "0.000"} KGS
                <br/><br/>
-               <span style="font-size: 11px; font-weight: 700; color: #333;">NET WEIGHT<br/>${enquiry?.net_weight || "0.000"} KGS</span>
+               <span style="font-size: 11px; font-weight: 700; color: #333;">NET WEIGHT<br/>${(bl.net_weight || enquiry?.net_weight || (enquiry?.net_weight_kg ? `${enquiry.net_weight_kg} ${enquiry.net_weight_unit || "KGS"}` : "")) ? String(bl.net_weight || enquiry?.net_weight || (enquiry?.net_weight_kg ? `${enquiry.net_weight_kg} ${enquiry.net_weight_unit || "KGS"}` : "")).toUpperCase().includes("KG") ? (bl.net_weight || enquiry?.net_weight || `${enquiry?.net_weight_kg} ${enquiry?.net_weight_unit || "KGS"}`) : `${bl.net_weight || enquiry?.net_weight || enquiry?.net_weight_kg} KGS` : "0.000 KGS"}</span>
             </td>
             <td style="vertical-align: top; padding: ${isOriginal ? '8px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">
                ${bl.measurement || "[CBM] CBM"}
@@ -357,7 +397,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
             </td>
             <td style="width: 25%; padding: 6px 10px 6px 20px; vertical-align: top;">
                <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place and Date of Issue</div>
-               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '40px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${formatDate(enquiry?.sailing_date) || bl.date_of_issue || new Date().toLocaleDateString('en-GB')}</div>
+               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '40px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${formatIssueDate(bl.date_of_issue || enquiry?.sailing_date || enquiry?.bl_details?.date_of_issue || new Date())}</div>
             </td>
           </tr>
         </table>
@@ -385,7 +425,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
         ${watermark}
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
           <div style="font-size: 15px; font-weight: 700; color: #000; text-align: left; margin: 0; line-height: 1.2;">Annexure to the Multimodal Transport Document.</div>
-          <div style="font-size: 12px; font-weight: 700; color: #000; text-align: right; text-transform: uppercase;">MTD NO. : ${enquiry?.hbl_no || ""}</div>
+          <div style="font-size: 12px; font-weight: 700; color: #000; text-align: right; text-transform: uppercase;">MTD NO. : ${rawMtdNo}</div>
         </div>
 
         <table style="width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed;">

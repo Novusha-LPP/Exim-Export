@@ -1026,7 +1026,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         dimensions: safeValue(data.dimensions, []),
         bl_details: {
           consignor: safeValue(data.bl_details?.consignor, safeValue(data.shipper, safeValue(data.exporter, safeValue(data.organization_name)))),
-          shipment_ref_no: safeValue(data.bl_details?.shipment_ref_no),
+          shipment_ref_no: safeValue(data.bl_details?.shipment_ref_no, safeValue(data.hbl_no, safeValue(data.mbl_no, safeValue(data.job_no, safeValue(data.enquiry_no))))),
           consignee: safeValue(data.bl_details?.consignee, safeValue(data.consignees?.[0]?.consignee_name)),
           notify_party: safeValue(data.bl_details?.notify_party, safeValue(data.consignees?.[0]?.consignee_name)),
           vessel_name: safeValue(data.bl_details?.vessel_name, safeValue(data.vessel_name)),
@@ -1045,7 +1045,8 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
           packages_description: safeValue(data.bl_details?.packages_description, data.total_no_of_pkgs ? `${data.total_no_of_pkgs} ${data.package_unit || "PACKAGES"}`.trim() : ""),
           description_of_goods: safeValue(data.bl_details?.description_of_goods, safeValue(data.goods_stuffed, safeValue(data.nature_of_cargo))),
           hsn_code: safeValue(data.bl_details?.hsn_code, safeValue(data.hsn)),
-          gross_weight: safeValue(data.bl_details?.gross_weight, data.gross_weight_kg ? `${data.gross_weight_kg} ${data.gross_weight_unit || "KGS"}`.trim() : ""),
+          gross_weight: safeValue(data.bl_details?.gross_weight, data.gross_weight_kg ? `${data.gross_weight_kg} ${data.gross_weight_unit || "KGS"}`.trim() : (data.gross_weight ? `${data.gross_weight} KGS`.trim() : "")),
+          net_weight: safeValue(data.bl_details?.net_weight, data.net_weight_kg ? `${data.net_weight_kg} ${data.net_weight_unit || "KGS"}`.trim() : (data.net_weight ? `${data.net_weight} KGS`.trim() : "")),
           measurement: safeValue(data.bl_details?.measurement, data.volume_cbm ? `${data.volume_cbm} ${data.volume_unit || "CBM"}`.trim() : ""),
           freight_amount: safeValue(data.bl_details?.freight_amount, "AS AGREED"),
           other_particulars: safeValue(data.bl_details?.other_particulars),

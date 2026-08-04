@@ -209,6 +209,8 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         jobData.is_manual_cbm = enquiry.is_manual_cbm;
         jobData.dimensions = enquiry.dimensions || [];
         jobData.bl_details = enquiry.bl_details || {};
+        jobData.net_weight_kg = jobData.net_weight_kg || enquiry.net_weight_kg || enquiry.net_weight || "";
+        jobData.net_weight_unit = jobData.net_weight_unit || enquiry.net_weight_unit || "KG";
         jobData.remarks = enquiry.remarks || jobData.remarks;
         if (enquiry.containers && enquiry.containers.length > 0 && (!jobData.containers || jobData.containers.length === 0)) {
           jobData.containers = enquiry.containers.map((c, i) => ({

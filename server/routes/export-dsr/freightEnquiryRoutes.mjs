@@ -130,7 +130,7 @@ router.get("/freight-enquiries", async (req, res) => {
     // (e.g. place_of_receipt, hbl_no) so the BL generator has access to them
     const convertedEnquiries = dataList.filter(e => isConverted(e) && (e.source_job_no || e.success_no || e.enquiry_no));
     if (convertedEnquiries.length > 0) {
-      const jobNos = convertedEnquiries.map(e => e.source_job_no || e.success_no || e.enquiry_no).filter(Boolean);
+      const jobNos = convertedEnquiries.flatMap(e => [e.enquiry_no, e.success_no, e.source_job_no]).filter(Boolean);
       const exJobs = await ExJobModel.find(
         { job_no: { $in: jobNos } },
         { 
@@ -184,10 +184,14 @@ router.get("/freight-enquiries", async (req, res) => {
       exJobs.forEach(j => { jobMap[j.job_no] = j; });
       for (const e of dataList) {
         if (isConverted(e)) {
-          const job = jobMap[e.source_job_no] || jobMap[e.success_no] || jobMap[e.enquiry_no];
+          const job = jobMap[e.enquiry_no] || jobMap[e.success_no] || jobMap[e.source_job_no];
           if (job) {
             if (job.place_of_receipt) e.place_of_receipt = job.place_of_receipt;
-            if (job.hbl_no) e.hbl_no = job.hbl_no;
+            if (job.hbl_no) {
+              e.hbl_no = job.hbl_no;
+              if (!e.bl_details) e.bl_details = {};
+              if (!e.bl_details.shipment_ref_no) e.bl_details.shipment_ref_no = job.hbl_no;
+            }
             // Merge consignee data from ExJob for import shipments
             if (job.consignees && job.consignees.length > 0 && job.consignees[0].consignee_name) {
               e.consignee_name = job.consignees[0].consignee_name;
@@ -242,6 +246,11 @@ router.get("/freight-enquiries", async (req, res) => {
                 ...e.bl_details,
                 ...job.bl_details
               };
+            }
+            if (job.hbl_no) {
+              if (!e.bl_details) e.bl_details = {};
+              e.bl_details.shipment_ref_no = job.hbl_no;
+              e.hbl_no = job.hbl_no;
             }
  
             // Merge billing submission details

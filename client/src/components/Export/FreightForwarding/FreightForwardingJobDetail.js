@@ -1616,17 +1616,20 @@ function FreightForwardingJobDetail() {
               </Grid>
             </Grid>
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={2.4}>
+                {renderInputBox("MTD / Ref. No.", "bl_details.shipment_ref_no")}
+              </Grid>
+              <Grid item xs={12} md={2.4}>
                 {renderInputBox("HSN Code", "bl_details.hsn_code")}
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={2.4}>
                 {renderInputBox("Gross Weight", "bl_details.gross_weight")}
               </Grid>
-              <Grid item xs={12} md={3}>
-                {renderInputBox("Measurement", "bl_details.measurement")}
+              <Grid item xs={12} md={2.4}>
+                {renderInputBox("Net Weight", "bl_details.net_weight")}
               </Grid>
-              <Grid item xs={12} md={3}>
-                {renderInputBox("Freight Amount", "bl_details.freight_amount")}
+              <Grid item xs={12} md={2.4}>
+                {renderInputBox("Measurement", "bl_details.measurement")}
               </Grid>
             </Grid>
             <Grid container spacing={0.5} sx={{ mb: 0.5 }}>
