@@ -137,6 +137,7 @@ router.get("/freight-enquiries", async (req, res) => {
           job_no: 1, 
           place_of_receipt: 1, 
           hbl_no: 1, 
+          bl_details: 1,
           consignees: 1, 
           shipper: 1, 
           shipped_on_board_date: 1,

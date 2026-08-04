@@ -2675,7 +2675,7 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       job_no.includes("/") &&
       job_no.split("/").length >= 3;
 
-    if (!isJobNumber) {
+    if (!isJobNumber || job_no.startsWith("get-export-job")) {
       return next();
     }
 
@@ -2777,12 +2777,8 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       const enquiry = await FreightEnquiryModel.findOne({
         $or: [
           { enquiry_no: job_no },
-          { success_no: job_no }
-        ],
-        $or: [
-          { status: "Converted" },
-          { source_job_no: { $exists: true, $ne: "" } },
-          { success_no: { $exists: true, $ne: "" } }
+          { success_no: job_no },
+          { source_job_no: job_no }
         ]
       });
       if (enquiry) {
@@ -2828,12 +2824,8 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       const enquiry = await FreightEnquiryModel.findOne({
         $or: [
           { enquiry_no: job_no },
-          { success_no: job_no }
-        ],
-        $or: [
-          { status: "Converted" },
-          { source_job_no: { $exists: true, $ne: "" } },
-          { success_no: { $exists: true, $ne: "" } }
+          { success_no: job_no },
+          { source_job_no: job_no }
         ]
       }).lean();
       if (enquiry) {
@@ -2855,6 +2847,46 @@ router.get("/:job_no(.*)", async (req, res, next) => {
           }));
         }
       }
+    }
+
+    const excludeChildJobs = req.query.excludeChildJobs === "true";
+
+    if (exportJob.is_club_job_parent && Array.isArray(exportJob.clubbed_jobs) && exportJob.clubbed_jobs.length > 0 && !excludeChildJobs) {
+      const childJobs = await ExJobModel.find({
+        $or: [
+          { job_no: { $in: exportJob.clubbed_jobs } },
+          { parent_club_job: exportJob.job_no }
+        ]
+      }).lean();
+      
+      const mergedContainers = [];
+
+      for (const j of childJobs) {
+        const inv = j.invoices?.[0] || {};
+        const op = j.operations?.[0] || {};
+        const st = op.statusDetails?.[0] || {};
+        const product = inv.products?.[0] || {};
+        const hsnList = [...new Set((inv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
+        
+        for (const c of (j.containers || [])) {
+          mergedContainers.push({
+            ...c,
+            _sourceJobNo: j.job_no,
+            _sourceSbNo: j.custom_house_details?.shipping_bill_no || j.sb_no || j.shippingBillNo,
+            _sourceSbDate: j.custom_house_details?.sb_date || j.sb_date,
+            _sourceInvoiceNumber: inv.invoiceNumber,
+            _sourceInvoiceValue: inv.invoiceValue,
+            _sourceLeoDate: st.leoDate,
+            _sourceDescription: product.description || j.descriptionOfGoods || j.description,
+            _sourceHsnList: hsnList || j.custom_house_details?.hsn_code || j.hsn,
+            _sourceFobValue: j.invoices?.[0]?.freightInsuranceCharges?.fobValue?.amount || ""
+          });
+        }
+      }
+
+      jobData.containers = mergedContainers;
+      jobData.invoices = childJobs.flatMap(j => j.invoices || []).filter(Boolean);
+      jobData.operations = childJobs.flatMap(j => j.operations || []).filter(Boolean);
     }
 
     // Check for stale locks (e.g., older than 30 minutes)

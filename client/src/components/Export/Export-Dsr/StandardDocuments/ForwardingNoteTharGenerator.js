@@ -239,7 +239,8 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
     const dischargeCountry = primaryData.dischargeCountry || primaryData.discharge_country || "";
     const exporterAddress = primaryData.exporterAddress || primaryData.exporter || "";
     const gatewayPort = primaryData.gatewayPort || primaryData.gateway_port || primaryData.port_of_loading || "";
-    const shippingBillNo = primaryData.shippingBillNo || primaryData.sb_no || "";
+    const allSbNos = [...new Set((primaryData.containers || []).map(c => c._sourceSbNo || c.shippingBillNo || primaryData.custom_house_details?.shipping_bill_no || primaryData.sb_no).filter(Boolean))];
+    const shippingBillNo = allSbNos.length > 0 ? allSbNos.join(", ") : (primaryData.shippingBillNo || primaryData.sb_no || "");
     const portOfDischarge = primaryData.portOfDischarge || primaryData.port_of_discharge || "";
     const stuffingType = primaryData.stuffingType || (primaryData.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS) / FACTORY");
     const shippingLineName = primaryData.shippingLineName || primaryData.shipping_line_airline || "";
@@ -366,23 +367,11 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       spacerHtml = `<div style="height: ${remainingOnPage + 10}px;"></div>`;
     }
 
-    let invoiceInfo = `INVOICE NO.: ${invoice.invoiceNumber || ""}`;
-    let exporterRefInfo = primaryData.exporter_ref_no ? `EXPORTER REF NO.: ${primaryData.exporter_ref_no}` : "";
-    if (isClubActive && Array.isArray(clubbedJobsList)) {
-      const allInvoiceNos = [
-        invoice.invoiceNumber,
-        ...clubbedJobsList.map(j => j.invoices?.[0]?.invoiceNumber)
-      ].filter(Boolean);
-      invoiceInfo = `INVOICE NO.: ${allInvoiceNos.join(", ")}`;
+    const allInvoiceNos = [...new Set((primaryData.invoices || []).map(i => i.invoiceNumber || i.invoice_number).concat(invoice.invoiceNumber).concat(clubbedJobsList?.map(j => j.invoices?.[0]?.invoiceNumber)).filter(Boolean))];
+    let invoiceInfo = `INVOICE NO.: ${allInvoiceNos.join(", ") || invoice.invoiceNumber || ""}`;
 
-      const allExpRefNos = [
-        primaryData.exporter_ref_no,
-        ...clubbedJobsList.map(j => j.exporter_ref_no)
-      ].filter(Boolean);
-      if (allExpRefNos.length > 0) {
-        exporterRefInfo = `EXPORTER REF NO.: ${allExpRefNos.join(", ")}`;
-      }
-    }
+    const allExpRefNos = [...new Set((primaryData.invoices || []).map(i => i.exporter_ref_no).concat(primaryData.exporter_ref_no).concat(clubbedJobsList?.map(j => j.exporter_ref_no)).filter(Boolean))];
+    let exporterRefInfo = allExpRefNos.length > 0 ? `EXPORTER REF NO.: ${allExpRefNos.join(", ")}` : (primaryData.exporter_ref_no ? `EXPORTER REF NO.: ${primaryData.exporter_ref_no}` : "");
 
     return `
       <div style="width: 900px; font-family: 'Arial', sans-serif; color: #000; padding: 0 22px; box-sizing: border-box; line-height: 1.2;">
@@ -809,17 +798,11 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       worksheet.getCell("D6").alignment = { vertical: "middle", horizontal: "center" };
 
       worksheet.mergeCells("H6:J6");
-      let invoiceInfo = `INVOICE NO.: ${jobData.invoiceNumber || ""}`;
-      let exporterRefInfo = jobData.exporter_ref_no ? `EXPORTER REF NO.: ${jobData.exporter_ref_no}` : "";
-      if (isClubJob && clubbedJobsData.length > 0) {
-        const allInvoices = [jobData.invoiceNumber, ...clubbedJobsData.map(j => j.invoices?.[0]?.invoiceNumber)].filter(Boolean);
-        invoiceInfo = `INVOICE NO.: ${allInvoices.join(", ")}`;
+      const allInvoices = [...new Set((jobData.invoices || []).map(j => j.invoiceNumber || j.invoice_number).concat(jobData.invoiceNumber).concat(clubbedJobsData.map(j => j.invoices?.[0]?.invoiceNumber)).filter(Boolean))];
+      let invoiceInfo = `INVOICE NO.: ${allInvoices.join(", ") || jobData.invoiceNumber || ""}`;
 
-        const allExpRefs = [jobData.exporter_ref_no, ...clubbedJobsData.map(j => j.exporter_ref_no)].filter(Boolean);
-        if (allExpRefs.length > 0) {
-          exporterRefInfo = `EXPORTER REF NO.: ${allExpRefs.join(", ")}`;
-        }
-      }
+      const allExpRefs = [...new Set((jobData.invoices || []).map(j => j.exporter_ref_no).concat(jobData.exporter_ref_no).concat(clubbedJobsData.map(j => j.exporter_ref_no)).filter(Boolean))];
+      let exporterRefInfo = allExpRefs.length > 0 ? `EXPORTER REF NO.: ${allExpRefs.join(", ")}` : (jobData.exporter_ref_no ? `EXPORTER REF NO.: ${jobData.exporter_ref_no}` : "");
       worksheet.getCell("H6").value = {
         richText: [
           { text: invoiceInfo + "\n", font: { name: "Arial", bold: true, size: 9.5 } },

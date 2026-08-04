@@ -196,12 +196,8 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
       const enquiry = await FreightEnquiryModel.findOne({
         $or: [
           { enquiry_no: jobNo },
-          { success_no: jobNo }
-        ],
-        $or: [
-          { status: "Converted" },
-          { source_job_no: { $exists: true, $ne: "" } },
-          { success_no: { $exists: true, $ne: "" } }
+          { success_no: jobNo },
+          { source_job_no: jobNo }
         ]
       }).lean();
       if (enquiry) {
@@ -228,9 +224,13 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
     const excludeChildJobs = req.query.excludeChildJobs === "true";
 
     if (jobData.is_club_job_parent && Array.isArray(jobData.clubbed_jobs) && jobData.clubbed_jobs.length > 0 && !excludeChildJobs) {
-      const childJobs = await ExJobModel.find({ job_no: { $in: jobData.clubbed_jobs } }).lean();
+      const childJobs = await ExJobModel.find({
+        $or: [
+          { job_no: { $in: jobData.clubbed_jobs } },
+          { parent_club_job: jobData.job_no }
+        ]
+      }).lean();
       
-      const seenContainerNos = new Set();
       const mergedContainers = [];
 
       for (const j of childJobs) {
@@ -241,31 +241,24 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         const hsnList = [...new Set((inv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
         
         for (const c of (j.containers || [])) {
-          const cNo = (c.containerNo || c.container_number || "").trim().toUpperCase();
-          if (cNo) {
-            if (seenContainerNos.has(cNo)) {
-              continue; // Skip duplicate container number
-            }
-            seenContainerNos.add(cNo);
-          }
           mergedContainers.push({
             ...c,
             _sourceJobNo: j.job_no,
-            _sourceSbNo: j.sb_no || j.shippingBillNo,
-            _sourceSbDate: j.sb_date,
+            _sourceSbNo: j.custom_house_details?.shipping_bill_no || j.sb_no || j.shippingBillNo,
+            _sourceSbDate: j.custom_house_details?.sb_date || j.sb_date,
             _sourceInvoiceNumber: inv.invoiceNumber,
             _sourceInvoiceValue: inv.invoiceValue,
             _sourceLeoDate: st.leoDate,
-            _sourceDescription: product.description,
-            _sourceHsnList: hsnList,
+            _sourceDescription: product.description || j.descriptionOfGoods || j.description,
+            _sourceHsnList: hsnList || j.custom_house_details?.hsn_code || j.hsn,
             _sourceFobValue: j.invoices?.[0]?.freightInsuranceCharges?.fobValue?.amount || ""
           });
         }
       }
 
       jobData.containers = mergedContainers;
-      jobData.invoices = childJobs.flatMap(j => j.invoices || []);
-      jobData.operations = childJobs.flatMap(j => j.operations || []);
+      jobData.invoices = childJobs.flatMap(j => j.invoices || []).filter(Boolean);
+      jobData.operations = childJobs.flatMap(j => j.operations || []).filter(Boolean);
     }
 
     res.json(jobData);
