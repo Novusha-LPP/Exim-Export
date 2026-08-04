@@ -215,10 +215,10 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
   };
 
   return `
-    <div style="font-family: 'Helvetica', 'Arial', sans-serif; color: #000; width: 750px; margin: 0 auto; background-color: #fff; line-height: 1.15; padding-left: 0px; padding-right: 0px; box-sizing: border-box;">
+    <div style="font-family: 'Helvetica', 'Arial', sans-serif; color: #000; width: 784px; margin: 0 auto; background-color: #fff; line-height: 1.15; padding-left: 0px; padding-right: 0px; box-sizing: border-box;">
       
       <!-- FIRST PAGE (MAIN BL) -->
-      <div style="${b22} box-sizing: border-box; width: 750px; height: 1040px; max-height: 1040px; overflow-y: hidden; overflow-x: visible; ${p2_desc ? 'page-break-after: always; break-after: page;' : ''} position: relative; padding-left: 20px; padding-right: 20px;">
+      <div style="${b22} box-sizing: border-box; width: 784px; height: 1040px; max-height: 1040px; overflow-y: hidden; overflow-x: visible; ${p2_desc ? 'page-break-after: always; break-after: page;' : ''} position: relative; padding-left: 20px; padding-right: 20px;">
         ${watermark}
         <!-- TOP HEADER BOX -->
         <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
@@ -230,17 +230,17 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
                <table style="width: 100%; border-collapse: collapse;">
                   <tr>
                     <td style="padding: 2px 10px 0px; ${bb2}; height: 32px; box-sizing: border-box;">
-                       <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: ${isOriginal ? '10px' : '0px'};">
+                       <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px;">
                           <span style="font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'};">MTD. No.</span>
-                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; height: 22px; line-height: 18px; box-sizing: border-box; display: inline-block; font-size: 13px; position: relative; top: ${isOriginal ? '-10px' : '-2px'};">${rawMtdNo}</span>
+                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px; position: relative; top: ${isOriginal ? '-10px' : '0'};">${enquiry?.hbl_no || ""}</span>
                        </div>
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding: ${isOriginal ? '6px 10px' : '2px 10px 0px'}; height: 32px; box-sizing: border-box;">
+                    <td style="padding: 6px 10px; height: 32px; box-sizing: border-box;">
                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                           <span style="font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'};">Shipment Ref. No.</span>
-                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; height: 22px; line-height: 18px; box-sizing: border-box; display: inline-block; font-size: 13px; position: relative; top: ${isOriginal ? '0px' : '-2px'};"></span>
+                          <span style="${b18} padding: 0px 10px; flex: 1; text-align: center; font-weight: 700; min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px;">${""}</span>
                        </div>
                     </td>
                   </tr>
@@ -253,17 +253,17 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
         <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
           <tr>
             <td style="width: 53%; ${br22} vertical-align: top; padding: 0; ${isOriginal ? 'position: relative; height: 255px;' : ''}">
-               <div style="padding: ${isOriginal ? '8px 10px 8px 0px' : '3px 8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: -25px; left: -10px; width: 100%;' : ''}">
-                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 1px; font-size: 8.5px;">Consignor</div>'}
-                  <div style="font-weight: 700; text-transform: uppercase; font-size: ${isOriginal ? '12px' : '9px'}; line-height: ${isOriginal ? '1.3' : '1.15'}; white-space: normal;">${formatAddress(bl.consignor || enquiry?.organization_name || "")}</div>
+               <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: -25px; left: -10px; width: 100%;' : ''}">
+                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Consignor</div>'}
+                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.consignor || enquiry?.organization_name || "")}</div>
                </div>
-               <div style="padding: ${isOriginal ? '8px 10px 8px 0px' : '3px 8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 105px; left: -10px; width: 100%;' : ''}">
-                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 1px; font-size: 8.5px;">Consignee (Or Order)</div>'}
-                  <div style="font-weight: 700; text-transform: uppercase; font-size: ${isOriginal ? '12px' : '9px'}; line-height: ${isOriginal ? '1.3' : '1.15'}; white-space: normal;">${formatAddress(bl.consignee || "TO ORDER")}</div>
+               <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; ${bb18} height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 105px; left: -10px; width: 100%;' : ''}">
+                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Consignee (Or Order)</div>'}
+                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.consignee || "TO ORDER")}</div>
                </div>
-               <div style="padding: ${isOriginal ? '8px 10px 8px 0px' : '3px 8px'}; height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 230px; left: -10px; width: 100%;' : ''}">
-                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 1px; font-size: 8.5px;">Notify Address</div>'}
-                  <div style="font-weight: 700; text-transform: uppercase; font-size: ${isOriginal ? '12px' : '9px'}; line-height: ${isOriginal ? '1.3' : '1.15'}; white-space: normal;">${formatAddress(bl.notify_party || "SAME AS CONSIGNEE")}</div>
+               <div style="padding: 8px 10px 8px ${isOriginal ? '0px' : '8px'}; height: 85px; box-sizing: border-box; overflow: ${isOriginal ? 'visible' : 'hidden'}; ${isOriginal ? 'position: absolute; top: 230px; left: -10px; width: 100%;' : ''}">
+                  ${isOriginal ? '' : '<div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px;">Notify Address</div>'}
+                  <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; line-height: 1.3; white-space: normal;">${formatAddress(bl.notify_party || "SAME AS CONSIGNEE")}</div>
                </div>
             </td>
             <td style="width: 47%; vertical-align: top; padding: 10px 12px; text-align: center;">
@@ -361,35 +361,35 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
             <th style="width: 15%; padding: 8px 6px; font-size: 8.5px; font-weight: 900; text-align: center; color: ${isOriginal ? 'transparent' : '#000'};">Measurement</th>
           </tr>
           <tr>
-            <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: ${isOriginal ? '8px' : '12px'} 14px ${isOriginal ? '8px' : '12px'} ${isOriginal ? '0px' : '8px'}; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
+            <td style="${br18} min-height: 280px; height: 280px; vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px ${isOriginal ? '18px' : '12px'} ${isOriginal ? '0px' : '8px'}; font-size: 11.5px; line-height: 1.45; overflow-wrap: break-word; word-wrap: break-word;">
                <div style="${isOriginal ? 'position: relative; left: -10px;' : ''}">
                   <div style="font-weight: 900; white-space: pre-wrap;">${bl.container_numbers || autoContainerNumbers || "[CONTAINER DETAILS]"}</div> 
                   <div style="font-weight: 700; font-size: 10px; margin-top: 6px; white-space: pre-wrap;">${(bl.seal_numbers || autoSealNumbers) ? 'SEALS: ' + (bl.seal_numbers || autoSealNumbers) : ''}</div>
                </div>
             </td>
-            <td style="${br18} vertical-align: top; padding: ${isOriginal ? '8px' : '12px'} 14px; font-size: 11.5px; line-height: 1.45; font-weight: 900; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word;">${bl.marks_numbers || "[SHIPPING MARKS]"}</td>
-            <td style="${br18} vertical-align: top; padding: ${isOriginal ? '8px' : '12px'} 14px; font-size: 11.5px; line-height: 1.45; font-weight: 700; overflow-wrap: break-word; word-wrap: break-word;">
+            <td style="${br18} vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px; font-size: 11.5px; line-height: 1.45; font-weight: 900; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word;">${bl.marks_numbers || "[SHIPPING MARKS]"}</td>
+            <td style="${br18} vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px; font-size: 11.5px; line-height: 1.45; font-weight: 700; overflow-wrap: break-word; word-wrap: break-word;">
                <div style="max-height: 295px; overflow: hidden; display: flex; flex-direction: column; position: relative; left: ${isOriginal ? '10px' : '0'};">
                   <div style="font-weight: 900; margin-bottom: 10px; white-space: pre-wrap;">${bl.packages_description || "[NUMBER & KIND OF PACKAGES]"}</div>
                   <div style="white-space: pre-wrap; flex: 1;">${p1_desc || "[GOODS DESCRIPTION]"}</div>
                   <div style="margin-top: 5px;">${bl.hsn_code ? 'HSN: ' + bl.hsn_code : ''}</div>
                </div>
             </td>
-            <td style="${br18} vertical-align: top; padding: ${isOriginal ? '8px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">
-               ${formatWeight(bl.gross_weight || enquiry?.gross_weight || enquiry?.gross_weight_kg)}
+            <td style="${br18} vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">
+               ${bl.gross_weight || enquiry?.gross_weight || "0.000"} KGS
                <br/><br/>
-               <span style="font-size: 11px; font-weight: 700; color: #333;">NET WEIGHT<br/>${formatWeight(bl.net_weight || enquiry?.net_weight || enquiry?.net_weight_kg)}</span>
+               <span style="font-size: 11px; font-weight: 700; color: #333;">NET WEIGHT<br/>${enquiry?.net_weight || "0.000"} KGS</span>
             </td>
-            <td style="vertical-align: top; padding: ${isOriginal ? '8px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">
+            <td style="vertical-align: top; padding: ${isOriginal ? '18px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">
                ${bl.measurement || "[CBM] CBM"}
                 <br/><br/><br/><br/><br/>
                 <div style="font-size: 11.5px; font-weight: 900; text-align: center; border-top: 1px solid ${isOriginal ? 'transparent' : '#eee'}; padding-top: 12px; line-height: 1.35; color: #000;">${freightLabel}</div>
             </td>
           </tr>
-          </table>
+        </table>
 
         <!-- FREIGHT & ORIGINALS INFO -->
-        <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22} ${isOriginal ? 'margin-top: 12px;' : ''}">
+        <table style="width: 100%; border-collapse: collapse; table-layout: fixed; ${bb22}">
           <tr style="min-height: 45px;">
             <td style="width: 25%; ${br18} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; vertical-align: top;">
                <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Freight Amount</div>
@@ -429,11 +429,11 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
       </div>
       ${p2_desc ? `
       <!-- SECOND PAGE (ANNEXURE) -->
-      <div style="border: 2.2px solid ${isOriginal ? 'transparent' : '#000'}; padding: 20px 30px; width: 750px; height: 1040px; max-height: 1040px; overflow-y: hidden; overflow-x: visible; box-sizing: border-box; background-color: #fff; position: relative;">
+      <div style="border: 2.2px solid ${isOriginal ? 'transparent' : '#000'}; padding: 20px 30px; width: 784px; height: 1040px; max-height: 1040px; overflow-y: hidden; overflow-x: visible; box-sizing: border-box; background-color: #fff; position: relative;">
         ${watermark}
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
           <div style="font-size: 15px; font-weight: 700; color: #000; text-align: left; margin: 0; line-height: 1.2;">Annexure to the Multimodal Transport Document.</div>
-          <div style="font-size: 12px; font-weight: 700; color: #000; text-align: right; text-transform: uppercase;">MTD NO. : ${rawMtdNo}</div>
+          <div style="font-size: 12px; font-weight: 700; color: #000; text-align: right; text-transform: uppercase;">MTD NO. : ${enquiry?.hbl_no || ""}</div>
         </div>
 
         <table style="width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed;">
