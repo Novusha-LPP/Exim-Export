@@ -206,6 +206,14 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
 
   const rawMtdNo = bl.shipment_ref_no || enquiry?.shipment_ref_no || enquiry?.bl_details?.shipment_ref_no || enquiry?.hbl_no || enquiry?.job_no || enquiry?.enquiry_no || "";
 
+  const formatWeight = (val) => {
+    if (!val) return "0.000 KGS";
+    const str = String(val).trim();
+    if (!str || str === "0" || str === "0.000") return "0.000 KGS";
+    if (/KGS?$/i.test(str)) return str.toUpperCase();
+    return `${str} KGS`;
+  };
+
   return `
     <div style="font-family: 'Helvetica', 'Arial', sans-serif; color: #000; width: 750px; margin: 0 auto; background-color: #fff; line-height: 1.15; padding-left: 0px; padding-right: 0px; box-sizing: border-box;">
       
@@ -368,9 +376,9 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
                </div>
             </td>
             <td style="${br18} vertical-align: top; padding: ${isOriginal ? '8px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">
-               ${bl.gross_weight || enquiry?.gross_weight || "0.000"} KGS
+               ${formatWeight(bl.gross_weight || enquiry?.gross_weight || enquiry?.gross_weight_kg)}
                <br/><br/>
-               <span style="font-size: 11px; font-weight: 700; color: #333;">NET WEIGHT<br/>${(bl.net_weight || enquiry?.net_weight || (enquiry?.net_weight_kg ? `${enquiry.net_weight_kg} ${enquiry.net_weight_unit || "KGS"}` : "")) ? String(bl.net_weight || enquiry?.net_weight || (enquiry?.net_weight_kg ? `${enquiry.net_weight_kg} ${enquiry.net_weight_unit || "KGS"}` : "")).toUpperCase().includes("KG") ? (bl.net_weight || enquiry?.net_weight || `${enquiry?.net_weight_kg} ${enquiry?.net_weight_unit || "KGS"}`) : `${bl.net_weight || enquiry?.net_weight || enquiry?.net_weight_kg} KGS` : "0.000 KGS"}</span>
+               <span style="font-size: 11px; font-weight: 700; color: #333;">NET WEIGHT<br/>${formatWeight(bl.net_weight || enquiry?.net_weight || enquiry?.net_weight_kg)}</span>
             </td>
             <td style="vertical-align: top; padding: ${isOriginal ? '8px' : '12px'} 14px; font-size: 12px; font-weight: 900; text-align: right;">
                ${bl.measurement || "[CBM] CBM"}

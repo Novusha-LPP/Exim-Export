@@ -209,7 +209,17 @@ function FreightForwardingJobDetail() {
           name={name}
           type="text"
           value={value}
-          onChange={formik.handleChange}
+          onChange={(e) => {
+            const val = e.target.value;
+            formik.setFieldValue(name, val);
+            if (name === "bl_details.net_weight") {
+              const clean = val.replace(/KGS?/gi, "").trim();
+              formik.setFieldValue("net_weight_kg", clean);
+            } else if (name === "bl_details.gross_weight") {
+              const clean = val.replace(/KGS?/gi, "").trim();
+              formik.setFieldValue("gross_weight_kg", clean);
+            }
+          }}
           disabled={disabled || !isEditable}
           style={{
             border: "none",
@@ -405,7 +415,9 @@ function FreightForwardingJobDetail() {
           name={name}
           rows={rows}
           value={value}
-          onChange={formik.handleChange}
+          onChange={(e) => {
+            formik.setFieldValue(name, e.target.value);
+          }}
           disabled={disabled || !isEditable}
           style={{
             border: "none",
@@ -601,18 +613,18 @@ function FreightForwardingJobDetail() {
   }, [formik.values.is_manual_cbm, hasGridRows, totalPackages, formik.values.total_no_of_pkgs]);
 
   const finalNetWeight = React.useMemo(() => {
-    if (formik.values.is_manual_cbm && !hasGridRows) {
-      return parseFloat(formik.values.net_weight_kg) || 0;
+    if (!hasGridRows) {
+      return parseFloat(formik.values.net_weight_kg) || parseFloat(formik.values.bl_details?.net_weight) || 0;
     }
-    return totalNetWeight;
-  }, [formik.values.is_manual_cbm, hasGridRows, totalNetWeight, formik.values.net_weight_kg]);
+    return totalNetWeight > 0 ? totalNetWeight : (parseFloat(formik.values.net_weight_kg) || parseFloat(formik.values.bl_details?.net_weight) || 0);
+  }, [hasGridRows, totalNetWeight, formik.values.net_weight_kg, formik.values.bl_details?.net_weight]);
 
   const finalGrossWeight = React.useMemo(() => {
-    if (formik.values.is_manual_cbm && !hasGridRows) {
-      return parseFloat(formik.values.gross_weight_kg) || 0;
+    if (!hasGridRows) {
+      return parseFloat(formik.values.gross_weight_kg) || parseFloat(formik.values.bl_details?.gross_weight) || 0;
     }
-    return totalGrossWeight;
-  }, [formik.values.is_manual_cbm, hasGridRows, totalGrossWeight, formik.values.gross_weight_kg]);
+    return totalGrossWeight > 0 ? totalGrossWeight : (parseFloat(formik.values.gross_weight_kg) || parseFloat(formik.values.bl_details?.gross_weight) || 0);
+  }, [hasGridRows, totalGrossWeight, formik.values.gross_weight_kg, formik.values.bl_details?.gross_weight]);
 
   const finalVolumeCbm = React.useMemo(() => {
     if (formik.values.is_manual_cbm) {
@@ -633,20 +645,14 @@ function FreightForwardingJobDetail() {
 
   useEffect(() => {
     if (!isEditable) return;
-    if (!formik.values.is_manual_cbm) {
-      formik.setFieldValue("total_no_of_pkgs", finalPackages > 0 ? String(finalPackages) : "");
-      formik.setFieldValue("net_weight_kg", finalNetWeight > 0 ? String(parseFloat(finalNetWeight.toFixed(3))) : "");
-      formik.setFieldValue("gross_weight_kg", finalGrossWeight > 0 ? String(parseFloat(finalGrossWeight.toFixed(3))) : "");
-      formik.setFieldValue("volume_cbm", finalVolumeCbm > 0 ? String(parseFloat(finalVolumeCbm.toFixed(4))) : "");
-      formik.setFieldValue("chargeable_weight", chargeableWeight > 0 ? String(parseFloat(chargeableWeight.toFixed(3))) : "");
-    } else if (hasGridRows) {
-      formik.setFieldValue("total_no_of_pkgs", finalPackages > 0 ? String(finalPackages) : "");
-      formik.setFieldValue("net_weight_kg", finalNetWeight > 0 ? String(parseFloat(finalNetWeight.toFixed(3))) : "");
-      formik.setFieldValue("gross_weight_kg", finalGrossWeight > 0 ? String(parseFloat(finalGrossWeight.toFixed(3))) : "");
-      formik.setFieldValue("volume_cbm", finalVolumeCbm > 0 ? String(parseFloat(finalVolumeCbm.toFixed(4))) : "");
-      formik.setFieldValue("chargeable_weight", chargeableWeight > 0 ? String(parseFloat(chargeableWeight.toFixed(3))) : "");
+    if (hasGridRows) {
+      if (finalPackages > 0) formik.setFieldValue("total_no_of_pkgs", String(finalPackages));
+      if (finalNetWeight > 0) formik.setFieldValue("net_weight_kg", String(parseFloat(finalNetWeight.toFixed(3))));
+      if (finalGrossWeight > 0) formik.setFieldValue("gross_weight_kg", String(parseFloat(finalGrossWeight.toFixed(3))));
+      if (finalVolumeCbm > 0) formik.setFieldValue("volume_cbm", String(parseFloat(finalVolumeCbm.toFixed(4))));
+      if (chargeableWeight > 0) formik.setFieldValue("chargeable_weight", String(parseFloat(chargeableWeight.toFixed(3))));
     }
-  }, [finalPackages, finalNetWeight, finalGrossWeight, finalVolumeCbm, chargeableWeight, formik.values.is_manual_cbm, hasGridRows, isEditable]);
+  }, [finalPackages, finalNetWeight, finalGrossWeight, finalVolumeCbm, chargeableWeight, hasGridRows, isEditable]);
 
   const gridStyles = {
     table: {

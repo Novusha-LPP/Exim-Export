@@ -234,8 +234,20 @@ router.get("/freight-enquiries", async (req, res) => {
             if (job.volume_weight) e.volume_weight = job.volume_weight;
             if (job.shipment_terms) e.shipment_terms = job.shipment_terms;
             if (job.container_qty_type) e.container_qty_type = job.container_qty_type;
-            if (job.net_weight_kg) e.net_weight_kg = job.net_weight_kg;
-            if (job.gross_weight_kg) e.gross_weight_kg = job.gross_weight_kg;
+            if (job.net_weight_kg) {
+              e.net_weight_kg = job.net_weight_kg;
+              if (!e.bl_details) e.bl_details = {};
+              if (!e.bl_details.net_weight || e.bl_details.net_weight === "0.000 KGS" || e.bl_details.net_weight === "0.000") {
+                e.bl_details.net_weight = `${job.net_weight_kg} KGS`;
+              }
+            }
+            if (job.gross_weight_kg) {
+              e.gross_weight_kg = job.gross_weight_kg;
+              if (!e.bl_details) e.bl_details = {};
+              if (!e.bl_details.gross_weight) {
+                e.bl_details.gross_weight = `${job.gross_weight_kg} KGS`;
+              }
+            }
             if (job.volume_cbm) e.volume_cbm = job.volume_cbm;
             if (job.chargeable_weight) e.chargeable_weight = job.chargeable_weight;
             if (job.container_size) e.container_size = job.container_size;

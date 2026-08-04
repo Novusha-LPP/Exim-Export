@@ -2843,8 +2843,11 @@ router.get("/:job_no(.*)", async (req, res, next) => {
         } else if (jobData.bl_details.shipment_ref_no) {
           jobData.hbl_no = jobData.bl_details.shipment_ref_no;
         }
-        jobData.net_weight_kg = jobData.net_weight_kg || enquiry.net_weight_kg || enquiry.net_weight || "";
+        jobData.net_weight_kg = jobData.net_weight_kg || exportJob.net_weight_kg || enquiry.net_weight_kg || enquiry.net_weight || "";
         jobData.net_weight_unit = jobData.net_weight_unit || enquiry.net_weight_unit || "KG";
+        if (jobData.net_weight_kg && (!jobData.bl_details.net_weight || jobData.bl_details.net_weight === "0.000 KGS" || jobData.bl_details.net_weight === "0.000")) {
+          jobData.bl_details.net_weight = `${jobData.net_weight_kg} ${jobData.net_weight_unit || "KGS"}`;
+        }
         jobData.remarks = enquiry.remarks || jobData.remarks;
         if (enquiry.containers && enquiry.containers.length > 0) {
           jobData.containers = enquiry.containers.map((c, i) => ({
@@ -3366,9 +3369,47 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
         }
       }
       if (req.body.movement_type !== undefined) enquiryUpdates.movement_type = req.body.movement_type;
-      if (req.body.gross_weight_kg !== undefined) enquiryUpdates.gross_weight = req.body.gross_weight_kg;
+      // Sync Net Weight & Gross Weight
+      let effectiveNetWeight = req.body.net_weight_kg;
+      if (!effectiveNetWeight || effectiveNetWeight === "") {
+        if (req.body.bl_details?.net_weight) {
+          const cleanNet = String(req.body.bl_details.net_weight).replace(/KGS?/gi, "").trim();
+          if (cleanNet) {
+            effectiveNetWeight = cleanNet;
+          }
+        }
+      }
+      if (effectiveNetWeight && effectiveNetWeight !== "") {
+        updateData.net_weight_kg = effectiveNetWeight;
+        enquiryUpdates.net_weight = effectiveNetWeight;
+        enquiryUpdates.net_weight_kg = effectiveNetWeight;
+        if (enquiryUpdates.bl_details) {
+          if (!enquiryUpdates.bl_details.net_weight || enquiryUpdates.bl_details.net_weight === "" || enquiryUpdates.bl_details.net_weight === "0.000 KGS") {
+            enquiryUpdates.bl_details.net_weight = `${effectiveNetWeight} KGS`;
+          }
+        }
+      }
+
+      let effectiveGrossWeight = req.body.gross_weight_kg;
+      if (!effectiveGrossWeight || effectiveGrossWeight === "") {
+        if (req.body.bl_details?.gross_weight) {
+          const cleanGross = String(req.body.bl_details.gross_weight).replace(/KGS?/gi, "").trim();
+          if (cleanGross) {
+            effectiveGrossWeight = cleanGross;
+          }
+        }
+      }
+      if (effectiveGrossWeight && effectiveGrossWeight !== "") {
+        updateData.gross_weight_kg = effectiveGrossWeight;
+        enquiryUpdates.gross_weight = effectiveGrossWeight;
+        enquiryUpdates.gross_weight_kg = effectiveGrossWeight;
+        if (enquiryUpdates.bl_details) {
+          if (!enquiryUpdates.bl_details.gross_weight || enquiryUpdates.bl_details.gross_weight === "") {
+            enquiryUpdates.bl_details.gross_weight = `${effectiveGrossWeight} KGS`;
+          }
+        }
+      }
       if (req.body.gross_weight_unit !== undefined) enquiryUpdates.gross_weight_unit = req.body.gross_weight_unit;
-      if (req.body.net_weight_kg !== undefined) enquiryUpdates.net_weight = req.body.net_weight_kg;
       if (req.body.net_weight_unit !== undefined) enquiryUpdates.net_weight_unit = req.body.net_weight_unit;
       if (req.body.chargeable_weight !== undefined) enquiryUpdates.chargeable_weight = req.body.chargeable_weight;
       if (req.body.chargeable_weight_unit !== undefined) enquiryUpdates.chargeable_weight_unit = req.body.chargeable_weight_unit;
