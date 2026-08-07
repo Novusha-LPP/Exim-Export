@@ -4,6 +4,10 @@ import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
 
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // GET /api/charges-jobs - List charges module jobs (only those with handover date)
 router.get("/api/charges-jobs/:status?", async (req, res) => {
     try {
@@ -255,11 +259,11 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
 
 
         if (year && year !== "all") filter.$and.push({ year });
-        if (exporter) filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });
-        if (country) filter.$and.push({ destination_country: { $regex: country, $options: "i" } });
+        if (exporter) filter.$and.push({ exporter: { $regex: escapeRegex(exporter), $options: "i" } });
+        if (country) filter.$and.push({ destination_country: { $regex: escapeRegex(country), $options: "i" } });
         if (consignmentType) filter.$and.push({ consignmentType });
         if (branch) filter.$and.push({ branch_code: branch });
-        if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
+        if (customHouse) filter.$and.push({ custom_house: { $regex: escapeRegex(customHouse), $options: "i" } });
         if (jobOwner) filter.$and.push({ job_owner: jobOwner });
         if (detailedStatus) {
             const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
@@ -393,12 +397,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
 
         const aggPipeline = [
             { $match: filter },
-            {
-                $addFields: {
-                    hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] }
-                }
-            },
-            { $sort: { hasOpenClientQuery: -1, ...sort } },
+            { $sort: { ...sort } },
             { $project: selectProjection }
         ];
 

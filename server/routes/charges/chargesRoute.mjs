@@ -480,10 +480,15 @@ router.post('/approve-purchase-entry', async (req, res) => {
         const job = await ExJobModel.findOne({ 'charges.purchase_book_no': requestNo });
         if (!job) return res.status(404).json({ success: false, message: 'Purchase book entry not found' });
 
+        // Check if this is a multi-charge PB
+        const pbEntry = await PurchaseBookEntryModel.findOne({ entryNo: requestNo }).lean();
+        const chargeRefs = pbEntry?.chargeRefs || [];
+
         job.charges.forEach(charge => {
-            if (charge.purchase_book_no === requestNo) {
+            if (charge.purchase_book_no === requestNo || (chargeRefs.length > 0 && chargeRefs.includes(String(charge._id)))) {
                 charge.purchase_book_is_approved = true;
                 charge.purchase_book_status = 'Approved';
+                if (!charge.purchase_book_no) charge.purchase_book_no = requestNo;
             }
         });
         await job.save();
@@ -499,8 +504,12 @@ router.post('/reject-purchase-entry', async (req, res) => {
         const job = await ExJobModel.findOne({ 'charges.purchase_book_no': requestNo });
         if (!job) return res.status(404).json({ success: false, message: 'Purchase book entry not found' });
 
+        // Check if this is a multi-charge PB
+        const pbEntry = await PurchaseBookEntryModel.findOne({ entryNo: requestNo }).lean();
+        const chargeRefs = pbEntry?.chargeRefs || [];
+
         job.charges.forEach(charge => {
-            if (charge.purchase_book_no === requestNo) {
+            if (charge.purchase_book_no === requestNo || (chargeRefs.length > 0 && chargeRefs.includes(String(charge._id)))) {
                 charge.purchase_book_no = null;
                 charge.purchase_book_status = null;
                 charge.purchase_book_is_approved = false;

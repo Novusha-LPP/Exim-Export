@@ -4,12 +4,46 @@ import express from "express";
 
 const router = express.Router();
 
+const extractPrimaryJobNo = (input) => {
+  if (!input) return "";
+  const str = String(input).trim();
+  if (!str) return "";
+
+  if (str.includes(" TO ")) {
+    const parts = str.split("/");
+    if (parts.length === 5) {
+      const rangeParts = parts[3].split(" TO ");
+      const firstNumStr = rangeParts[0].trim();
+      return `${parts[0]}/${parts[1]}/${parts[2]}/${firstNumStr}/${parts[4]}`;
+    }
+    return str.split(" TO ")[0].trim();
+  }
+
+  if (str.includes("-") && str.split("/").length === 5) {
+    const parts = str.split("/");
+    const rangeParts = parts[3].split("-");
+    if (rangeParts.length === 2 && !isNaN(parseInt(rangeParts[0], 10)) && !isNaN(parseInt(rangeParts[1], 10))) {
+      return `${parts[0]}/${parts[1]}/${parts[2]}/${rangeParts[0].trim()}/${parts[4]}`;
+    }
+  }
+
+  if (str.includes(",")) {
+    return str.split(",")[0].trim();
+  }
+
+  return str;
+};
+
 /**
  * Generate Export Checklist PDF - PURE DATABASE DATA ONLY
  */
 export const generateExportChecklist = async (jobNumber) => {
   try {
-    const exportJob = await ExportJob.findOne({ job_no: jobNumber }).exec();
+    const cleanJobNo = extractPrimaryJobNo(jobNumber);
+    let exportJob = await ExportJob.findOne({ job_no: cleanJobNo }).exec();
+    if (!exportJob) {
+      exportJob = await ExportJob.findOne({ job_no: jobNumber }).exec();
+    }
 
     if (!exportJob) {
       throw new Error(`Export job with job number ${jobNumber} not found`);

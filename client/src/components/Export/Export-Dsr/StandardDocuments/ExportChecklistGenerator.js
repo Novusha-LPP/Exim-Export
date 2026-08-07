@@ -1504,11 +1504,42 @@ const ExportChecklistGenerator = ({
     return yPos + 15;
   };
 
+const extractPrimaryJobNo = (input) => {
+  if (!input) return "";
+  const str = String(input).trim();
+  if (!str) return "";
+
+  if (str.includes(" TO ")) {
+    const parts = str.split("/");
+    if (parts.length === 5) {
+      const rangeParts = parts[3].split(" TO ");
+      const firstNumStr = rangeParts[0].trim();
+      return `${parts[0]}/${parts[1]}/${parts[2]}/${firstNumStr}/${parts[4]}`;
+    }
+    return str.split(" TO ")[0].trim();
+  }
+
+  if (str.includes("-") && str.split("/").length === 5) {
+    const parts = str.split("/");
+    const rangeParts = parts[3].split("-");
+    if (rangeParts.length === 2 && !isNaN(parseInt(rangeParts[0], 10)) && !isNaN(parseInt(rangeParts[1], 10))) {
+      return `${parts[0]}/${parts[1]}/${parts[2]}/${rangeParts[0].trim()}/${parts[4]}`;
+    }
+  }
+
+  if (str.includes(",")) {
+    return str.split(",")[0].trim();
+  }
+
+  return str;
+};
+
   // ==================== MAIN GENERATOR ====================
   const generateExportChecklist = async (e) => {
     if (e) e.stopPropagation();
     try {
-      const encodedJobNo = encodeURIComponent(jobNo);
+      const targetJobNo = extractPrimaryJobNo(jobNo);
+      const encodedJobNo = encodeURIComponent(targetJobNo);
       const response = await axios.get(
         `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}?excludeChildJobs=true`,
       );

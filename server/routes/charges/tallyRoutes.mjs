@@ -4,6 +4,7 @@ import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
 import authApiKey from "../../middleware/authApiKey.mjs";
 import PurchaseBookEntryModel from "../../model/export/purchaseBookEntryModel.mjs";
 import PaymentRequestModel from "../../model/export/paymentRequestModel.mjs";
+import importDbConnection from "../../model/importDB.js";
 
 const router = express.Router();
 
@@ -160,8 +161,11 @@ const formatInvoiceSeries = (invoiceList) => {
  */
 const resolveJobNumberQuery = (jobNoInput) => {
     if (!jobNoInput) return [{ _id: null }];
-    const cleanJobNo = String(jobNoInput).trim();
-    if (!cleanJobNo) return [{ _id: null }];
+    const rawJobNo = String(jobNoInput).trim();
+    if (!rawJobNo) return [{ _id: null }];
+
+    // Strip Purchase Book / Payment Request prefix if present e.g. PB/01/..., R1/01/...
+    const cleanJobNo = rawJobNo.replace(/^(?:PB|R1)\/\d+\//i, "").replace(/^(?:PB|R1)\//i, "");
 
     const conditions = [];
 
@@ -180,6 +184,9 @@ const resolveJobNumberQuery = (jobNoInput) => {
     ];
     exactFields.forEach((field) => {
         conditions.push({ [field]: cleanJobNo });
+        if (cleanJobNo !== rawJobNo) {
+            conditions.push({ [field]: rawJobNo });
+        }
     });
 
     // 2. Check for "TO" format: e.g. AMD/EXP/SEA/00463 TO 00466/26-27
@@ -221,8 +228,10 @@ const resolveJobNumberQuery = (jobNoInput) => {
             yearSuffix = last;
         }
 
-        for (const p of slashParts) {
-            if (/^\d+$/.test(p)) {
+        // Loop backwards to find the numeric serial number part
+        for (let i = slashParts.length - 1; i >= 0; i--) {
+            const p = slashParts[i];
+            if (p !== yearSuffix && /^\d+$/.test(p)) {
                 seqNum = parseInt(p, 10);
                 break;
             }
@@ -316,23 +325,29 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         ? Boolean(explicitFreight) 
         : isFreightJob(job);
 
+    const jobNoStr = String(job.tally_club_ref_no || job.job_no || "").toUpperCase();
+    const isImport = job.job_type === "IMPORT" || jobNoStr.includes("/IMP/") || jobNoStr.includes("IMP");
+    const jobType = isImport ? "IMPORT" : (job.job_type || "EXPORT");
+
     return {
         "freight": isFreight,
         "Freight": isFreight,
         "Job Number": job.tally_club_ref_no || job.job_no,
-        "Job Year": job.year || "",
-        "Job Type": "EXPORT",
-        "Job Date": normalizeDate(job.createdAt),
-        "ImporterExporter Name": job.exporter || "",
-        "Consignee": job.consignees?.[0]?.consignee_name || "",
-        "Shipper": job.shipper || "",
-        "Origin Port": job.port_of_loading || "",
-        "Destination Port": job.port_of_discharge || "",
-        "Custom House": job.custom_house || "",
-        "Gross Weight": job.gross_weight_kg ? String(Math.round(parseFloat(job.gross_weight_kg))) : "",
-        "Net Wt": job.net_weight_kg ? String(Math.round(parseFloat(job.net_weight_kg))) : "",
-        "Package Count": job.total_no_of_pkgs || "",
-        "Package Unit": job.package_unit || "",
+        "Job Year": job.year || job.job_year || "",
+        "Job Type": jobType,
+        "Job Date": normalizeDate(job.createdAt || job.job_date || job.jobDate),
+        "ImporterExporter Name": isImport 
+            ? (job.importer || job.importer_name || job.importerExporter || job.exporter || job.organization_name || "") 
+            : (job.exporter || job.organization_name || ""),
+        "Consignee": job.consignees?.[0]?.consignee_name || job.consignee || job.consignee_name || "",
+        "Shipper": job.shipper || job.supplier_name || job.supplier || "",
+        "Origin Port": job.port_of_loading || job.origin_port || job.pol || "",
+        "Destination Port": job.port_of_discharge || job.destination_port || job.pod || "",
+        "Custom House": job.custom_house || job.custom_house_name || "",
+        "Gross Weight": job.gross_weight_kg ? String(Math.round(parseFloat(job.gross_weight_kg))) : (job.gross_weight ? String(Math.round(parseFloat(job.gross_weight))) : ""),
+        "Net Wt": job.net_weight_kg ? String(Math.round(parseFloat(job.net_weight_kg))) : (job.net_weight ? String(Math.round(parseFloat(job.net_weight))) : ""),
+        "Package Count": job.total_no_of_pkgs || job.no_of_pkgs || job.packages || "",
+        "Package Unit": job.package_unit || job.pkg_unit || "",
         "Container Count": (() => {
             const containers = job.containers || [];
             if (containers.length === 0) return job.no_of_containers || "0";
@@ -345,27 +360,27 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
                 .map(([detail, count]) => `${count} X ${detail}`)
                 .join(", ");
         })(),
-        "Containers": (job.containers || []).map(c => c.containerNo).filter(Boolean).join(", "),
-        "BE No": "",
-        "BE Date": "",
+        "Containers": (job.containers || []).map(c => c.containerNo || c.container_number || c.container_no).filter(Boolean).join(", "),
+        "BE No": job.be_no || job.be_number || "",
+        "BE Date": normalizeDate(job.be_date),
         "SB No": job.sb_no || "",
         "SB Date": normalizeDate(job.sb_date),
-        "MBL NO": job.awb_bl_no || "",
-        "MBL Date": normalizeDate(job.awb_bl_date),
-        "HBL No": "",
-        "HBL Date": "",
-        "Vessel": job.vessel || "",
-        "Voyage": job.voyage_no || "",
+        "MBL NO": job.awb_bl_no || job.mbl_no || job.mbl_number || "",
+        "MBL Date": normalizeDate(job.awb_bl_date || job.mbl_date),
+        "HBL No": job.hbl_no || job.hbl_number || "",
+        "HBL Date": normalizeDate(job.hbl_date),
+        "Vessel": job.vessel || job.vessel_name || "",
+        "Voyage": job.voyage_no || job.voyage || "",
         "Invoice Number": inv?.invoiceNumber || inv?.invoice_number || "",
         "Inv Date": normalizeDate(inv?.invoiceDate || inv?.invoice_date),
-        "Branch": job.branch_code || "",
+        "Branch": job.branch_code || job.branch || "",
         "Status": (job.status || "Pending").toLowerCase(),
         "Sb type": (() => {
             const eximCode = inv?.products?.[0]?.eximCode || "";
             return eximCode.includes("-") ? eximCode.split("-").slice(1).join("-").trim() : eximCode;
         })(),
-        "Consignment Type": job.consignmentType || "",
-        "Customer Ref No": job.exporter_ref_no || "",
+        "Consignment Type": job.consignmentType || job.consignment_type || "",
+        "Customer Ref No": job.exporter_ref_no || job.importer_ref_no || job.customer_ref_no || "",
         "TOI": inv?.termsOfInvoice || "",
         "Invoice Value": (() => {
             if (!inv) return "";
@@ -388,6 +403,10 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         ? Boolean(explicitFreight) 
         : isFreightJob(job);
 
+    const jobNoStr = String(job.tally_club_ref_no || job.job_no || "").toUpperCase();
+    const isImport = job.job_type === "IMPORT" || jobNoStr.includes("/IMP/") || jobNoStr.includes("IMP");
+    const jobType = isImport ? "IMPORT" : (job.job_type || "EXPORT");
+
     const grossVal = job.gross_weight_kg || job.gross_weight || job.bl_details?.gross_weight;
     const netVal = job.net_weight_kg || job.net_weight || job.bl_details?.net_weight;
 
@@ -395,18 +414,20 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "freight": isFreight,
         "Freight": isFreight,
         "Job Number": job.tally_club_ref_no || job.job_no,
-        "Job Year": job.year || "",
-        "Job Type": "EXPORT",
-        "Job Date": normalizeDate(job.createdAt),
-        "ImporterExporter Name": job.exporter || job.organization_name || "",
-        "Consignee": job.consignees?.[0]?.consignee_name || job.consignee_name || job.bl_details?.consignee || "",
-        "Shipper": job.shipper || job.exporter || job.organization_name || "",
-        "Origin Port": job.port_of_loading || job.place_of_receipt || "",
-        "Destination Port": job.port_of_discharge || job.port_of_destination || "",
+        "Job Year": job.year || job.job_year || "",
+        "Job Type": jobType,
+        "Job Date": normalizeDate(job.createdAt || job.job_date || job.jobDate),
+        "ImporterExporter Name": isImport 
+            ? (job.importer || job.importer_name || job.importerExporter || job.exporter || job.organization_name || "") 
+            : (job.exporter || job.organization_name || ""),
+        "Consignee": job.consignees?.[0]?.consignee_name || job.consignee_name || job.consignee || job.bl_details?.consignee || "",
+        "Shipper": job.shipper || job.exporter || job.organization_name || job.supplier_name || "",
+        "Origin Port": job.port_of_loading || job.place_of_receipt || job.origin_port || "",
+        "Destination Port": job.port_of_discharge || job.port_of_destination || job.destination_port || "",
         "Custom House": job.custom_house || "",
         "Gross Weight": grossVal ? String(Math.round(parseFloat(String(grossVal).replace(/KGS?/gi, "")))) : "",
         "Net Wt": netVal ? String(Math.round(parseFloat(String(netVal).replace(/KGS?/gi, "")))) : "",
-        "Package Count": job.total_no_of_pkgs || job.no_packages || "",
+        "Package Count": job.total_no_of_pkgs || job.no_packages || job.no_of_pkgs || "",
         "Package Unit": job.package_unit || "",
         "Container Count": (() => {
             const containers = job.containers || [];
@@ -420,27 +441,27 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
                 .map(([detail, count]) => `${count} X ${detail}`)
                 .join(", ");
         })(),
-        "Containers": (job.containers || []).map(c => c.containerNo || c.container_number).filter(Boolean).join(", "),
-        "BE No": "",
-        "BE Date": "",
+        "Containers": (job.containers || []).map(c => c.containerNo || c.container_number || c.container_no).filter(Boolean).join(", "),
+        "BE No": job.be_no || job.be_number || "",
+        "BE Date": normalizeDate(job.be_date),
         "SB No": job.sb_no || "",
         "SB Date": normalizeDate(job.sb_date),
-        "MBL NO": job.awb_bl_no || job.mbl_no || "",
-        "MBL Date": normalizeDate(job.awb_bl_date),
-        "HBL No": job.hbl_no || job.bl_details?.shipment_ref_no || "",
+        "MBL NO": job.awb_bl_no || job.mbl_no || job.mbl_number || "",
+        "MBL Date": normalizeDate(job.awb_bl_date || job.mbl_date),
+        "HBL No": job.hbl_no || job.bl_details?.shipment_ref_no || job.hbl_number || "",
         "HBL Date": normalizeDate(job.hbl_date || job.bl_details?.date_of_issue),
         "Vessel": job.vessel || job.vessel_name || job.bl_details?.vessel_name || "",
-        "Voyage": job.voyage_no || job.bl_details?.voyage_no || "",
+        "Voyage": job.voyage_no || job.bl_details?.voyage_no || job.voyage || "",
         "Invoice Number": inv?.invoiceNumber || inv?.invoice_number || "",
         "Inv Date": normalizeDate(inv?.invoiceDate || inv?.invoice_date),
-        "Branch": job.branch_code || "",
+        "Branch": job.branch_code || job.branch || "",
         "Status": (job.status || "Pending").toLowerCase(),
         "Sb type": (() => {
             const eximCode = inv?.products?.[0]?.eximCode || "";
             return eximCode.includes("-") ? eximCode.split("-").slice(1).join("-").trim() : eximCode;
         })(),
         "Consignment Type": job.consignmentType || job.consignment_type || "",
-        "Customer Ref No": job.exporter_ref_no || "",
+        "Customer Ref No": job.exporter_ref_no || job.importer_ref_no || job.customer_ref_no || "",
         "TOI": inv?.termsOfInvoice || "",
         "Invoice Value": (() => {
             if (!inv) return "";
@@ -463,7 +484,10 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
  */
 const getJobDetailsInternal = async (job_number, explicitFreight) => {
     if (!job_number) return null;
-    const cleanNo = job_number.trim();
+    let cleanNo = String(job_number).trim();
+    // Strip PB/01/ or R1/01/ prefix if present e.g. PB/01/AMD/EXP/SEA/00968/26-27
+    cleanNo = cleanNo.replace(/^(?:PB|R1)\/\d+\//i, "").replace(/^(?:PB|R1)\//i, "");
+
     const isFFRequest = cleanNo.toUpperCase().startsWith("FF") || cleanNo.toUpperCase().includes("FF/");
 
     if (isFFRequest) {
@@ -534,8 +558,8 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
         return invoices.map(inv => mapFFJobAndInvoiceToTally(job, inv, explicitFreight));
     }
 
-    // LOGIC FOR NORMAL EXPORT DSR JOBS
-    // 1. Try exact match FIRST across key identifier fields
+    // LOGIC FOR NORMAL EXPORT & IMPORT DSR JOBS
+    // 1. Try exact match FIRST across key identifier fields in ExJobModel
     const safeNo = cleanNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     let job = await ExJobModel.findOne({
         $or: [
@@ -548,19 +572,43 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
         ]
     }).lean();
 
-    // 2. If no exact match found, fallback to sequence / regex matching
+    // 2. If no exact match found, fallback to sequence / regex matching in ExJobModel
     if (!job) {
         job = await ExJobModel.findOne({
             $or: resolveJobNumberQuery(job_number)
         }).sort({ is_club_job_parent: -1 }).lean();
     }
+
+    // 3. If still no job found and importDbConnection is connected, search importDbConnection's "jobs" collection
+    if (!job && importDbConnection && importDbConnection.readyState === 1) {
+        try {
+            const clientJobsColl = importDbConnection.db.collection("jobs");
+            const importConditions = [
+                { job_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                { tally_club_ref_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                { custom_job_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                ...resolveJobNumberQuery(job_number)
+            ];
+            job = await clientJobsColl.findOne({ $or: importConditions });
+        } catch (err) {
+            console.error("Error searching Import DB for job:", err);
+        }
+    }
+
     if (!job) return null;
 
     // If it's a child job of a club job, resolve and retrieve the parent job details instead
     if (!job.is_club_job_parent && job.parent_club_job) {
-        const parentJob = await ExJobModel.findOne({
+        let parentJob = await ExJobModel.findOne({
             $or: [{ job_no: job.parent_club_job }, { tally_club_ref_no: job.parent_club_job }]
         }).lean();
+        if (!parentJob && importDbConnection && importDbConnection.readyState === 1) {
+            try {
+                parentJob = await importDbConnection.db.collection("jobs").findOne({
+                    $or: [{ job_no: job.parent_club_job }, { tally_club_ref_no: job.parent_club_job }]
+                });
+            } catch (err) {}
+        }
         if (parentJob) {
             job = parentJob;
         }
@@ -571,17 +619,22 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
         const clubJobSeries = formatClubJobSeries(job.clubbed_jobs, job.tally_club_ref_no || job.job_no);
         job.tally_club_ref_no = clubJobSeries;
 
-        const childJobs = await ExJobModel.find({ job_no: { $in: job.clubbed_jobs } }).lean();
+        let childJobs = await ExJobModel.find({ job_no: { $in: job.clubbed_jobs } }).lean();
+        if ((!childJobs || childJobs.length === 0) && importDbConnection && importDbConnection.readyState === 1) {
+            try {
+                childJobs = await importDbConnection.db.collection("jobs").find({ job_no: { $in: job.clubbed_jobs } }).toArray();
+            } catch (err) {}
+        }
 
         let totalNetWeight = 0;
         let totalGrossWeight = 0;
         let totalPkgs = 0;
         let allSbNos = [];
 
-        childJobs.forEach(j => {
-            const nw = parseFloat(j.net_weight_kg);
-            const gw = parseFloat(j.gross_weight_kg);
-            const pkgs = parseInt(j.total_no_of_pkgs, 10);
+        (childJobs || []).forEach(j => {
+            const nw = parseFloat(j.net_weight_kg || j.net_weight);
+            const gw = parseFloat(j.gross_weight_kg || j.gross_weight);
+            const pkgs = parseInt(j.total_no_of_pkgs || j.no_of_pkgs, 10);
             if (!isNaN(nw)) totalNetWeight += nw;
             if (!isNaN(gw)) totalGrossWeight += gw;
             if (!isNaN(pkgs)) totalPkgs += pkgs;
@@ -594,14 +647,14 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
         job.sb_no = [...new Set(allSbNos)].filter(Boolean).join(", ");
 
         const uniqueContainersMap = new Map();
-        childJobs.flatMap(j => j.containers || []).forEach(c => {
-            if (c && c.containerNo) {
-                uniqueContainersMap.set(c.containerNo, c);
+        (childJobs || []).flatMap(j => j.containers || []).forEach(c => {
+            if (c && (c.containerNo || c.container_number || c.container_no)) {
+                uniqueContainersMap.set(c.containerNo || c.container_number || c.container_no, c);
             }
         });
         job.containers = Array.from(uniqueContainersMap.values());
 
-        const allInvoices = childJobs.flatMap(j => j.invoices || []);
+        const allInvoices = (childJobs || []).flatMap(j => j.invoices || []);
         let invNumbers = [];
         let invDates = [];
         let totalInvValue = 0;
@@ -609,10 +662,10 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
         let currency = "";
 
         allInvoices.forEach(inv => {
-            if (inv.invoiceNumber) invNumbers.push(inv.invoiceNumber);
-            if (inv.invoiceDate) invDates.push(normalizeDate(inv.invoiceDate));
+            if (inv.invoiceNumber || inv.invoice_number) invNumbers.push(inv.invoiceNumber || inv.invoice_number);
+            if (inv.invoiceDate || inv.invoice_date) invDates.push(normalizeDate(inv.invoiceDate || inv.invoice_date));
 
-            const invVal = parseFloat(inv.invoiceValue) || 0;
+            const invVal = parseFloat(inv.invoiceValue || inv.invoice_value) || 0;
             totalInvValue += invVal;
 
             const fob = parseFloat(inv.freightInsuranceCharges?.fobValue?.amount || invVal);
@@ -747,11 +800,13 @@ router.get("/next-sequence", authApiKey, async (req, res) => {
         let fullNo = `${prefix}/${nextIndex}/${resolvedJobNo}`;
 
         const parts = resolvedJobNo.split('/');
-        if (parts.length === 5 && parts[1].toUpperCase() === 'EXP') {
-            // Already in BRANCH/EXP/MODE/SERIAL/YEAR format
+        const isExpOrImp = parts.length === 5 && (parts[1].toUpperCase() === 'EXP' || parts[1].toUpperCase() === 'IMP');
+        const isOldExpOrImp = parts.length === 5 && (parts[2].toUpperCase() === 'EXP' || parts[2].toUpperCase() === 'IMP');
+        if (isExpOrImp) {
+            // Already in BRANCH/EXP|IMP/MODE/SERIAL/YEAR format
             fullNo = `${prefix}/${nextIndex}/${resolvedJobNo}`.toUpperCase();
-        } else if (parts.length === 5 && parts[2].toUpperCase() === 'EXP') {
-            // In OLD format: BRANCH/MODE/EXP/SERIAL/YEAR
+        } else if (isOldExpOrImp) {
+            // In OLD format: BRANCH/MODE/EXP|IMP/SERIAL/YEAR
             fullNo = `${prefix}/${nextIndex}/${parts[0]}/${parts[2]}/${parts[1]}/${parts[3]}/${parts[4]}`.toUpperCase();
         }
 
@@ -861,19 +916,36 @@ const mapPurchaseEntryData = (data) => {
         tds: data["TDS"] || data.tds,
         total: data["Total"] || data.total,
         netAmount: data["Net Amount"] || data.netAmount,
+        revenueAmount: Number(data["Revenue Amount"] || data.revenueAmount || data["Revenue Total"] || data.revenueTotal || 0),
+        revenueBasicAmount: Number(data["Revenue Basic Amount"] || data.revenueBasicAmount || 0),
+        revenueGstAmount: Number(data["Revenue GST Amount"] || data.revenueGstAmount || 0),
+        revenueCgst: Number(data["Revenue CGST"] || data.revenueCgst || 0),
+        revenueSgst: Number(data["Revenue SGST"] || data.revenueSgst || 0),
+        revenueIgst: Number(data["Revenue IGST"] || data.revenueIgst || 0),
+        revenueTotal: Number(data["Revenue Total"] || data.revenueTotal || data["Revenue Amount"] || data.revenueAmount || 0),
         chargeRef: data.chargeRef,
         jobRef: data.jobRef,
         status: data["Status"] || data.status || '',
         chargeHeadCategory: data["Charge Head Category"] || data.chargeHeadCategory || '',
         isClubJob: data.isClubJob !== undefined ? data.isClubJob : false,
         clubbedJobs: Array.isArray(data.clubbedJobs) ? data.clubbedJobs : [],
-        virtualBalanceTerminal: data["Virtual Balance Terminal"] || data["Virtual Balance"] || data.virtualBalanceTerminal || data.virtualBalance || ''
+        virtualBalanceTerminal: data["Virtual Balance Terminal"] || data["Virtual Balance"] || data.virtualBalanceTerminal || data.virtualBalance || '',
+        isMultiCharge: data.isMultiCharge !== undefined ? data.isMultiCharge : false,
+        chargeItems: Array.isArray(data.chargeItems) ? data.chargeItems : [],
+        chargeRefs: Array.isArray(data.chargeRefs) ? data.chargeRefs : []
     };
 };
 
 router.post("/purchase-entry", authApiKey, async (req, res) => {
     try {
         const data = mapPurchaseEntryData(req.body);
+
+        // Handle multi-charge purchase book entries
+        if (req.body.isMultiCharge && Array.isArray(req.body.chargeItems)) {
+            data.isMultiCharge = true;
+            data.chargeItems = req.body.chargeItems;
+            data.chargeRefs = req.body.chargeRefs || [];
+        }
 
         // Include Job Details
         const firstJob = String(data.jobNo).split(",")[0].trim();
@@ -914,6 +986,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         // Fetch Charge Head Category and TDS Rate from Job & Charge details
         let chargeCategory = entry.chargeHeadCategory;
         let tdsRate = 0;
+        let chargeObj = null;
         try {
             let job = null;
             if (entry.jobRef) {
@@ -922,24 +995,23 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             if (!job && entry.jobNo) {
                 const firstJob = String(entry.jobNo).split(",")[0].trim();
                 job = await ExJobModel.findOne({
-                    $or: [{ job_no: firstJob }, { tally_club_ref_no: firstJob }]
+                    $or: resolveJobNumberQuery(firstJob)
                 }).sort({ is_club_job_parent: -1 }).lean();
             }
             if (job) {
-                let charge = null;
                 if (entry.chargeRef) {
-                    charge = job.charges?.find(c => c._id?.toString() === entry.chargeRef);
+                    chargeObj = job.charges?.find(c => c._id?.toString() === String(entry.chargeRef));
                 }
-                if (!charge && entry.chargeHeading) {
+                if (!chargeObj && entry.chargeHeading) {
                     const normHeading = entry.chargeHeading.trim().toLowerCase();
-                    charge = job.charges?.find(c => c.chargeHead?.trim().toLowerCase() === normHeading);
+                    chargeObj = job.charges?.find(c => (c.name || c.chargeHead || c.chargeHeading)?.trim().toLowerCase() === normHeading);
                 }
-                if (charge) {
+                if (chargeObj) {
                     if (!chargeCategory) {
-                        chargeCategory = charge.chargeType || charge.category;
+                        chargeCategory = chargeObj.chargeType || chargeObj.category;
                     }
-                    if (charge.cost && charge.cost.tdsPercent !== undefined) {
-                        tdsRate = Number(charge.cost.tdsPercent);
+                    if (chargeObj.cost && chargeObj.cost.tdsPercent !== undefined) {
+                        tdsRate = Number(chargeObj.cost.tdsPercent);
                     }
                 }
             }
@@ -1100,6 +1172,128 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         } else {
             formattedData["Job Details"] = [];
         }
+
+        // Determine revenue details (from entry or fallback to job charge)
+        let revObj = (chargeObj && chargeObj.revenue) ? chargeObj.revenue : {};
+        let revenueAmount = (entry.revenueAmount !== undefined && entry.revenueAmount !== null && entry.revenueAmount !== 0)
+            ? Number(entry.revenueAmount)
+            : Number(revObj.amountINR || revObj.amount || revObj.totalAmount || (revObj.rate ? revObj.rate * (revObj.qty || 1) : 0));
+
+        formattedData["Revenue Amount"] = revenueAmount.toFixed(2);
+
+        // Include chargeItems array with cost & revenue details
+        formattedData["isMultiCharge"] = entry.isMultiCharge || false;
+        formattedData["chargeItems"] = (Array.isArray(entry.chargeItems) && entry.chargeItems.length > 0)
+            ? entry.chargeItems.map(item => {
+                const cat = item.category || item.chargeType || '';
+                const isReimbursement = (cat === 'Reimbursement');
+                const isMargin = (String(cat).toLowerCase() === 'margin');
+
+                let itemHead = item.chargeHead || item.chargeHeading || '';
+                if (isMargin && itemHead && !itemHead.endsWith(' - E')) {
+                    itemHead = `${itemHead} - E`;
+                }
+
+                let itemDesc = item.descriptionOfServices || item.chargeDescription || '';
+                if (!itemDesc) {
+                    if (isReimbursement) {
+                        itemDesc = `REIMBURSEMENT - ${entry.supplierName || ''}`;
+                    } else if (isMargin) {
+                        itemDesc = itemHead;
+                    } else {
+                        itemDesc = entry.supplierName ? `NEW - ${entry.supplierName}` : itemHead;
+                    }
+                }
+
+                const itemTaxable = Number(item.taxableValue || item.costAmount || item.basicAmount || item.total || 0);
+                const itemTds = Number(item.tdsAmount || item.tds || 0);
+                const itemNet = (item.netPayable !== undefined && item.netPayable !== null && item.netPayable !== 0)
+                    ? Number(item.netPayable)
+                    : (itemTaxable - itemTds);
+
+                let itemTotal = Number(item.total || item.totalAmount || 0);
+                if (isReimbursement || isMargin) {
+                    itemTotal = itemNet; // For reimbursement and margin, total equals net payable
+                }
+
+                const itemRevAmt = (item.revenueAmount !== undefined && item.revenueAmount !== null && item.revenueAmount !== 0)
+                    ? Number(item.revenueAmount)
+                    : revenueAmount;
+
+                return {
+                    "Charge Heading": itemHead,
+                    "Description of Services": itemDesc,
+                    "Charge ID": item.chargeId || '',
+                    "SAC": item.sac || '',
+                    "Charge Head Category": cat,
+                    "TDS Category": tdsKey,
+                    [tdsKey]: itemTds,
+                    "Taxable Value": itemTaxable.toFixed(2),
+                    "GST%": isReimbursement ? "" : (item.gstRate || 0),
+                    "CGST": isReimbursement ? "" : (item.cgst || 0),
+                    "SGST": isReimbursement ? "" : (item.sgst || 0),
+                    "IGST": isReimbursement ? "" : (item.igst || 0),
+                    "Total": Math.round(itemTotal),
+                    "Net Amount": Math.round(itemNet),
+                    "Revenue Amount": itemRevAmt.toFixed(2),
+                    "Supplier Inv No": item.invoiceNumber || supplierInvNo || '',
+                    "Supplier Inv Date": item.invoiceDate || supplierInvDate || ''
+                };
+            })
+            : (() => {
+                const fallbackIsMargin = (String(chargeCategory).toLowerCase() === 'margin');
+                let fallbackHead = entry.chargeHeading || '';
+                if (fallbackIsMargin && fallbackHead && !fallbackHead.endsWith(' - E')) {
+                    fallbackHead = `${fallbackHead} - E`;
+                }
+                let fallbackDesc = entry.descriptionOfServices || '';
+                if (!fallbackDesc) {
+                    if (chargeCategory === 'Reimbursement') {
+                        fallbackDesc = `REIMBURSEMENT - ${entry.supplierName || ''}`;
+                    } else if (fallbackIsMargin) {
+                        fallbackDesc = fallbackHead;
+                    } else {
+                        fallbackDesc = entry.supplierName ? `NEW - ${entry.supplierName}` : fallbackHead;
+                    }
+                }
+                return [{
+                    "Charge Heading": fallbackHead,
+                    "Description of Services": fallbackDesc,
+                    "Charge ID": entry.chargeRef || '',
+                    "SAC": entry.sac || '',
+                    "Charge Head Category": chargeCategory || '',
+                    "TDS Category": tdsKey,
+                    [tdsKey]: Number(entry.tds || 0),
+                    "Taxable Value": (formattedData["Taxable Value"] !== undefined ? formattedData["Taxable Value"] : Number(entry.taxableValue || 0).toFixed(2)),
+                    "GST%": (chargeCategory === 'Reimbursement') ? "" : (entry.gstPercent || 0),
+                    "CGST": (chargeCategory === 'Reimbursement') ? "" : (entry.cgstAmt || 0),
+                    "SGST": (chargeCategory === 'Reimbursement') ? "" : (entry.sgstAmt || 0),
+                    "IGST": (chargeCategory === 'Reimbursement') ? "" : (entry.igstAmt || 0),
+                    "Total": Math.round(formattedData["Total"] !== undefined ? formattedData["Total"] : (grossTotal || 0)),
+                    "Net Amount": Math.round(formattedData["Net Amount"] !== undefined ? formattedData["Net Amount"] : (netAmount || 0)),
+                    "Revenue Amount": revenueAmount.toFixed(2),
+                    "Supplier Inv No": supplierInvNo || '',
+                    "Supplier Inv Date": supplierInvDate || ''
+                }];
+            })();
+        formattedData["chargeRefs"] = entry.chargeRefs || (entry.chargeRef ? [entry.chargeRef] : []);
+
+        // Always keep ONLY common fields at top-level; charge details go inside chargeItems
+        delete formattedData["Charge Heading"];
+        delete formattedData["SAC"];
+        delete formattedData["Taxable Value"];
+        delete formattedData["GST%"];
+        delete formattedData["CGST"];
+        delete formattedData["SGST"];
+        delete formattedData["IGST"];
+        delete formattedData[tdsKey];
+        delete formattedData["Total"];
+        delete formattedData["Net Amount"];
+        delete formattedData["Revenue Amount"];
+        delete formattedData["Description of Services"];
+        delete formattedData["Charge Description"];
+        delete formattedData["Charge Head Category"];
+        delete formattedData["TDS Category"];
 
         res.status(200).json(formattedData);
     } catch (error) {

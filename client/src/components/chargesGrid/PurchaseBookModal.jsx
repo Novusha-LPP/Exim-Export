@@ -136,106 +136,159 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     console.error("Error fetching sequence:", error);
                 }
 
-                setFormData(prev => ({
-                    ...prev,
-                    "Entry No": finalEntryNo,
-                    "Job No": updatedJobNum,
-                    "Supplier Inv No": initialData.invoice_number || '',
-                    "Supplier Inv Date": formatDate(initialData.invoice_date, 'yyyy-MM-dd') || '',
-                    "Supplier Name": initialData.partyName || '',
-                    "Address 1": branch.address || branch.addressLine || branch.Address || '',
-                    "Address 2": branch.city || branch.City || '',
-                    "Address 3": branch.state || branch.State || branch.city || '',
-                    "State": branch.state || branch.State || '',
-                    "Country": branch.country || branch.Country || 'India',
-                    "Pin Code": branch.pincode || branch.Pincode || branch.postalCode || branch.postal_code || '',
-                    "GSTIN NO": branch.gst || branch.gstNo || branch.GST || '',
-                    "PAN": branch.pan || branch.PAN || branch.panNo || party?.pan || party?.panNo || party?.registrationDetails?.panNo || '',
-                    "CIN": party?.cin || party?.CIN || '',
-                    "Place of Supply": branch.state || branch.State || '',
-                    "Credit Terms": party?.credit_terms || party?.CreditTerms || '',
-                    "Description of Services": !isReimbursement
-                        ? `${initialData.name || initialData.chargeHead || ''} - E`
-                        : (initialData.partyName ? `NEW - ${initialData.partyName}` : ''),
-                    "Charge Heading": initialData.name || initialData.chargeHead || '',
-                    "SAC": initialData.cthNo || '',
-                    "Taxable Value": isReimbursement
-                        ? (initialData.totalAmount || initialData.amount || initialData.amountINR || initialData.netPayable || '').toString()
-                        : (initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : '')),
-                    "GST%": !isReimbursement && (initialData.gstAmount > 0) ? (initialData.gstRate || '18') : '',
-                    "CGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
-                    "SGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
-                    "IGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? '' : (!isReimbursement && initialData.gstAmount > 0 ? Number(initialData.gstAmount).toFixed(2) : ''),
-                    "TDS": initialData.tdsAmount ? String(Math.round(Number(initialData.tdsAmount))) : '',
-                    "Total": initialData.amountINR ? Math.round(initialData.amountINR) : (initialData.totalAmount ? Math.round(initialData.totalAmount) : ''),
-                    "Net Amount": initialData.netPayable ? Math.round(initialData.netPayable) : '',
-                    "Charge Head Category": initialData.chargeType || '',
-                    "TDS Category": initialData.tdsCategory || '',
-                    "chargeRef": initialData.chargeId || '',
-                    "jobRef": initialData.jobId || '',
-                    isClubJob: initialData.isClubJob || false,
-                    clubbedJobs: initialData.clubbedJobs || [],
-                    "Virtual Balance Terminal": initialData.virtualBalanceTerminal || ''
-                }));
-            }
+                    const revAmt = Number(initialData.revenueAmount || initialData.revenueTotal || initialData.revenueBasicAmount || 0);
+                    const revBasic = Number(initialData.revenueBasicAmount || revAmt || 0);
+                    const revGst = Number(initialData.revenueGstAmount || 0);
+                    const revTot = Number(initialData.revenueTotal || revAmt || 0);
+
+                    setFormData(prev => ({
+                        ...prev,
+                        "Entry No": finalEntryNo,
+                        "Job No": updatedJobNum,
+                        "Supplier Inv No": initialData.invoice_number || '',
+                        "Supplier Inv Date": formatDate(initialData.invoice_date, 'yyyy-MM-dd') || '',
+                        "Supplier Name": initialData.partyName || '',
+                        "Address 1": branch.address || branch.addressLine || branch.Address || '',
+                        "Address 2": branch.city || branch.City || '',
+                        "Address 3": branch.state || branch.State || branch.city || '',
+                        "State": branch.state || branch.State || '',
+                        "Country": branch.country || branch.Country || 'India',
+                        "Pin Code": branch.pincode || branch.Pincode || branch.postalCode || branch.postal_code || '',
+                        "GSTIN NO": branch.gst || branch.gstNo || branch.GST || '',
+                        "PAN": branch.pan || branch.PAN || branch.panNo || party?.pan || party?.panNo || party?.registrationDetails?.panNo || '',
+                        "CIN": party?.cin || party?.CIN || '',
+                        "Place of Supply": branch.state || branch.State || '',
+                        "Credit Terms": party?.credit_terms || party?.CreditTerms || '',
+                        "Description of Services": !isReimbursement
+                            ? `${initialData.name || initialData.chargeHead || ''} - E`
+                            : (initialData.partyName ? `NEW - ${initialData.partyName}` : ''),
+                        "Charge Heading": initialData.name || initialData.chargeHead || '',
+                        "SAC": initialData.cthNo || '',
+                        "Taxable Value": isReimbursement
+                            ? (initialData.totalAmount || initialData.amount || initialData.amountINR || initialData.netPayable || '').toString()
+                            : (initialData.basicAmount ? Number(initialData.basicAmount).toFixed(2) : (initialData.amount ? Number(initialData.amount).toFixed(2) : '')),
+                        "GST%": !isReimbursement && (initialData.gstAmount > 0) ? (initialData.gstRate || '18') : '',
+                        "CGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
+                        "SGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? Number(initialData.gstAmount / 2).toFixed(2) : '',
+                        "IGST": !isReimbursement && (branch.gst?.startsWith("24") || branch.gstNo?.startsWith("24") || branch.GST?.startsWith("24")) ? '' : (!isReimbursement && initialData.gstAmount > 0 ? Number(initialData.gstAmount).toFixed(2) : ''),
+                        "TDS": initialData.tdsAmount ? String(Math.round(Number(initialData.tdsAmount))) : '',
+                        "Total": initialData.amountINR ? Math.round(initialData.amountINR) : (initialData.totalAmount ? Math.round(initialData.totalAmount) : ''),
+                        "Net Amount": initialData.netPayable ? Math.round(initialData.netPayable) : '',
+                        "Revenue Amount": revAmt ? revAmt.toFixed(2) : '0.00',
+                        "Revenue Basic Amount": revBasic ? revBasic.toFixed(2) : '0.00',
+                        "Revenue GST Amount": revGst ? revGst.toFixed(2) : '0.00',
+                        "Revenue CGST": initialData.revenueCgst ? Number(initialData.revenueCgst).toFixed(2) : '0.00',
+                        "Revenue SGST": initialData.revenueSgst ? Number(initialData.revenueSgst).toFixed(2) : '0.00',
+                        "Revenue IGST": initialData.revenueIgst ? Number(initialData.revenueIgst).toFixed(2) : '0.00',
+                        "Revenue Total": Math.round(revTot),
+                        "Charge Head Category": initialData.chargeType || '',
+                        "TDS Category": initialData.tdsCategory || '',
+                        "chargeRef": initialData.chargeId || '',
+                        "jobRef": initialData.jobId || '',
+                        isClubJob: initialData.isClubJob || false,
+                        clubbedJobs: initialData.clubbedJobs || [],
+                        "Virtual Balance Terminal": initialData.virtualBalanceTerminal || ''
+                    }));
+                }
+            };
+
+            if (isOpen) fetchNextSequence();
+        }, [isOpen, initialData, jobNumber, jobDisplayNumber, jobYear, selectedKey]);
+
+        if (!isOpen) return null;
+
+        const handleInputChange = (e) => {
+            const { name, value } = e.target;
+            setFormData(prev => {
+                const updated = { ...prev, [name]: value };
+
+                if (name === "GSTIN NO" || name === "Taxable Value" || name === "GST%" || name === "TDS" || name === "Total") {
+                    const gstin = updated["GSTIN NO"] || "";
+                    const taxable = parseFloat(updated["Taxable Value"]) || 0;
+                    const gstRate = !isReimbursement ? (parseFloat(updated["GST%"]) || 0) : 0;
+                    const totalGst = !isReimbursement ? Number((taxable * (gstRate / 100)).toFixed(2)) : 0;
+                    const tds = parseFloat(updated["TDS"]) || 0;
+
+                    if (gstin.trim().startsWith("24")) {
+                        updated["CGST"] = totalGst > 0 ? (totalGst / 2).toFixed(2) : "";
+                        updated["SGST"] = totalGst > 0 ? (totalGst / 2).toFixed(2) : "";
+                        updated["IGST"] = "";
+                    } else {
+                        updated["CGST"] = "";
+                        updated["SGST"] = "";
+                        updated["IGST"] = totalGst > 0 ? totalGst.toFixed(2) : "";
+                    }
+                    
+                    if (isReimbursement) {
+                        const totalVal = name === "Total" ? (parseFloat(value) || 0) : (parseFloat(updated["Total"]) || taxable);
+                        updated["Total"] = totalVal;
+                        updated["Net Amount"] = Math.round(totalVal - tds);
+                    } else {
+                        updated["Total"] = Math.round(taxable + totalGst);
+                        updated["Net Amount"] = Math.round(taxable + totalGst - tds);
+                    }
+                }
+                return updated;
+            });
         };
 
-        if (isOpen) fetchNextSequence();
-    }, [isOpen, initialData, jobNumber, jobDisplayNumber, jobYear, selectedKey]);
+        const handleSubmit = async (e) => {
+            if (e && e.preventDefault) e.preventDefault();
+            setLoading(true);
+            try {
+                const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
+                const { apiKeyName: _unused, ...tallyData } = formData;
 
-    if (!isOpen) return null;
+                const revAmt = Number(tallyData["Revenue Amount"] || initialData.revenueAmount || initialData.revenueTotal || 0);
+                const revBasic = Number(tallyData["Revenue Basic Amount"] || initialData.revenueBasicAmount || revAmt || 0);
+                const revGst = Number(tallyData["Revenue GST Amount"] || initialData.revenueGstAmount || 0);
+                const revTot = Number(tallyData["Revenue Total"] || initialData.revenueTotal || revAmt || 0);
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => {
-            const updated = { ...prev, [name]: value };
+                const singleChargeItem = {
+                    chargeHead: initialData.name || initialData.chargeHead || '',
+                    chargeDescription: initialData.name || initialData.chargeHead || '',
+                    chargeId: initialData.chargeId || '',
+                    sac: initialData.cthNo || '',
+                    chargeType: initialData.chargeType || initialData.category || '',
+                    category: initialData.category || '',
+                    costAmount: Number(initialData.amount || 0),
+                    basicAmount: Number(initialData.basicAmount || initialData.amount || 0),
+                    taxableValue: Number(tallyData["Taxable Value"] || initialData.basicAmount || initialData.amount || 0),
+                    costGstAmount: Number(tallyData["CGST"] || 0) + Number(tallyData["SGST"] || 0) + Number(tallyData["IGST"] || 0),
+                    gstRate: Number(tallyData["GST%"] || initialData.gstRate || 0),
+                    gstAmount: Number(tallyData["CGST"] || 0) + Number(tallyData["SGST"] || 0) + Number(tallyData["IGST"] || 0),
+                    cgst: Number(tallyData["CGST"] || 0),
+                    sgst: Number(tallyData["SGST"] || 0),
+                    igst: Number(tallyData["IGST"] || 0),
+                    tdsAmount: Number(tallyData["TDS"] || initialData.tdsAmount || 0),
+                    total: Number(tallyData["Total"] || initialData.amountINR || 0),
+                    netPayable: Number(tallyData["Net Amount"] || initialData.netPayable || 0),
+                    revenueAmount: revAmt,
+                    revenueBasicAmount: revBasic,
+                    revenueGstAmount: revGst,
+                    revenueCgst: Number(tallyData["Revenue CGST"] || initialData.revenueCgst || 0),
+                    revenueSgst: Number(tallyData["Revenue SGST"] || initialData.revenueSgst || 0),
+                    revenueIgst: Number(tallyData["Revenue IGST"] || initialData.revenueIgst || 0),
+                    revenueTotal: revTot,
+                    invoiceNumber: tallyData["Supplier Inv No"] || initialData.invoice_number || '',
+                    invoiceDate: tallyData["Supplier Inv Date"] || initialData.invoice_date || ''
+                };
 
-            // IF GST NO STARTS WITH 24 AND ITS A MARGIN CHARGE (or any taxable charge)
-            // WE WILL SHOW GST AS CGST AND SGST 18 PERCENT DEVIDE BY 2 EACH 9%
-            // BUT IF IT IS EMPTY OR NOT STARTS WITH 24 THEN SHOW GST IN ONE FIELD ONLY WHICH IS IGST
-            if (name === "GSTIN NO" || name === "Taxable Value" || name === "GST%" || name === "TDS" || name === "Total") {
-                const gstin = updated["GSTIN NO"] || "";
-                const taxable = parseFloat(updated["Taxable Value"]) || 0;
-                const gstRate = !isReimbursement ? (parseFloat(updated["GST%"]) || 0) : 0;
-                const totalGst = !isReimbursement ? Number((taxable * (gstRate / 100)).toFixed(2)) : 0;
-                const tds = parseFloat(updated["TDS"]) || 0;
-
-                if (gstin.trim().startsWith("24")) {
-                    updated["CGST"] = totalGst > 0 ? (totalGst / 2).toFixed(2) : "";
-                    updated["SGST"] = totalGst > 0 ? (totalGst / 2).toFixed(2) : "";
-                    updated["IGST"] = "";
-                } else {
-                    updated["CGST"] = "";
-                    updated["SGST"] = "";
-                    updated["IGST"] = totalGst > 0 ? totalGst.toFixed(2) : "";
-                }
-                
-                if (isReimbursement) {
-                    const totalVal = name === "Total" ? (parseFloat(value) || 0) : (parseFloat(updated["Total"]) || taxable);
-                    updated["Total"] = totalVal;
-                    updated["Net Amount"] = Math.round(totalVal - tds);
-                } else {
-                    updated["Total"] = Math.round(taxable + totalGst);
-                    updated["Net Amount"] = Math.round(taxable + totalGst - tds);
-                }
-            }
-            return updated;
-        });
-    };
-
-    const handleSubmit = async (e) => {
-        if (e && e.preventDefault) e.preventDefault();
-        setLoading(true);
-        try {
-            const API_KEY = selectedKey?.key || "TALLY_INTEGRATION_KEY";
-            const { apiKeyName: _unused, ...tallyData } = formData;
-
-            // Format dates to dd-mm-yyyy for saving
-            const submissionData = {
-                ...tallyData,
-                "Entry Date": formatDate(tallyData["Entry Date"], 'dd-MM-yyyy'),
-                "Supplier Inv Date": formatDate(tallyData["Supplier Inv Date"], 'dd-MM-yyyy')
-            };
+                const submissionData = {
+                    ...tallyData,
+                    "Entry Date": formatDate(tallyData["Entry Date"], 'dd-MM-yyyy'),
+                    "Supplier Inv Date": formatDate(tallyData["Supplier Inv Date"], 'dd-MM-yyyy'),
+                    "Revenue Amount": revAmt.toFixed(2),
+                    "Revenue Basic Amount": revBasic.toFixed(2),
+                    "Revenue GST Amount": revGst.toFixed(2),
+                    "Revenue Total": Math.round(revTot),
+                    revenueAmount: revAmt,
+                    revenueBasicAmount: revBasic,
+                    revenueGstAmount: revGst,
+                    revenueTotal: revTot,
+                    chargeItems: [singleChargeItem],
+                    chargeRefs: initialData.chargeId ? [initialData.chargeId] : []
+                };
 
             const response = await axios.post(
                 `${import.meta.env.VITE_API_STRING}/tally/purchase-entry`,
@@ -417,6 +470,10 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                             <div className="ep-row">
                                 <span className="ep-label">Net Amount</span>
                                 <input type="number" name="Net Amount" className="ep-desc-input" value={formData["Net Amount"]} onChange={handleInputChange} />
+                            </div>
+                            <div className="ep-row">
+                                <span className="ep-label" style={{ color: '#2e7d32', fontWeight: 700 }}>Revenue Amount</span>
+                                <input type="number" name="Revenue Amount" className="ep-desc-input" style={{ borderColor: '#81c784', fontWeight: 600 }} value={formData["Revenue Amount"] || ''} onChange={handleInputChange} />
                             </div>
                             <div className="ep-row">
                                 <span className="ep-label">Status</span>

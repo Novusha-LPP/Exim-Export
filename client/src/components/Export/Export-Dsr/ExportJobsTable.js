@@ -1691,11 +1691,18 @@ const ExportJobsTable = () => {
   const [containerTrackOpen, setContainerTrackOpen] = useState(false);
   const [containerTrackContainers, setContainerTrackContainers] = useState([]);
   const [expandedContainers, setExpandedContainers] = useState({});
+  const [expandedInvoices, setExpandedInvoices] = useState({});
 
   const toggleContainers = (e, id) => {
     e.stopPropagation();
     setExpandedContainers((prev) => ({ ...prev, [id]: !prev[id] }));
   };
+
+  const toggleInvoices = (e, id) => {
+    e.stopPropagation();
+    setExpandedInvoices((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
 
   // Query Dialog State
   const [queryDialogOpen, setQueryDialogOpen] = useState(false);
@@ -4531,67 +4538,98 @@ const ExportJobsTable = () => {
                             {/* Column 4: Invoice */}
                             <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#c6f6d5" : "inherit" }}>
                               {(job.invoices && job.invoices.length > 0) ? (
-                                job.invoices.map((inv, invIdx) => (
-                                  <div
-                                    key={inv._id || inv.invoiceNumber || invIdx}
-                                    style={{
-                                      borderBottom: invIdx < job.invoices.length - 1 ? "1px dashed #cbd5e1" : "none",
-                                      paddingBottom: invIdx < job.invoices.length - 1 ? "6px" : "0px",
-                                      marginBottom: invIdx < job.invoices.length - 1 ? "6px" : "0px",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "space-between",
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          fontWeight: "600",
-                                          marginBottom: "2px",
-                                        }}
-                                      >
-                                        {inv.invoiceNumber || inv.invoiceNo || "-"}
-                                      </div>
-                                      {(inv.invoiceNumber || inv.invoiceNo) && (
-                                        <IconButton
-                                          size="small"
-                                          onClick={(e) =>
-                                            handleCopyText(
-                                              inv.invoiceNumber || inv.invoiceNo,
-                                              e
-                                            )
-                                          }
-                                          style={{ padding: 2 }}
-                                          title="Copy Invoice No"
+                                (() => {
+                                  const invoiceKey = job._id || job.job_no || idx;
+                                  const isInvExpanded = !!expandedInvoices[invoiceKey];
+                                  const visibleInvoices = isInvExpanded ? job.invoices : job.invoices.slice(0, 2);
+                                  const hiddenInvCount = Math.max(job.invoices.length - 2, 0);
+
+                                  return (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                      {visibleInvoices.map((inv, invIdx) => (
+                                        <div
+                                          key={inv._id || inv.invoiceNumber || invIdx}
+                                          style={{
+                                            borderBottom: invIdx < visibleInvoices.length - 1 ? "1px dashed #cbd5e1" : "none",
+                                            paddingBottom: invIdx < visibleInvoices.length - 1 ? "6px" : "0px",
+                                            marginBottom: invIdx < visibleInvoices.length - 1 ? "6px" : "0px",
+                                          }}
                                         >
-                                          <ContentCopyIcon style={{ fontSize: 12 }} />
-                                        </IconButton>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "space-between",
+                                            }}
+                                          >
+                                            <div
+                                              style={{
+                                                fontWeight: "600",
+                                                marginBottom: "2px",
+                                              }}
+                                            >
+                                              {inv.invoiceNumber || inv.invoiceNo || "-"}
+                                            </div>
+                                            {(inv.invoiceNumber || inv.invoiceNo) && (
+                                              <IconButton
+                                                size="small"
+                                                onClick={(e) =>
+                                                  handleCopyText(
+                                                    inv.invoiceNumber || inv.invoiceNo,
+                                                    e
+                                                  )
+                                                }
+                                                style={{ padding: 2 }}
+                                                title="Copy Invoice No"
+                                              >
+                                                <ContentCopyIcon style={{ fontSize: 12 }} />
+                                              </IconButton>
+                                            )}
+                                          </div>
+                                          <div style={{ color: "#4b5563", fontSize: "10px" }}>
+                                            {formatDate(inv.invoiceDate || inv.invoice_date)}
+                                          </div>
+                                          <div
+                                            style={{
+                                              color: "#1e293b",
+                                              fontSize: "11px",
+                                              fontWeight: "800",
+                                              marginTop: "4px",
+                                              backgroundColor: "rgba(0,0,0,0.03)",
+                                              padding: "2px 4px",
+                                              borderRadius: "4px",
+                                              display: "inline-block"
+                                            }}
+                                          >
+                                            <span style={{ color: "#64748b", fontWeight: "600" }}>{inv.termsOfInvoice || inv.terms_of_invoice}</span>{" "}
+                                            {inv.currency}{" "}
+                                            {(inv.invoiceValue ?? inv.amount ?? 0)?.toLocaleString()}
+                                          </div>
+                                        </div>
+                                      ))}
+                                      {job.invoices.length > 2 && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => toggleInvoices(e, invoiceKey)}
+                                          style={{
+                                            alignSelf: "flex-start",
+                                            border: isInvExpanded ? "none" : "1px solid #f59e0b",
+                                            background: isInvExpanded ? "transparent" : "#fff7ed",
+                                            color: isInvExpanded ? "#475569" : "#b45309",
+                                            fontSize: "10px",
+                                            fontWeight: "700",
+                                            cursor: "pointer",
+                                            padding: isInvExpanded ? "2px 0" : "3px 8px",
+                                            borderRadius: "999px",
+                                            marginTop: "2px",
+                                          }}
+                                        >
+                                          {isInvExpanded ? "Show less" : `Show ${hiddenInvCount} more`}
+                                        </button>
                                       )}
                                     </div>
-                                    <div style={{ color: "#4b5563", fontSize: "10px" }}>
-                                      {formatDate(inv.invoiceDate || inv.invoice_date)}
-                                    </div>
-                                    <div
-                                      style={{
-                                        color: "#1e293b",
-                                        fontSize: "11px",
-                                        fontWeight: "800",
-                                        marginTop: "4px",
-                                        backgroundColor: "rgba(0,0,0,0.03)",
-                                        padding: "2px 4px",
-                                        borderRadius: "4px",
-                                        display: "inline-block"
-                                      }}
-                                    >
-                                      <span style={{ color: "#64748b", fontWeight: "600" }}>{inv.termsOfInvoice || inv.terms_of_invoice}</span>{" "}
-                                      {inv.currency}{" "}
-                                      {(inv.invoiceValue ?? inv.amount ?? 0)?.toLocaleString()}
-                                    </div>
-                                  </div>
-                                ))
+                                  );
+                                })()
                               ) : (
                                 <div style={{ color: "#94a3b8" }}>-</div>
                               )}

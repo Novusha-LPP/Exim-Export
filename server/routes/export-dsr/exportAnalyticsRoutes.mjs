@@ -4,6 +4,11 @@ import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
 
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+
 const getCurrentFinancialYear = () => {
     const today = new Date();
     const month = today.getMonth(); // 0-based: 0=Jan, 3=April
@@ -75,7 +80,7 @@ router.get("/api/export-analytics/overview", async (req, res) => {
         }
 
         if (exporter) {
-            filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });
+            filter.$and.push({ exporter: { $regex: escapeRegex(exporter), $options: "i" } });
         }
 
         const baseFilter = { ...filter, isGeneralJob: { $ne: true } };
@@ -358,7 +363,7 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
         }
 
         if (exporter) {
-            filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });
+            filter.$and.push({ exporter: { $regex: escapeRegex(exporter), $options: "i" } });
         }
 
         const baseFilter = { ...filter, isGeneralJob: { $ne: true } };

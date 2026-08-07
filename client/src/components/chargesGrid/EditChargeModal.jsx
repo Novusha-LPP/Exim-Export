@@ -875,7 +875,7 @@ const EditChargeModal = ({
                                 <div className="ep-row">
                                   <span className="ep-label">RECEIVABLE TYPE</span>
                                   <select className="ep-select" value={row.revenue?.partyType || 'Customer'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'revenue')}>
-                                    <option>Customer</option><option>Agent</option><option>Carrier</option>
+                                    <option>Customer</option><option>Agent</option><option>Carrier</option><option>Vendor</option><option>Transporter</option><option>Forwarder</option><option>Others</option>
                                   </select>
                                 </div>
                                 <div className="ep-row">
@@ -907,8 +907,15 @@ const EditChargeModal = ({
                                     </div>
                                     {activeDropdown.index === i && activeDropdown.section === 'revenue' && (row.revenue?.partyName?.length >= 1 || activeDropdown.clicked) && (
                                       <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                        {(row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
-                                          row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations : [])
+                                        {(
+                                          row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
+                                          row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations :
+                                          row.revenue?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
+                                          row.revenue?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
+                                          row.revenue?.partyType?.toUpperCase() === 'FORWARDER' ? forwarders :
+                                          row.revenue?.partyType?.toUpperCase() === 'OTHERS' || row.revenue?.partyType?.toUpperCase() === 'OTHER' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders] :
+                                          organizations
+                                        )
                                           .filter(item => !row.revenue?.partyName || item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))
                                           .slice(0, 20)
                                           .map((item, idx) => (
@@ -917,10 +924,19 @@ const EditChargeModal = ({
                                               <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
                                             </li>
                                           ))}
-                                        {((row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
-                                          row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations : [])
+                                        {(
+                                          (
+                                            row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
+                                            row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations :
+                                            row.revenue?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
+                                            row.revenue?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
+                                            row.revenue?.partyType?.toUpperCase() === 'FORWARDER' ? forwarders :
+                                            row.revenue?.partyType?.toUpperCase() === 'OTHERS' || row.revenue?.partyType?.toUpperCase() === 'OTHER' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders] :
+                                            organizations
+                                          )
                                           .filter(item => !row.revenue?.partyName || item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))
-                                          .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
+                                          .length === 0
+                                        ) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
                                       </ul>
                                     )}
                                   </div>
@@ -1325,6 +1341,19 @@ const EditChargeModal = ({
 
                                             setPurchaseBookData(() => {
                                               const cost = row.cost || {};
+                                              const revenue = row.revenue || {};
+                                              const revAmt = (revenue.amountINR !== undefined && revenue.amountINR !== null && revenue.amountINR !== '')
+                                                ? Number(revenue.amountINR)
+                                                : ((revenue.amount !== undefined && revenue.amount !== null && revenue.amount !== '')
+                                                  ? Number(revenue.amount)
+                                                  : ((revenue.rate !== undefined && revenue.rate !== null && revenue.rate !== '')
+                                                    ? Number(revenue.rate) * Number(revenue.qty || 1)
+                                                    : 0));
+
+                                              const revBasic = (revenue.basicAmount !== undefined && revenue.basicAmount !== null && revenue.basicAmount !== '')
+                                                ? Number(revenue.basicAmount)
+                                                : revAmt;
+
                                               return {
                                                 partyName: cost.partyName,
                                                 partyDetails,
@@ -1339,6 +1368,15 @@ const EditChargeModal = ({
                                                 netPayable: cost.netPayable,
                                                 amountINR: cost.amountINR,
                                                 totalAmount: cost.amountINR,
+                                                revenueAmount: revAmt,
+                                                revenueBasicAmount: revBasic,
+                                                revenueGstAmount: Number(revenue.gstAmount || 0),
+                                                revenueGstRate: Number(revenue.gstRate || 0),
+                                                revenueCgst: Number(revenue.cgst || 0),
+                                                revenueSgst: Number(revenue.sgst || 0),
+                                                revenueIgst: Number(revenue.igst || 0),
+                                                revenueTotal: revAmt,
+                                                revenuePartyName: revenue.partyName,
                                                 chargeHead: row.name || row.chargeHead,
                                                 chargeType: row.chargeType,
                                                 category: row.category,

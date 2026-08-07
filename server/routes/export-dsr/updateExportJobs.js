@@ -10,6 +10,10 @@ import { detectSbOrSealChange } from "../../utils/sbSealChangeDetector.mjs";
 
 const router = express.Router();
 
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // Helper function to check if only billing-related fields are being updated
 function isBillingOnlyUpdate(updateObject) {
   // Billing-allowed field path patterns
@@ -568,9 +572,9 @@ router.get("/dashboard-stats", async (req, res) => {
     }
 
     // 1. Build Match Stage (Filtering)
-    if (exporter) matchStage.$and.push({ exporter: { $regex: exporter, $options: "i" } });
+    if (exporter) matchStage.$and.push({ exporter: { $regex: escapeRegex(exporter), $options: "i" } });
     if (consignmentType) matchStage.$and.push({ consignmentType: consignmentType });
-    if (branch) matchStage.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
+    if (branch) matchStage.$and.push({ branch_code: { $regex: `^${escapeRegex(branch)}$`, $options: "i" } });
 
     // Year filter - matches exact string "YY-YY" format (e.g. "25-26")
     if (year && year !== "all") {
@@ -1002,7 +1006,7 @@ router.get("/global-search-jobs", async (req, res) => {
     // 3. Apply OTHER filters ONLY if NOT searching globally
     if (!search || search.trim() === "") {
       if (branch) {
-        filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
+        filter.$and.push({ branch_code: { $regex: `^${escapeRegex(branch)}$`, $options: "i" } });
       }
 
       if (year && year !== "all") {
@@ -1010,7 +1014,7 @@ router.get("/global-search-jobs", async (req, res) => {
       }
 
       if (exporter) {
-        filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });
+        filter.$and.push({ exporter: { $regex: escapeRegex(exporter), $options: "i" } });
       }
 
       if (consignmentType) {
@@ -1577,13 +1581,13 @@ router.get("/exports/:status?", async (req, res) => {
     // Additional filters
     if (exporter && exporter.toLowerCase() !== "all") {
       filter.$and.push({
-        exporter: { $regex: exporter, $options: "i" },
+        exporter: { $regex: escapeRegex(exporter), $options: "i" },
       });
     }
 
     if (country) {
       filter.$and.push({
-        destination_country: { $regex: country, $options: "i" },
+        destination_country: { $regex: escapeRegex(country), $options: "i" },
       });
     }
 
@@ -1594,7 +1598,7 @@ router.get("/exports/:status?", async (req, res) => {
     }
     if (branch) {
       filter.$and.push({
-        branch_code: { $regex: `^${branch}$`, $options: "i" },
+        branch_code: { $regex: `^${escapeRegex(branch)}$`, $options: "i" },
       });
     }
 
@@ -1929,7 +1933,7 @@ router.get("/exports/:status?", async (req, res) => {
             }
           }
         },
-        { $sort: { hasOpenClientQuery: -1, _searchPriority: 1, ...sort } },
+        { $sort: { _searchPriority: 1, ...sort } },
         { $project: selectProjection },
       ];
       finalTotalCount = await ExportJobModel.countDocuments(filter);
@@ -1946,7 +1950,7 @@ router.get("/exports/:status?", async (req, res) => {
             hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] }
           }
         },
-        { $sort: { hasOpenClientQuery: -1, ...sort } },
+        { $sort: { ...sort } },
         { $project: selectProjection }
       ];
       const [jobs, totalCount] = await Promise.all([

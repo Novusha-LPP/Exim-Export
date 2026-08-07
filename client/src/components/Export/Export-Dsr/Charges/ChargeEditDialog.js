@@ -410,8 +410,12 @@ const ChargeEditDialog = ({ charge, editMode, formik, onClose, onSave }) => {
                 }
               >
                 <MenuItem value="Customer">Customer</MenuItem>
-                <MenuItem value="Vendor">Vendor</MenuItem>
                 <MenuItem value="Agent">Agent</MenuItem>
+                <MenuItem value="Carrier">Carrier</MenuItem>
+                <MenuItem value="Vendor">Vendor</MenuItem>
+                <MenuItem value="Transporter">Transporter</MenuItem>
+                <MenuItem value="Forwarder">Forwarder</MenuItem>
+                <MenuItem value="Others">Others</MenuItem>
               </Select>
             </FormControl>
           </Grid>

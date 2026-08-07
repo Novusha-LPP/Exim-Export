@@ -4,6 +4,10 @@ import UserModel from "../../model/userModel.mjs";
 
 const router = express.Router();
 
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // GET /api/operation-jobs - List operation module jobs
 router.get("/api/operation-jobs/:status?", async (req, res) => {
     try {
@@ -379,8 +383,8 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 filter.$and.push({ ieCode: { $in: ieCodeArray } });
             }
         }
-        if (exporter) filter.$and.push({ exporter: { $regex: exporter, $options: "i" } });
-        if (country) filter.$and.push({ destination_country: { $regex: country, $options: "i" } });
+        if (exporter) filter.$and.push({ exporter: { $regex: escapeRegex(exporter), $options: "i" } });
+        if (country) filter.$and.push({ destination_country: { $regex: escapeRegex(country), $options: "i" } });
         if (consignmentType) filter.$and.push({ consignmentType: consignmentType });
         if (branch) {
             const branchArray = branch.split(",").map(b => b.trim().toUpperCase()).filter(Boolean);
@@ -389,7 +393,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
             }
         }
         if (year && year !== "all") filter.$and.push({ year: year });
-        if (customHouse) filter.$and.push({ custom_house: { $regex: customHouse, $options: "i" } });
+        if (customHouse) filter.$and.push({ custom_house: { $regex: escapeRegex(customHouse), $options: "i" } });
         if (goods_stuffed_at) filter.$and.push({ goods_stuffed_at: goods_stuffed_at });
 
         if (month) {
@@ -592,7 +596,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                         }
                     }
                 },
-                { $sort: { hasOpenClientQuery: -1, _searchPriority: 1, ...sort } },
+                { $sort: { _searchPriority: 1, ...sort } },
                 { $project: selectProjection },
             ];
 
@@ -610,7 +614,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                         hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] }
                     }
                 },
-                { $sort: { hasOpenClientQuery: -1, ...sort } },
+                { $sort: { ...sort } },
                 { $project: selectProjection }
             ];
             const [jobsResult, countResult] = await Promise.all([

@@ -32,12 +32,22 @@ const purchaseBookEntrySchema = new mongoose.Schema({
     tds: { type: Number },
     total: { type: Number },
     netAmount: { type: Number },
+    revenueAmount: { type: Number },
+    revenueBasicAmount: { type: Number },
+    revenueGstAmount: { type: Number },
+    revenueCgst: { type: Number },
+    revenueSgst: { type: Number },
+    revenueIgst: { type: Number },
+    revenueTotal: { type: Number },
     status: { type: String, default: '' },
     chargeHeadCategory: { type: String },
     isClubJob: { type: Boolean, default: false },
     clubbedJobs: { type: [String], default: [] },
     virtualBalanceTerminal: { type: String, default: '' },
     jobDetails: { type: Array, default: [] },
+    isMultiCharge: { type: Boolean, default: false },
+    chargeItems: { type: Array, default: [] },
+    chargeRefs: { type: [String], default: [] },
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
