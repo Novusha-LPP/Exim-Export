@@ -383,7 +383,18 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 filter.$and.push({ ieCode: { $in: ieCodeArray } });
             }
         }
-        if (exporter) filter.$and.push({ exporter: { $regex: escapeRegex(exporter), $options: "i" } });
+        if (exporter) {
+            const exporterTerms = exporter.split(",").map(c => c.trim()).filter(Boolean);
+            if (exporterTerms.length > 0) {
+                const regexes = exporterTerms.map(t => new RegExp(escapeRegex(t), "i"));
+                filter.$and.push({
+                    $or: [
+                        { exporter: { $in: regexes } },
+                        { exporter_address: { $in: regexes } }
+                    ]
+                });
+            }
+        }
         if (country) filter.$and.push({ destination_country: { $regex: escapeRegex(country), $options: "i" } });
         if (consignmentType) filter.$and.push({ consignmentType: consignmentType });
         if (branch) {

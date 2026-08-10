@@ -162,6 +162,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                         "Description of Services": !isReimbursement
                             ? `${initialData.name || initialData.chargeHead || ''} - E`
                             : (initialData.partyName ? `NEW - ${initialData.partyName}` : ''),
+                        "Revenue Ledger": (initialData.revenueLedger || initialData.revenue_ledger || initialData.name || initialData.chargeHead || '').replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim(),
                         "Charge Heading": initialData.name || initialData.chargeHead || '',
                         "SAC": initialData.cthNo || '',
                         "Taxable Value": isReimbursement

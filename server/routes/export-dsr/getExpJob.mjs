@@ -230,7 +230,8 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         $or: [
           { job_no: { $in: jobData.clubbed_jobs } },
           { parent_club_job: jobData.job_no }
-        ]
+        ],
+        job_no: { $ne: jobData.job_no }
       }).lean();
       
       const mergedContainers = [];
@@ -259,8 +260,24 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
       }
 
       jobData.containers = mergedContainers;
-      jobData.invoices = childJobs.flatMap(j => j.invoices || []).filter(Boolean);
-      jobData.operations = childJobs.flatMap(j => j.operations || []).filter(Boolean);
+
+      // Merge invoices from parent job + child jobs and deduplicate by invoice number
+      const rawInvoices = [
+        ...(jobData.invoices || []).map(inv => ({ ...inv, _sourceJobNo: jobData.job_no })),
+        ...childJobs.flatMap(j => (j.invoices || []).map(inv => ({ ...inv, _sourceJobNo: j.job_no })))
+      ].filter(Boolean);
+
+      const uniqueInvoices = [];
+      const seenInvKeys = new Set();
+      for (const inv of rawInvoices) {
+        const key = String(inv.invoiceNumber || inv.invoiceNo || inv.invoice_no || inv._id || "").trim().toUpperCase();
+        if (key && seenInvKeys.has(key)) continue;
+        if (key) seenInvKeys.add(key);
+        uniqueInvoices.push(inv);
+      }
+
+      jobData.invoices = uniqueInvoices;
+      jobData.operations = [jobData.operations?.[0] || {}, ...childJobs.flatMap(j => j.operations || [])].filter(Boolean);
     }
 
     res.json(jobData);

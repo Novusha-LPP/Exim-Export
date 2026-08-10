@@ -654,7 +654,15 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
         });
         job.containers = Array.from(uniqueContainersMap.values());
 
-        const allInvoices = (childJobs || []).flatMap(j => j.invoices || []);
+        const rawInvoices = (childJobs || []).flatMap(j => j.invoices || []);
+        const seenInvs = new Set();
+        const allInvoices = [];
+        for (const inv of rawInvoices) {
+            const num = String(inv.invoiceNumber || inv.invoice_number || inv.invoiceNo || inv.invoice_no || inv._id || "").trim().toUpperCase();
+            if (num && seenInvs.has(num)) continue;
+            if (num) seenInvs.add(num);
+            allInvoices.push(inv);
+        }
         let invNumbers = [];
         let invDates = [];
         let totalInvValue = 0;
@@ -906,6 +914,7 @@ const mapPurchaseEntryData = (data) => {
         placeOfSupply: data["Place of Supply"] || data.placeOfSupply,
         creditTerms: data["Credit Terms"] || data.creditTerms,
         descriptionOfServices: data["Description of Services"] || data.descriptionOfServices,
+        revenueLedger: (data["Revenue Ledger"] || data["Revenue ledger"] || data.revenueLedger || data.revenue_ledger || "").replace(/\s*-\s*[EI]$/i, "").replace(/^NEW\s*-\s*/i, "").replace(/^NEW\s+/i, ""),
         chargeHeading: data["Charge Heading"] || data.chargeHeading,
         sac: data["SAC"] || data.sac,
         taxableValue: data["Taxable Value"] || data.taxableValue,
@@ -1138,7 +1147,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
 
             // Custom Description of Services for reimbursements
             if (!entry.descriptionOfServices && entry.supplierName) {
-                formattedData["Description of Services"] = `REIMBURSEMENT - ${entry.supplierName}`;
+                formattedData["Description of Services"] = `NEW - ${entry.supplierName}`;
             }
 
             // For reimbursements, the taxable value should be the total value before TDS.
@@ -1189,21 +1198,33 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 const isReimbursement = (cat === 'Reimbursement');
                 const isMargin = (String(cat).toLowerCase() === 'margin');
 
-                let itemHead = item.chargeHead || item.chargeHeading || '';
-                if (isMargin && itemHead && !itemHead.endsWith(' - E')) {
-                    itemHead = `${itemHead} - E`;
-                }
+                let rawItemHead = item.chargeHead || item.chargeHeading || item.name || item.chargeName || (chargeObj && (chargeObj.name || chargeObj.chargeHead || chargeObj.chargeHeading || chargeObj.particulars)) || entry.chargeHeading || entry.chargeDescription || (isReimbursement ? entry.supplierName : '') || '';
+                let itemHead = typeof rawItemHead === 'string'
+                    ? rawItemHead.replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim()
+                    : rawItemHead;
 
                 let itemDesc = item.descriptionOfServices || item.chargeDescription || '';
                 if (!itemDesc) {
                     if (isReimbursement) {
-                        itemDesc = `REIMBURSEMENT - ${entry.supplierName || ''}`;
+                        itemDesc = entry.supplierName ? `NEW - ${entry.supplierName}` : itemHead;
                     } else if (isMargin) {
                         itemDesc = itemHead;
                     } else {
                         itemDesc = entry.supplierName ? `NEW - ${entry.supplierName}` : itemHead;
                     }
                 }
+                if (isReimbursement && entry.supplierName && !itemDesc.startsWith('NEW - ')) {
+                    itemDesc = `NEW - ${entry.supplierName}`;
+                }
+                if (isMargin && itemDesc && !itemDesc.endsWith(' - E')) {
+                    itemDesc = `${itemDesc} - E`;
+                }
+
+                // Revenue Ledger: Fall back to revObj -> entry.revenueLedger -> itemHead -> chargeObj -> entry.supplierName
+                let rawRevLedger = item.revenueLedger || item.revenue_ledger || item.revenueHead || item.revenueHeading || (revObj && (revObj.chargeHead || revObj.chargeHeading || revObj.particulars || revObj.name)) || entry.revenueLedger || itemHead || (chargeObj && (chargeObj.name || chargeObj.chargeHead || chargeObj.chargeHeading || chargeObj.particulars)) || entry.chargeHeading || entry.supplierName || '';
+                let itemRevLedger = typeof rawRevLedger === 'string'
+                    ? rawRevLedger.replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim()
+                    : rawRevLedger;
 
                 const itemTaxable = Number(item.taxableValue || item.costAmount || item.basicAmount || item.total || 0);
                 const itemTds = Number(item.tdsAmount || item.tds || 0);
@@ -1223,6 +1244,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 return {
                     "Charge Heading": itemHead,
                     "Description of Services": itemDesc,
+                    "Revenue Ledger": itemRevLedger,
                     "Charge ID": item.chargeId || '',
                     "SAC": item.sac || '',
                     "Charge Head Category": cat,
@@ -1242,23 +1264,37 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             })
             : (() => {
                 const fallbackIsMargin = (String(chargeCategory).toLowerCase() === 'margin');
-                let fallbackHead = entry.chargeHeading || '';
-                if (fallbackIsMargin && fallbackHead && !fallbackHead.endsWith(' - E')) {
-                    fallbackHead = `${fallbackHead} - E`;
-                }
+                let rawFallbackHead = entry.chargeHeading || entry.chargeDescription || (chargeObj && (chargeObj.name || chargeObj.chargeHead || chargeObj.chargeHeading || chargeObj.particulars)) || (chargeCategory === 'Reimbursement' ? entry.supplierName : '') || '';
+                let fallbackHead = typeof rawFallbackHead === 'string'
+                    ? rawFallbackHead.replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim()
+                    : rawFallbackHead;
+
                 let fallbackDesc = entry.descriptionOfServices || '';
                 if (!fallbackDesc) {
                     if (chargeCategory === 'Reimbursement') {
-                        fallbackDesc = `REIMBURSEMENT - ${entry.supplierName || ''}`;
+                        fallbackDesc = entry.supplierName ? `NEW - ${entry.supplierName}` : fallbackHead;
                     } else if (fallbackIsMargin) {
                         fallbackDesc = fallbackHead;
                     } else {
                         fallbackDesc = entry.supplierName ? `NEW - ${entry.supplierName}` : fallbackHead;
                     }
                 }
+                if (chargeCategory === 'Reimbursement' && entry.supplierName && !fallbackDesc.startsWith('NEW - ')) {
+                    fallbackDesc = `NEW - ${entry.supplierName}`;
+                }
+                if (fallbackIsMargin && fallbackDesc && !fallbackDesc.endsWith(' - E')) {
+                    fallbackDesc = `${fallbackDesc} - E`;
+                }
+
+                let rawFallbackRevLedger = entry.revenueLedger || (revObj && (revObj.chargeHead || revObj.chargeHeading || revObj.particulars || revObj.name)) || fallbackHead || (chargeObj && (chargeObj.name || chargeObj.chargeHead || chargeObj.chargeHeading || chargeObj.particulars)) || entry.chargeHeading || entry.supplierName || '';
+                let fallbackRevLedger = typeof rawFallbackRevLedger === 'string'
+                    ? rawFallbackRevLedger.replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim()
+                    : rawFallbackRevLedger;
+
                 return [{
                     "Charge Heading": fallbackHead,
                     "Description of Services": fallbackDesc,
+                    "Revenue Ledger": fallbackRevLedger,
                     "Charge ID": entry.chargeRef || '',
                     "SAC": entry.sac || '',
                     "Charge Head Category": chargeCategory || '',
@@ -1291,6 +1327,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         delete formattedData["Net Amount"];
         delete formattedData["Revenue Amount"];
         delete formattedData["Description of Services"];
+        delete formattedData["Revenue Ledger"];
         delete formattedData["Charge Description"];
         delete formattedData["Charge Head Category"];
         delete formattedData["TDS Category"];

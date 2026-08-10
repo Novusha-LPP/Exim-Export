@@ -2871,7 +2871,8 @@ router.get("/:job_no(.*)", async (req, res, next) => {
         $or: [
           { job_no: { $in: exportJob.clubbed_jobs } },
           { parent_club_job: exportJob.job_no }
-        ]
+        ],
+        job_no: { $ne: exportJob.job_no }
       }).lean();
       
       const mergedContainers = [];
@@ -2900,8 +2901,24 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       }
 
       jobData.containers = mergedContainers;
-      jobData.invoices = childJobs.flatMap(j => j.invoices || []).filter(Boolean);
-      jobData.operations = childJobs.flatMap(j => j.operations || []).filter(Boolean);
+
+      // Merge invoices from parent job + child jobs and deduplicate by invoice number
+      const rawInvoices = [
+        ...(exportJob.invoices || []).map(inv => ({ ...inv, _sourceJobNo: exportJob.job_no })),
+        ...childJobs.flatMap(j => (j.invoices || []).map(inv => ({ ...inv, _sourceJobNo: j.job_no })))
+      ].filter(Boolean);
+
+      const uniqueInvoices = [];
+      const seenInvKeys = new Set();
+      for (const inv of rawInvoices) {
+        const key = String(inv.invoiceNumber || inv.invoiceNo || inv.invoice_no || inv._id || "").trim().toUpperCase();
+        if (key && seenInvKeys.has(key)) continue;
+        if (key) seenInvKeys.add(key);
+        uniqueInvoices.push(inv);
+      }
+
+      jobData.invoices = uniqueInvoices;
+      jobData.operations = [exportJob.operations?.[0] || {}, ...childJobs.flatMap(j => j.operations || [])].filter(Boolean);
     }
 
     // Check for stale locks (e.g., older than 30 minutes)
@@ -3311,6 +3328,22 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
       if (changeNotif) {
         updateData.sb_or_seal_changed_notif = changeNotif.sb_or_seal_changed_notif;
         updateData.sb_or_seal_changed_details = changeNotif.sb_or_seal_changed_details;
+      }
+
+      // If updating a club parent job, prevent saving child jobs' invoices into the parent job document
+      if (existingJob.is_club_job_parent && Array.isArray(updateData.invoices)) {
+        let parentOnlyInvoices = updateData.invoices.filter(
+          (inv) => !inv._sourceJobNo || String(inv._sourceJobNo).toUpperCase() === String(job_no).toUpperCase()
+        );
+        const seenInvNos = new Set();
+        parentOnlyInvoices = parentOnlyInvoices.filter((inv) => {
+          const invNo = String(inv.invoiceNumber || inv.invoiceNo || inv.invoice_no || inv._id || "").trim().toUpperCase();
+          if (!invNo) return true;
+          if (seenInvNos.has(invNo)) return false;
+          seenInvNos.add(invNo);
+          return true;
+        });
+        updateData.invoices = parentOnlyInvoices;
       }
     }
 
