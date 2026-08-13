@@ -230,11 +230,17 @@ const ChargesGrid = ({
         hsnCode: head.hsnCode || '',
         tdsCategory: head.tdsCategory || '',
         revenue: {
-          partyType: 'Customer'
+          partyType: 'Customer',
+          isGst: true,
+          isTds: !!head.tdsCategory,
+          tdsPercent: head.tdsCategory ? 2 : 0,
+          tdsCategory: head.tdsCategory || ''
         },
         cost: {
           partyType: 'Others',
+          isGst: true,
           isTds: !!head.tdsCategory,
+          tdsPercent: head.tdsCategory ? 2 : 0,
           tdsCategory: head.tdsCategory || ''
         },
         copyToCost: true

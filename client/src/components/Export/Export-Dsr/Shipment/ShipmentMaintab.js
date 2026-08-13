@@ -3,7 +3,7 @@ import { Alert } from "@mui/material";
 import FileUpload from "../../../gallery/FileUpload";
 import ImagePreview from "../../../gallery/ImagePreview";
 import DateInput from "../../../common/DateInput.js";
-import { states, natureOfCargo, unitCodes, SHIPPING_LINES } from "../../../../utils/masterList";
+import { states, natureOfCargo, unitCodes, SHIPPING_LINES, hauliers } from "../../../../utils/masterList";
 import { priorityFilter } from "../../../../utils/filterUtils";
 
 const apiBase = import.meta.env.VITE_API_STRING;
@@ -980,6 +980,119 @@ function StateDropdownField({
   );
 }
 
+function HaulierDropdownField({
+  label = "HAULIER",
+  fieldName = "transhipper_code",
+  formik,
+  hauliers = [],
+  placeholder = "ENTER HAULIER",
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(formik.values[fieldName] || "");
+  const [active, setActive] = useState(-1);
+  const wrapperRef = useRef();
+
+  const filteredHauliers = (hauliers || [])
+    .filter((h) => {
+      const text = typeof h === "string" ? h : `${h.label || ""} ${h.value || ""}`;
+      return text.toUpperCase().includes(query.toUpperCase());
+    })
+    .slice(0, 15);
+
+  useEffect(() => {
+    setQuery(formik.values[fieldName] || "");
+  }, [formik.values[fieldName]]);
+
+  useEffect(() => {
+    const close = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  function handleSelect(i) {
+    const item = filteredHauliers[i];
+    if (!item) return;
+    const name = typeof item === "string" ? item : (item.label || item.value || "");
+    setQuery(toUpper(name));
+    formik.setFieldValue(fieldName, toUpper(name));
+    setOpen(false);
+    setActive(-1);
+  }
+
+  return (
+    <div style={styles.field} ref={wrapperRef}>
+      <div style={styles.label}>{label}</div>
+      <div style={styles.acWrap}>
+        <input
+          style={styles.input}
+          placeholder={placeholder}
+          autoComplete="off"
+          value={toUpper(query)}
+          onChange={(e) => {
+            const val = e.target.value.toUpperCase();
+            setQuery(val);
+            formik.setFieldValue(fieldName, val);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setOpen(true);
+            setActive(-1);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              if (open) {
+                if (active >= 0 && filteredHauliers[active]) {
+                  handleSelect(active);
+                } else if (filteredHauliers.length > 0) {
+                  handleSelect(0);
+                } else {
+                  setOpen(false);
+                }
+              }
+              const trimmed = query.trim();
+              if (trimmed !== query) {
+                const upper = toUpper(trimmed);
+                setQuery(upper);
+                formik.setFieldValue(fieldName, upper);
+              }
+              return;
+            }
+
+            if (!open) return;
+            if (e.key === "ArrowDown")
+              setActive((a) =>
+                Math.min(filteredHauliers.length - 1, a < 0 ? 0 : a + 1),
+              );
+            else if (e.key === "ArrowUp") setActive((a) => Math.max(0, a - 1));
+            else if (e.key === "Enter" && active >= 0) {
+              e.preventDefault();
+              handleSelect(active);
+            } else if (e.key === "Escape") setOpen(false);
+          }}
+        />
+        <span style={styles.acIcon}>▼</span>
+        {open && filteredHauliers.length > 0 && (
+          <div style={styles.acMenu}>
+            {filteredHauliers.map((val, i) => (
+              <div
+                key={i}
+                style={styles.acItem(active === i)}
+                onMouseDown={() => handleSelect(i)}
+                onMouseEnter={() => setActive(i)}
+              >
+                {toUpper(typeof val === "string" ? val : val.label || val.value)}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function useShippingOrAirlineDropdown(fieldName, formik) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(formik.values[fieldName] || "");
@@ -1813,19 +1926,13 @@ function ShipmentMainTab({ formik, onUpdate, directories, isEditable = true }) {
             <div style={styles.split}>
               <div style={styles.half}>
                 {!isAir ? (
-                  <div style={styles.field}>
-                    <div style={styles.label}>TRANSHIPPER CODE</div>
-                    <input
-                      style={styles.input}
-                      value={toUpper(formik.values.transhipper_code || "")}
-                      onChange={(e) =>
-                        handleFieldChange(
-                          "transhipper_code",
-                          e.target.value.toUpperCase(),
-                        )
-                      }
-                    />
-                  </div>
+                  <HaulierDropdownField
+                    label="HAULIER"
+                    fieldName="transhipper_code"
+                    formik={formik}
+                    hauliers={hauliers}
+                    placeholder="ENTER HAULIER"
+                  />
                 ) : (
                   <StateDropdownField
                     label="STATE OF ORIGIN"

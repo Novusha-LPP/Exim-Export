@@ -484,4 +484,100 @@ router.get("/api/scmCube/export-job-data-preview", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/scmCube/fetch-export-from-imexcube
+ * Fetches export job details from ImpexCube API V 1.2.0.1.0 (Section 6)
+ */
+router.post("/api/scmCube/fetch-export-from-imexcube", async (req, res) => {
+  const { job_number } = req.body || {};
+  try {
+    if (!job_number) {
+      return res.status(400).json({ error: "job_number is required" });
+    }
+
+    const job = await ExportJobModel.findOne({
+      $or: [{ job_no: job_number }, { jobNumber: job_number }],
+    });
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    const branchCode = job.branch_code || "";
+    let companyBrCode = COMPANY_BR_CODE;
+    const normalizedBranch = String(branchCode).toUpperCase().trim();
+    if (normalizedBranch === "AMD") {
+      companyBrCode = process.env.COMPANY_BR_CODE_AMD || "5E8D2587-A7BA-49A2-B836-21C70B2AAF47";
+    } else if (normalizedBranch === "GIM") {
+      companyBrCode = process.env.COMPANY_BR_CODE_GIM || "8677A8AA-D338-4413-8CCD-48DB23D28EBD";
+    } else if (normalizedBranch === "COK") {
+      companyBrCode = process.env.COMPANY_BR_CODE_COK || "F9BB73B5-C772-4474-866B-C8B2790B7448";
+    }
+
+    const loginUrl = `${IMEXCUBE_BASE_URL}/api/Authentication/login?username=${encodeURIComponent(
+      IMPEX_USERNAME
+    )}&password=${encodeURIComponent(
+      IMPEX_PASSWORD
+    )}&CompanyBrCode=${encodeURIComponent(
+      companyBrCode
+    )}&Fyear=${encodeURIComponent(FYEAR)}`;
+
+    const loginRes = await axios.post(loginUrl, null, {
+      headers: { accept: "*/*" },
+      timeout: 30000,
+    });
+
+    if (!loginRes.data?.success || !loginRes.data?.data?.accessToken) {
+      return res.status(502).json({ error: "IMEXCUBE authentication failed", details: loginRes.data });
+    }
+
+    const accessToken = loginRes.data.data.accessToken;
+    const fetchPayload = job.toImpexCubeExportGetDetailsPayload();
+
+    const fetchRes = await axios({
+      method: "GET",
+      url: `${IMEXCUBE_BASE_URL}/api/v1/GetJobDetails/getexpdetails`,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      data: fetchPayload,
+      timeout: 30000,
+    });
+
+    const vendorPayload = fetchRes.data || {};
+    const rawSb = vendorPayload.data?.SB_Details || vendorPayload.SB_Details;
+    const sbDetails = Array.isArray(rawSb) ? (rawSb[0] || {}) : (rawSb || {});
+
+    const updateFields = {
+      imexcube_fetch_response: vendorPayload,
+      imexcube_last_fetched_at: new Date(),
+    };
+
+    if (sbDetails.SBNo || sbDetails.SB_No) {
+      updateFields.sb_no = String(sbDetails.SBNo || sbDetails.SB_No).trim();
+    }
+    if (sbDetails.SBDate || sbDetails.SB_Date) {
+      updateFields.sb_date = String(sbDetails.SBDate || sbDetails.SB_Date).split("T")[0];
+    }
+    if (sbDetails.CustomPort || sbDetails.Custom_house_Code) {
+      updateFields.custom_house = String(sbDetails.CustomPort || sbDetails.Custom_house_Code).trim();
+    }
+
+    await ExportJobModel.updateOne({ _id: job._id }, { $set: updateFields });
+
+    return res.status(200).json({
+      success: true,
+      message: "Export job details fetched from ImpexCube successfully",
+      data: vendorPayload,
+      updatedFields: updateFields,
+    });
+  } catch (error) {
+    console.error("[IMEXCUBE EXPORT FETCH] Error:", error?.response?.data || error.message);
+    return res.status(error?.response?.status || 500).json({
+      error: "Failed to fetch export job details from IMEXCUBE",
+      details: error?.response?.data || error.message,
+    });
+  }
+});
+
 export default router;

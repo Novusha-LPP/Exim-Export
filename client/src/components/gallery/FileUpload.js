@@ -66,9 +66,12 @@ const FileUpload = ({
     for (const file of files) {
       try {
         const result = await uploadFileToS3(file, bucketPath);
-        uploadedFiles.push(result.Location);
+        if (result?.Location) {
+          uploadedFiles.push(result.Location);
+        }
       } catch (error) {
         console.error(`Failed to upload ${file.name}:`, error);
+        alert(`Failed to upload ${file.name}: ${error.response?.data?.message || error.message || "Network error"}`);
       }
     }
 

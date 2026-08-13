@@ -1,12 +1,12 @@
 import cron from "node-cron";
 import ExportJob from "../model/export/ExJobModel.mjs";
 import Directory from "../model/Directorties/Directory.js";
-import { generateDSRBuffer } from "../utils/dsrReportGenerator.mjs";
+import { generateDSRHTMLTable } from "../utils/dsrReportGenerator.mjs";
 import transporter from "../utils/mailer.mjs";
 
 /**
  * Daily 8 PM DSR Job
- * Sends DSR to exporters with pending jobs
+ * Sends DSR HTML Table to exporters with pending jobs
  */
 export const initDsrCronJob = () => {
     // Schedule for 8:00 PM every day (20:00)
@@ -30,7 +30,7 @@ export const initDsrCronJob = () => {
 
                 // 2. Find directory entry for this exporter to get email addresses
                 const directory = await Directory.findOne({ 
-                    organization: { $regex: `^${exporterName}$`, $options: "i" } 
+                    organization: { $regex: `^${exporterName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" } 
                 });
 
                 if (!directory) {
@@ -76,26 +76,36 @@ export const initDsrCronJob = () => {
                 console.log(`Sending DSR to ${emailList.join(", ")} for exporter: ${exporterName}`);
 
                 try {
-                    // 4. Generate DSR Report (Pending + Completed)
-                    // Note: onlyPending = false to include both
-                    const buffer = await generateDSRBuffer(exporterName, false);
+                    // 4. Generate DSR HTML Table for Pending Jobs ONLY
+                    const { html, jobCount } = await generateDSRHTMLTable(exporterName, true);
 
-                    // 5. Send Mail
+                    if (jobCount === 0) {
+                        console.log(`No pending jobs found for ${exporterName}, skipping email.`);
+                        continue;
+                    }
+
+                    // 5. Send Mail with HTML DSR table (No Excel Attachment)
+                    const dateFormatted = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
                     const mailOptions = {
                         from: `"Exim DSR" <${process.env.SMTP_USER || "connect@surajgroupofcompanies.com"}>`,
                         to: emailList.join(", "),
-                        subject: `Daily Status Report (DSR) - ${exporterName} - ${new Date().toLocaleDateString()}`,
-                        text: `Dear Sir/Madam,\n\nPlease find the attached Daily Status Report (DSR) for all jobs for ${exporterName}.\n\nThis report includes both pending and completed jobs.\n\nBest Regards,\nOperations Team\nSuraj Forwarders Private Limited`,
-                        attachments: [
-                            {
-                                filename: `DSR_Report_${exporterName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`,
-                                content: buffer
-                            }
-                        ]
+                        subject: `Daily Status Report (DSR) - ${exporterName} - ${dateFormatted}`,
+                        html: `
+                            <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333333; line-height: 1.5;">
+                                <p>Dear Sir/Madam,</p>
+                                <p>Please find below the Daily Status Report (DSR) for pending jobs for <strong>${exporterName}</strong>:</p>
+                                <div style="margin-top: 15px; margin-bottom: 20px; overflow-x: auto;">
+                                    ${html}
+                                </div>
+                                <p>Best Regards,<br/>
+                                <strong>Operations Team</strong><br/>
+                                Suraj Forwarders Private Limited</p>
+                            </div>
+                        `
                     };
 
                     await transporter.sendMail(mailOptions);
-                    console.log(`✅ DSR sent successfully to ${exporterName}`);
+                    console.log(`✅ DSR email sent successfully to ${exporterName} (${jobCount} pending jobs)`);
 
                 } catch (reportError) {
                     console.error(`❌ Error generating/sending DSR for ${exporterName}:`, reportError);

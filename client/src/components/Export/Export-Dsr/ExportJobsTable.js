@@ -5210,17 +5210,17 @@ const ExportJobsTable = () => {
                                   {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (checkingDsc ? "Checking..." : "Signing...") : "Sign"}
                                 </button>
 
-                                <div style={{ display: "flex", gap: "4px", width: "100%" }}>
+                                <div style={{ display: "flex", gap: "2px", width: "100%" }}>
                                   <button
-                                    className="copy-btn"
-                                    onClick={(e) => handleCopyJob(job, e)}
+                                    type="button"
+                                    onClick={(e) => handleCopyRow(e, job)}
                                     style={{
-                                      padding: "5px 8px",
+                                      padding: "3px 4px",
                                       backgroundColor: "#059669",
                                       color: "white",
                                       border: "none",
-                                      borderRadius: "4px",
-                                      fontSize: "11px",
+                                      borderRadius: "3px",
+                                      fontSize: "10px",
                                       fontWeight: "600",
                                       cursor: "pointer",
                                       flex: 1,
@@ -5228,14 +5228,14 @@ const ExportJobsTable = () => {
                                       display: "inline-flex",
                                       alignItems: "center",
                                       justifyContent: "center",
-                                      gap: "4px",
+                                      gap: "2px",
                                       whiteSpace: "nowrap",
                                       transition: "background-color 0.2s ease"
                                     }}
                                     onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#047857")}
                                     onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#059669")}
                                   >
-                                    <ContentCopyIcon style={{ fontSize: 10, color: "white" }} />
+                                    <ContentCopyIcon style={{ fontSize: 9, color: "white" }} />
                                     Copy
                                   </button>
                                   <button
@@ -5248,12 +5248,12 @@ const ExportJobsTable = () => {
                                       }
                                     }}
                                     style={{
-                                      padding: "5px 8px",
+                                      padding: "3px 4px",
                                       backgroundColor: "#2563eb",
                                       color: "white",
                                       border: "none",
-                                      borderRadius: "4px",
-                                      fontSize: "11px",
+                                      borderRadius: "3px",
+                                      fontSize: "10px",
                                       fontWeight: "600",
                                       cursor: "pointer",
                                       flex: 1,
@@ -5261,15 +5261,49 @@ const ExportJobsTable = () => {
                                       display: "inline-flex",
                                       alignItems: "center",
                                       justifyContent: "center",
-                                      gap: "4px",
+                                      gap: "2px",
                                       whiteSpace: "nowrap",
                                       transition: "background-color 0.2s ease"
                                     }}
                                     onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#1d4ed8")}
                                     onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
                                   >
-                                    <LaunchIcon style={{ fontSize: 10, color: "white" }} />
+                                    <LaunchIcon style={{ fontSize: 9, color: "white" }} />
                                     VGM
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (job.job_no) {
+                                        const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/form13/${encodeURIComponent(job.job_no)}`;
+                                        window.open(url, "_blank");
+                                      }
+                                    }}
+                                    style={{
+                                      padding: "3px 4px",
+                                      backgroundColor: "#0284c7",
+                                      color: "white",
+                                      border: "none",
+                                      borderRadius: "3px",
+                                      fontSize: "10px",
+                                      fontWeight: "600",
+                                      cursor: "pointer",
+                                      flex: 1,
+                                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: "2px",
+                                      whiteSpace: "nowrap",
+                                      transition: "background-color 0.2s ease"
+                                    }}
+                                    title="Open Form 13 ODEX Tracker"
+                                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#0369a1")}
+                                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#0284c7")}
+                                  >
+                                    <LaunchIcon style={{ fontSize: 9, color: "white" }} />
+                                    F-13
                                   </button>
                                 </div>
                                 <Button

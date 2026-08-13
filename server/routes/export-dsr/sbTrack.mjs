@@ -1,5 +1,10 @@
 import express from "express";
 import axios from "axios";
+import https from "https";
+
+const httpsAgent = new https.Agent({
+    rejectUnauthorized: false
+});
 
 const router = express.Router();
 
@@ -159,6 +164,7 @@ router.post("/api/container-track", async (req, res) => {
                     "Accept": "application/json",
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
                 },
+                httpsAgent,
                 timeout: 30000
             }
         );

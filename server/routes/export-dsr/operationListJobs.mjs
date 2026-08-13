@@ -823,4 +823,32 @@ router.get("/api/operation-jobs-filters", async (req, res) => {
     }
 });
 
+// GET /api/operation-jobs-exporter-names - Get distinct exporter/branch names for IEC code(s)
+router.get("/api/operation-jobs-exporter-names", async (req, res) => {
+    try {
+        const { ieCode = "" } = req.query;
+        const filter = { isGeneralJob: { $ne: true } };
+        if (ieCode) {
+            const ieCodeArray = ieCode.split(",").map(c => c.trim()).filter(Boolean);
+            if (ieCodeArray.length > 0) {
+                filter.ieCode = { $in: ieCodeArray };
+            }
+        }
+        const distinctExporters = await ExportJobModel.distinct("exporter", filter);
+        const cleanList = (distinctExporters || []).filter(Boolean).sort();
+        res.json({
+            success: true,
+            data: cleanList,
+            message: `Found ${cleanList.length} distinct exporter name(s)`
+        });
+    } catch (error) {
+        console.error("Error fetching distinct exporter names:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch distinct exporter names",
+            error: error.message
+        });
+    }
+});
+
 export default router;

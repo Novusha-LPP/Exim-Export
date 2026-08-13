@@ -578,6 +578,7 @@ const LogisysEditableHeader = ({
   const [snackbar, setSnackbar] = useState(false);
   const [impexCubeToast, setImpexCubeToast] = useState(null);
   const [impexCubeSending, setImpexCubeSending] = useState(false);
+  const [impexCubeFetching, setImpexCubeFetching] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const openMenu = Boolean(anchorEl);
   const productExcelInputRef = React.useRef(null);
@@ -895,6 +896,42 @@ const LogisysEditableHeader = ({
     }
   };
 
+  const handleFetchFromImpexCube = async () => {
+    const jobNo = formik.values.job_no;
+    if (!jobNo) {
+      showImpexCubeToast("Save the job before fetching from ImpexCube.", "error");
+      return;
+    }
+
+    setImpexCubeFetching(true);
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_STRING}/impexcube/export-jobs/fetch`,
+        { job_no: jobNo },
+        { headers: { username: user?.username || "" } },
+      );
+
+      const updated = response.data?.updatedFields || {};
+      if (updated.sb_no) formik.setFieldValue("sb_no", updated.sb_no);
+      if (updated.sb_date) formik.setFieldValue("sb_date", updated.sb_date);
+      if (updated.custom_house) formik.setFieldValue("custom_house", updated.custom_house);
+
+      showImpexCubeToast(
+        response.data?.message || "Export job details fetched from ImpexCube successfully.",
+        "success",
+      );
+    } catch (error) {
+      console.error("Error fetching job from ImpexCube:", error);
+      showImpexCubeToast(
+        error.response?.data?.message ||
+        "Failed to fetch export job details from ImpexCube.",
+        "error",
+      );
+    } finally {
+      setImpexCubeFetching(false);
+    }
+  };
+
   const toggleLock = () => {
     if (setIsEditable) {
       if (!isEditable) {
@@ -979,9 +1016,21 @@ const LogisysEditableHeader = ({
               style={!isEditable ? styles.inputDisabled : styles.input}
               name="job_no"
               value={formik.values.job_no}
-              onChange={formik.handleChange}
+              onChange={(e) => {
+                const val = e.target.value;
+                const parts = getJobNoParts(val);
+                if (parts.prefix || parts.suffix) {
+                  const cleanSeq = parts.seq.replace(/[^0-9]/g, "");
+                  formik.setFieldValue("job_no", `${parts.prefix}${cleanSeq}${parts.suffix}`);
+                } else {
+                  const cleanVal = val.replace(/[^0-9]/g, "");
+                  formik.setFieldValue("job_no", cleanVal);
+                }
+              }}
               placeholder="Auto"
               disabled={!isEditable}
+              inputMode="numeric"
+              pattern="[0-9]*"
             />
           ) : (
             isEditable ? (
@@ -1027,13 +1076,15 @@ const LogisysEditableHeader = ({
                   value={getJobNoParts(formik.values.job_no).seq}
                   onChange={(e) => {
                     const parts = getJobNoParts(formik.values.job_no);
-                    const newSeq = e.target.value;
+                    const newSeq = e.target.value.replace(/[^0-9]/g, "");
                     formik.setFieldValue(
                       "job_no",
                       `${parts.prefix}${newSeq}${parts.suffix}`
                     );
                   }}
                   onFocus={handleJobNoFocus}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                 />
                 <span
                   style={{
@@ -1493,6 +1544,33 @@ const LogisysEditableHeader = ({
           {!isNewJob && (
             <button
               style={{
+                background: impexCubeFetching ? "#e5e7eb" : "#0284c7",
+                border: "1px solid #0284c7",
+                color: impexCubeFetching ? "#64748b" : "#fff",
+                padding: "3px 10px",
+                borderRadius: 3,
+                fontWeight: 700,
+                fontSize: 11,
+                cursor: impexCubeFetching ? "not-allowed" : "pointer",
+                height: 24,
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+              type="button"
+              onClick={handleFetchFromImpexCube}
+              disabled={impexCubeFetching}
+              title="Fetch details for this export job from ImpexCube"
+            >
+              {impexCubeFetching && <CircularProgress size={12} color="inherit" />}
+              {impexCubeFetching ? "Fetching..." : "Fetch from ImpexCube"}
+            </button>
+          )}
+
+          {!isNewJob && (
+            <button
+              style={{
                 background: "#0284c7",
                 border: "none",
                 color: "#fff",
@@ -1541,6 +1619,32 @@ const LogisysEditableHeader = ({
               }}
             >
               VGM
+            </button>
+          )}
+
+          {formik.values.job_no && (
+            <button
+              style={{
+                backgroundColor: "#0284c7",
+                border: "none",
+                color: "#fff",
+                padding: "3px 12px",
+                borderRadius: 3,
+                fontWeight: 600,
+                fontSize: 11,
+                cursor: "pointer",
+                height: 24,
+                whiteSpace: "nowrap",
+              }}
+              type="button"
+              onClick={() => {
+                const jn = formik.values.job_no;
+                if (!jn) return;
+                const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/form13/${encodeURIComponent(jn)}`;
+                window.open(url, "_blank");
+              }}
+            >
+              F-13
             </button>
           )}
 

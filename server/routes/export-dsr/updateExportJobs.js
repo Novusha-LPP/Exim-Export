@@ -392,11 +392,13 @@ async function syncClubFields(job) {
 }
 
 const IMPEXCUBE_BASE_URL =
-  process.env.IMPEXCUBE_BASE_URL || "http://testimpexapi.impexcube.in";
+  process.env.IMPEXCUBE_BASE_URL || "https://testimpexapi.impexcube.in";
 const IMPEXCUBE_LOGIN_PATH =
   process.env.IMPEXCUBE_LOGIN_PATH || "/api/Authentication/login";
 const IMPEXCUBE_EXPORT_CREATE_PATH =
   process.env.IMPEXCUBE_EXPORT_CREATE_PATH || "/api/v1/ExpJobCreation/CreateJob";
+const IMPEXCUBE_EXPORT_GET_DETAILS_PATH =
+  process.env.IMPEXCUBE_EXPORT_GET_DETAILS_PATH || "/api/v1/GetJobDetails/getexpdetails";
 const IMPEXCUBE_TIMEOUT_MS = Number(process.env.IMPEXCUBE_TIMEOUT_MS || 30000);
 const IMPEXCUBE_TEST_HOST = "testimpexapi.impexcube.in";
 const IMPEXCUBE_TEST_DEFAULTS = {
@@ -2572,6 +2574,118 @@ router.post("/impexcube/export-jobs/send", auditMiddleware("Job"), async (req, r
       data: impexCubeData || null,
       errors: impexCubeData?.errors || null,
       statusCode: status,
+    });
+  }
+});
+
+// POST /api/impexcube/export-jobs/fetch - Fetch export job details from ImpexCube
+router.post("/impexcube/export-jobs/fetch", auditMiddleware("Job"), async (req, res) => {
+  try {
+    const jobNo = req.body?.job_no || req.body?.jobNo;
+    if (!jobNo) {
+      return res.status(400).json({
+        success: false,
+        message: "job_no is required",
+      });
+    }
+
+    const exportJob = await ExJobModel.findOne({
+      job_no: { $regex: `^${String(jobNo).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+    });
+
+    if (!exportJob) {
+      return res.status(404).json({
+        success: false,
+        message: "Export job not found",
+      });
+    }
+
+    const payload = ExJobModel.buildImpexCubeExportGetDetailsPayload(exportJob);
+    const accessToken = await getImpexCubeAccessToken(exportJob.financial_year || exportJob.year, exportJob.branch_code);
+
+    console.log("[IMEXCUBE EXPORT DSR] Fetching details from ImpexCube for job:", jobNo);
+    let impexCubeResponse;
+    const targetUrl = buildImpexCubeUrl(IMPEXCUBE_EXPORT_GET_DETAILS_PATH);
+    const reqHeaders = {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    };
+
+    try {
+      impexCubeResponse = await axios({
+        method: "GET",
+        url: targetUrl,
+        headers: reqHeaders,
+        data: payload,
+        timeout: IMPEXCUBE_TIMEOUT_MS,
+      });
+    } catch (getErr) {
+      if (getErr.response?.status === 405 || getErr.response?.status === 400 || getErr.response?.status === 403) {
+        console.log("[IMEXCUBE EXPORT DSR] GET failed, retrying with POST...");
+        impexCubeResponse = await axios.post(targetUrl, payload, {
+          headers: reqHeaders,
+          timeout: IMPEXCUBE_TIMEOUT_MS,
+        });
+      } else {
+        throw getErr;
+      }
+    }
+
+    const vendorPayload = impexCubeResponse.data || {};
+    const isSuccess = vendorPayload.success !== false && (impexCubeResponse.status === 200 || vendorPayload.statusCode === 200);
+
+    if (!isSuccess) {
+      return res.status(vendorPayload.statusCode || 404).json({
+        success: false,
+        message: vendorPayload.message || "Export job details not available in ImpexCube",
+        data: vendorPayload,
+      });
+    }
+
+    const rawSb = vendorPayload.data?.SB_Details || vendorPayload.SB_Details;
+    const sbDetails = Array.isArray(rawSb) ? (rawSb[0] || {}) : (rawSb || {});
+
+    const updateFields = {
+      imexcube_fetch_response: vendorPayload,
+      imexcube_last_fetched_at: new Date(),
+    };
+
+    const newSbNo = sbDetails.SBNo || sbDetails.SB_No;
+    if (newSbNo) {
+      updateFields.sb_no = String(newSbNo).trim();
+    }
+    const newSbDate = sbDetails.SBDate || sbDetails.SB_Date;
+    if (newSbDate) {
+      updateFields.sb_date = String(newSbDate).split("T")[0];
+    }
+    const newCustomPort = sbDetails.CustomPort || sbDetails.Custom_house_Code;
+    if (newCustomPort) {
+      updateFields.custom_house = String(newCustomPort).trim();
+    }
+
+    await ExJobModel.updateOne({ _id: exportJob._id }, { $set: updateFields });
+
+    return res.status(200).json({
+      success: true,
+      message: "Export job details fetched from ImpexCube successfully",
+      data: vendorPayload,
+      updatedFields: updateFields,
+      job_no: exportJob.job_no,
+    });
+  } catch (error) {
+    console.error("Error fetching export job from ImpexCube:", error?.response?.data || error.message);
+    const status = error.response?.status || 500;
+    const vendorData = error.response?.data || null;
+
+    let userMsg = vendorData?.message || error.message || "Failed to fetch export job details from ImpexCube";
+    if (status === 404) {
+      userMsg = vendorData?.message || "Job details are not available in ImpexCube. Please ensure the job has been sent to ImpexCube first.";
+    }
+
+    return res.status(status).json({
+      success: false,
+      message: userMsg,
+      data: vendorData,
     });
   }
 });

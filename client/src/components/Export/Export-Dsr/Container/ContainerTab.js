@@ -208,6 +208,8 @@ function ContainerTab({ formik, isEditable = true }) {
         weighmentTareWeight: 0, // This is Cargo Tare Wt in DB
         weighmentTransporterName: "",
         weighmentAddress: "",
+        weighmentAddress1: "",
+        weighmentAddress2: "",
         weighmentImages: [],
       }]);
     }
@@ -318,6 +320,12 @@ function ContainerTab({ formik, isEditable = true }) {
     }
     list[idx][field] = value;
 
+    if (field === "weighmentAddress1" || field === "weighmentAddress2") {
+      const addr1 = list[idx].weighmentAddress1 !== undefined ? list[idx].weighmentAddress1 : (list[idx].weighmentAddress || "");
+      const addr2 = list[idx].weighmentAddress2 || "";
+      list[idx].weighmentAddress = [addr1, addr2].filter(Boolean).join(", ");
+    }
+
     const gw = Number(list[idx].grossWeight || 0);
     const tw = Number(list[idx].tareWeightKgs || 0);
     const maxGw = Number(list[idx].maxGrossWeightKgs || 0);
@@ -358,6 +366,8 @@ function ContainerTab({ formik, isEditable = true }) {
       weighmentTareWeight: 0,
       weighmentTransporterName: "",
       weighmentAddress: "",
+      weighmentAddress1: "",
+      weighmentAddress2: "",
       weighmentImages: [],
     });
     formik.setFieldValue("containers", list);
@@ -537,8 +547,9 @@ function ContainerTab({ formik, isEditable = true }) {
                 <th style={{ ...styles.th, width: 140 }}>Container No</th>
                 <th style={{ ...styles.th, width: 140 }}>Transporter Name</th>
                 <th style={{ ...styles.th, width: 120 }}>Reg / Slip No</th>
-                <th style={{ ...styles.th, width: 160 }}>Weighbridge Name</th>
-                <th style={{ ...styles.th, width: 200 }}>Weighbridge Address</th>
+                <th style={{ ...styles.th, width: 150 }}>Weighbridge Name</th>
+                <th style={{ ...styles.th, width: 160 }}>Address Line 1</th>
+                <th style={{ ...styles.th, width: 160 }}>Address Line 2</th>
                 <th style={{ ...styles.th, width: 150 }}>Date & Time</th>
                 <th style={{ ...styles.th, width: 110 }}>Vehicle No</th>
                 <th style={{ ...styles.th, width: 90 }}>VGM WT (KG)</th>
@@ -548,7 +559,7 @@ function ContainerTab({ formik, isEditable = true }) {
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={9} style={{ ...styles.td, textAlign: 'center', color: '#94a3b8', padding: 20 }}>Add containers above to fill weighment.</td>
+                  <td colSpan={11} style={{ ...styles.td, textAlign: 'center', color: '#94a3b8', padding: 20 }}>Add containers above to fill weighment.</td>
                 </tr>
               )}
               {rows.map((row, idx) => (
@@ -570,8 +581,12 @@ function ContainerTab({ formik, isEditable = true }) {
                       onChange={(e) => handleFieldChange(idx, "weighBridgeName", toUpperVal(e.target.value))} placeholder="BRIDGE NAME" disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
-                    <input style={styles.input} value={row.weighmentAddress || ""}
-                      onChange={(e) => handleFieldChange(idx, "weighmentAddress", e.target.value)} placeholder="ADDRESS" disabled={!isEditable} />
+                    <input style={styles.input} value={row.weighmentAddress1 !== undefined ? row.weighmentAddress1 : (row.weighmentAddress || "")}
+                      onChange={(e) => handleFieldChange(idx, "weighmentAddress1", e.target.value)} placeholder="ADDRESS LINE 1" disabled={!isEditable} />
+                  </td>
+                  <td style={styles.td}>
+                    <input style={styles.input} value={row.weighmentAddress2 || ""}
+                      onChange={(e) => handleFieldChange(idx, "weighmentAddress2", e.target.value)} placeholder="ADDRESS LINE 2" disabled={!isEditable} />
                   </td>
                   <td style={styles.td}>
                     <input type="datetime-local" style={styles.input} value={row.weighmentDateTime || ""}

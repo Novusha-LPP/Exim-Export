@@ -19,7 +19,10 @@ dotenv.config({ path: path.join(__dirname, "../../client/.env") });
 
 const router = express.Router();
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit per file
+});
 
 // Extract variables
 const region =

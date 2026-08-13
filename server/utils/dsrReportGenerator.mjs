@@ -2,6 +2,245 @@ import ExcelJS from "exceljs";
 import ExportJob from "../model/export/ExJobModel.mjs";
 
 /**
+ * Utility to extract clean container size (excluding ISO code)
+ * @param {Object|string} cntr
+ * @returns {string} - Cleaned size string e.g. "40 HC", "20 DV"
+ */
+export const getCleanContainerSize = (cntr) => {
+  if (!cntr) return "";
+  let raw = "";
+  if (typeof cntr === "string") {
+    raw = cntr;
+  } else {
+    raw = cntr.containerSize || cntr.type || "";
+  }
+  if (!raw) return "";
+
+  // Remove leading 4-digit ISO code e.g. "4510 40 HC" -> "40 HC"
+  let cleaned = raw.replace(/^\d{4}\s+/, "").replace(/\s+\d{4}$/, "").trim();
+
+  // If cleaned is still just 4 digits or empty, match standard sizes
+  if (/^\d{4}$/.test(cleaned) || !cleaned) {
+    const match = raw.match(/(?:20|40|45)\s*(?:HC|DV|FT|FEET)?/i);
+    if (match) return match[0].toUpperCase();
+    if (/^\d{4}$/.test(cleaned)) {
+      if (cleaned.startsWith("2")) return "20";
+      if (cleaned.startsWith("4")) return "40";
+    }
+    return "";
+  }
+
+  return cleaned.toUpperCase();
+};
+
+/**
+ * Format date values to DD-MM-YYYY
+ * @param {string|Date} dateVal
+ * @returns {string}
+ */
+export const formatDateStr = (dateVal) => {
+  if (!dateVal) return "";
+  if (dateVal instanceof Date) {
+    if (isNaN(dateVal.getTime())) return "";
+    const day = String(dateVal.getDate()).padStart(2, "0");
+    const month = String(dateVal.getMonth() + 1).padStart(2, "0");
+    const year = dateVal.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+  const trimmed = String(dateVal).trim();
+  if (!trimmed) return "";
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(trimmed) || /^\d{2}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (trimmed.includes("T") || trimmed.includes("-")) {
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    }
+  }
+
+  return trimmed;
+};
+
+/**
+ * Generate DSR HTML Table for Email Body
+ * @param {string} exporter - Exporter name or "all"
+ * @param {boolean} onlyPending - If true, filter out completed/cancelled jobs
+ * @returns {Promise<{ html: string, jobCount: number }>}
+ */
+export const generateDSRHTMLTable = async (exporter, onlyPending = true) => {
+  try {
+    const isAll = String(exporter || "").toLowerCase() === "all";
+    const filter = { $and: [] };
+
+    if (!isAll && exporter) {
+      filter.$and.push({ exporter: { $regex: `^${exporter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" } });
+    }
+
+    filter.$and.push({ job_no: { $regex: "^(?!GEN|FF).*", $options: "i" } });
+    filter.$and.push({ isGeneralJob: { $ne: true } });
+
+    if (onlyPending) {
+      filter.$and.push({
+        status: { $nin: ["Completed", "completed", "Cancelled", "cancelled"] },
+        isJobCanceled: { $ne: true },
+        detailedStatus: { $ne: "Billing Done" }
+      });
+    }
+
+    const jobs = await ExportJob.find(filter.$and.length > 0 ? filter : {})
+      .sort({ createdAt: -1 })
+      .limit(5000)
+      .lean();
+
+    if (!jobs || jobs.length === 0) {
+      return { html: "", jobCount: 0 };
+    }
+
+    let rowsHtml = "";
+
+    jobs.forEach((job, index) => {
+      const status = job.operations?.[0]?.statusDetails?.[0] || {};
+      const bgColor = index % 2 === 0 ? "#ffffff" : "#f8fafd";
+
+      // 1. Job No column
+      let jobNoCell = `<strong>${job.job_no || job.job_number || ""}</strong>`;
+      if (job.exporter_ref_no) jobNoCell += `<br/>Ref: ${job.exporter_ref_no}`;
+      if (job.custom_house) jobNoCell += `<br/>${job.custom_house}`;
+      if (job.consignmentType) jobNoCell += `<br/>${job.consignmentType}`;
+
+      // 2. Exporter column
+      let exporterCell = `<strong>${job.exporter || ""}</strong>`;
+      const fwdr = job.forwarder || status.forwarderName;
+      if (fwdr) exporterCell += `<br/>FWDR: ${fwdr}`;
+
+      // 3. Consignee Name column
+      const consigneeName = job.consignee_name || (job.consignees && job.consignees[0] && job.consignees[0].consignee_name) || "-";
+
+      // 4. Invoice column
+      let invoiceLines = [];
+      if (job.invoices && job.invoices.length > 0) {
+        job.invoices.forEach(inv => {
+          let line = inv.invoiceNumber || inv.invoiceNo || "";
+          if (inv.invoiceDate) line += `<br/>${formatDateStr(inv.invoiceDate)}`;
+          if (inv.invoiceValue || inv.amount) line += `<br/>${inv.currency || job.currency || "USD"} ${inv.invoiceValue || inv.amount}`;
+          if (line) invoiceLines.push(line);
+        });
+      }
+      if (invoiceLines.length === 0 && (job.invoice_number || job.invoice_no)) {
+        let line = job.invoice_number || job.invoice_no || "";
+        if (job.invoice_date) line += `<br/>${formatDateStr(job.invoice_date)}`;
+        if (job.invoice_value) line += `<br/>${job.currency || "USD"} ${job.invoice_value}`;
+        if (line) invoiceLines.push(line);
+      }
+      const invoiceCell = invoiceLines.length > 0 ? invoiceLines.join("<br/><br/>") : "-";
+
+      // 5. SB / Date column
+      let sbLines = [];
+      if (job.sb_no) sbLines.push(job.sb_no);
+      if (job.sb_date) sbLines.push(formatDateStr(job.sb_date));
+      const sbCell = sbLines.length > 0 ? sbLines.join("<br/>") : "-";
+
+      // 6. Port column
+      let portLines = [];
+      if (job.destination_port || job.destination_country) {
+        portLines.push(`Dest: ${job.destination_port || ""} ${job.destination_country ? "(" + job.destination_country + ")" : ""}`.trim());
+      }
+      if (job.discharge_port || job.discharge_country) {
+        portLines.push(`Discharge: ${job.discharge_port || ""} ${job.discharge_country ? "(" + job.discharge_country + ")" : ""}`.trim());
+      }
+      if (job.port_of_loading) {
+        portLines.push(`POL: ${job.port_of_loading}`);
+      }
+      const portCell = portLines.length > 0 ? portLines.join("<br/>") : "-";
+
+      // 7. Container column (Size only, NO ISO code)
+      let cntrLines = [];
+      const pkgs = job.total_no_of_pkgs || job.no_of_packages;
+      if (pkgs) cntrLines.push(`Pkgs: ${pkgs} ${job.package_unit || ""}`.trim());
+      const gross = job.gross_weight_kg || job.gross_weight;
+      if (gross) cntrLines.push(`G: ${gross} kg`);
+      const net = job.net_weight_kg || job.net_weight;
+      if (net) cntrLines.push(`N: ${net} kg`);
+
+      if (job.containers && job.containers.length > 0) {
+        job.containers.forEach(c => {
+          const cntrNo = c.containerNo || c.container_number;
+          if (cntrNo) cntrLines.push(`Cont: ${cntrNo}`);
+          const cleanSize = getCleanContainerSize(c);
+          if (cleanSize) cntrLines.push(`Size/Type: ${cleanSize}`);
+        });
+      }
+      const containerCell = cntrLines.length > 0 ? cntrLines.join("<br/>") : "-";
+
+      // 8. Handover column (Show VGM, F13, ESAB, Handover dates if available)
+      let handoverLines = [];
+      const vgmDate = job.vgm_date || status.vgmDate || (job.vgm_done ? formatDateStr(job.updatedAt) : "");
+      if (vgmDate) handoverLines.push(`VGM: ${formatDateStr(vgmDate)}`);
+
+      const form13Date = job.form13_date || status.form13Date || (job.form13_done ? formatDateStr(job.updatedAt) : "");
+      if (form13Date) handoverLines.push(`F13: ${formatDateStr(form13Date)}`);
+
+      const esabDate = job.esanchit_completed_date_time || job.esab_date || job.eSanchitDate || status.esanchitDate;
+      if (esabDate) handoverLines.push(`ESAB: ${formatDateStr(esabDate)}`);
+
+      const handoverDate = status.handoverForwardingNoteDate || status.handoverConcorTharSanganaRailRoadDate || job.handover_date;
+      if (handoverDate) handoverLines.push(`Handover: ${formatDateStr(handoverDate)}`);
+
+      const handoverCell = handoverLines.length > 0 ? handoverLines.join("<br/>") : "-";
+
+      // 9. Status column
+      const statusCell = job.detailedStatus || job.status || "Pending";
+
+      rowsHtml += `
+        <tr style="background-color: ${bgColor}; color: #333333;">
+          <td style="padding: 8px 10px; border: 1px solid #d0d7de; vertical-align: top; line-height: 1.4;">${jobNoCell}</td>
+          <td style="padding: 8px 10px; border: 1px solid #d0d7de; vertical-align: top; line-height: 1.4;">${exporterCell}</td>
+          <td style="padding: 8px 10px; border: 1px solid #d0d7de; vertical-align: top; line-height: 1.4;">${consigneeName}</td>
+          <td style="padding: 8px 10px; border: 1px solid #d0d7de; vertical-align: top; line-height: 1.4;">${invoiceCell}</td>
+          <td style="padding: 8px 10px; border: 1px solid #d0d7de; vertical-align: top; line-height: 1.4;">${sbCell}</td>
+          <td style="padding: 8px 10px; border: 1px solid #d0d7de; vertical-align: top; line-height: 1.4;">${portCell}</td>
+          <td style="padding: 8px 10px; border: 1px solid #d0d7de; vertical-align: top; line-height: 1.4;">${containerCell}</td>
+          <td style="padding: 8px 10px; border: 1px solid #d0d7de; vertical-align: top; line-height: 1.4;">${handoverCell}</td>
+          <td style="padding: 8px 10px; border: 1px solid #d0d7de; vertical-align: top; line-height: 1.4; font-weight: bold; color: #1f4e78;">${statusCell}</td>
+        </tr>
+      `;
+    });
+
+    const html = `
+      <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: Arial, Helvetica, sans-serif; font-size: 12px; border: 1px solid #1f4e78;">
+        <thead>
+          <tr style="background-color: #1f4e78; color: #ffffff; text-align: left; font-weight: bold; font-size: 13px;">
+            <th style="padding: 10px; border: 1px solid #1f4e78;">Job No</th>
+            <th style="padding: 10px; border: 1px solid #1f4e78;">Exporter</th>
+            <th style="padding: 10px; border: 1px solid #1f4e78;">Consignee Name</th>
+            <th style="padding: 10px; border: 1px solid #1f4e78;">Invoice</th>
+            <th style="padding: 10px; border: 1px solid #1f4e78;">SB / Date</th>
+            <th style="padding: 10px; border: 1px solid #1f4e78;">Port</th>
+            <th style="padding: 10px; border: 1px solid #1f4e78;">Container</th>
+            <th style="padding: 10px; border: 1px solid #1f4e78;">Handover</th>
+            <th style="padding: 10px; border: 1px solid #1f4e78;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    `;
+
+    return { html, jobCount: jobs.length };
+  } catch (error) {
+    console.error("Error generating DSR HTML table:", error);
+    throw error;
+  }
+};
+
+/**
  * Generate DSR Report Excel Buffer for a specific exporter
  * @param {string} exporter - Exporter name
  * @param {boolean} onlyPending - If true, only include pending jobs
@@ -192,7 +431,11 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
       filter.$and.push({ isJobCanceled: { $ne: true } });
     } else {
       if (onlyPending) {
-        filter.$and.push({ status: { $nin: ["Completed", "Cancelled"] } });
+        filter.$and.push({
+          status: { $nin: ["Completed", "completed", "Cancelled", "cancelled"] },
+          isJobCanceled: { $ne: true },
+          detailedStatus: { $ne: "Billing Done" }
+        });
       }
     }
 

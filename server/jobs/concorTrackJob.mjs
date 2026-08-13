@@ -1,7 +1,12 @@
 import cron from "node-cron";
 import axios from "axios";
+import https from "https";
 import express from "express";
 import ExJobModel from "../model/export/ExJobModel.mjs";
+
+const httpsAgent = new https.Agent({
+    rejectUnauthorized: false
+});
 
 const CONCOR_API_URL = "https://www.concorindia.co.in/api/multipalContainer";
 const LOG_PREFIX = "[CONCOR Track Job]";
@@ -104,6 +109,7 @@ export async function runConcorTrackJob(force = false) {
                             "Accept": "application/json",
                             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
                         },
+                        httpsAgent,
                         timeout: CONCOR_TIMEOUT_MS
                     }
                 );

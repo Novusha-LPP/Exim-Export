@@ -2,6 +2,39 @@ import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_STRING;
 
+/**
+ * Robust helper for file uploads with automatic retry on transient HTTP/2 or network errors.
+ */
+const postUploadWithRetry = async (formData, retries = 2, initialDelay = 1000) => {
+  let delay = initialDelay;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      // NOTE: Do NOT set "Content-Type": "multipart/form-data" manually in Axios.
+      // Axios and browser automatically set Content-Type WITH the multipart boundary parameter.
+      return await axios.post(`${API_URL}/upload`, formData, {
+        timeout: 120000, // 2-minute timeout for large file uploads
+      });
+    } catch (err) {
+      const isNetworkOrHttp2Error =
+        err.code === "ERR_NETWORK" ||
+        err.code === "ERR_HTTP2_PROTOCOL_ERROR" ||
+        err.message?.includes("Network Error") ||
+        err.message?.includes("HTTP2") ||
+        !err.response;
+
+      if (isNetworkOrHttp2Error && attempt < retries) {
+        console.warn(
+          `[FileUpload] Upload attempt ${attempt + 1} failed (${err.message}). Retrying in ${delay}ms...`
+        );
+        await new Promise((res) => setTimeout(res, delay));
+        delay *= 2; // exponential backoff
+      } else {
+        throw err;
+      }
+    }
+  }
+};
+
 export const handleFileUpload = async (
   e,
   folderName,
@@ -9,7 +42,7 @@ export const handleFileUpload = async (
   formik,
   setFileSnackbar
 ) => {
-  if (e.target.files.length === 0) {
+  if (!e?.target?.files || e.target.files.length === 0) {
     alert("No file selected");
     return;
   }
@@ -23,55 +56,51 @@ export const handleFileUpload = async (
       formData.append("files", e.target.files[i]);
     }
 
-    const response = await axios.post(`${API_URL}/upload`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-
+    const response = await postUploadWithRetry(formData);
     const uploadedFiles = response.data.locations;
 
     // Update formik values with the uploaded file URLs
-    formik.setValues((values) => ({
-      ...values,
-      [formikKey]: uploadedFiles,
-    }));
+    if (typeof formik?.setValues === "function") {
+      formik.setValues((values) => ({
+        ...values,
+        [formikKey]: uploadedFiles,
+      }));
+    } else if (typeof formik?.setFieldValue === "function") {
+      formik.setFieldValue(formikKey, uploadedFiles);
+    }
 
-    setFileSnackbar(true);
-
-    setTimeout(() => {
-      setFileSnackbar(false);
-    }, 3000);
+    if (typeof setFileSnackbar === "function") {
+      setFileSnackbar(true);
+      setTimeout(() => {
+        setFileSnackbar(false);
+      }, 3000);
+    }
   } catch (err) {
     console.error("Error uploading files:", err);
-    // Optional: show user error
-    if (err.response) {
-      console.error("Server Error:", err.response.data);
-    }
+    alert(
+      `File upload failed: ${
+        err.response?.data?.message || err.response?.data || err.message || "Network Error"
+      }`
+    );
   }
 };
 
 export const uploadFileToS3 = async (file, folderName) => {
-  // Kept for compatibility with other components that might use this specific function
-  // It mimics the AWS SDK v2 behavior of returning a promise that resolves to file data
-
   const formData = new FormData();
   formData.append("files", file);
   formData.append("folderName", folderName);
 
-  const response = await axios.post(`${API_URL}/upload`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  const response = await postUploadWithRetry(formData);
+  const location = response.data?.locations?.[0];
 
-  const location = response.data.locations[0];
+  if (!location) {
+    throw new Error("Server returned no upload location");
+  }
 
-  // Return structure compatible with AWS SDK .promise() result
   return {
     Location: location,
     Key: location.split(".com/")[1] || `${folderName}/${file.name}`,
-    Bucket: "exim-export", // Dummy or extract if needed
+    Bucket: "exim-export",
     Etag: "mock-etag",
   };
 };

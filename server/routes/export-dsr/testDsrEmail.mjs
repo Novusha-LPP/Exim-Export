@@ -1,7 +1,7 @@
 import express from "express";
 import ExportJob from "../../model/export/ExJobModel.mjs";
 import Directory from "../../model/Directorties/Directory.js";
-import { generateDSRBuffer } from "../../utils/dsrReportGenerator.mjs";
+import { generateDSRHTMLTable } from "../../utils/dsrReportGenerator.mjs";
 import transporter from "../../utils/mailer.mjs";
 
 const router = express.Router();
@@ -52,28 +52,41 @@ router.post("/api/export-dsr/test-dsr-email", async (req, res) => {
         return res.status(400).json({ success: false, message: `No email addresses found for ${exporterName}` });
     }
 
-    // 3. Generate Report (Both Pending + Completed)
-    const buffer = await generateDSRBuffer(exporterName, false);
+    // 3. Generate HTML DSR Table for Pending Jobs ONLY
+    const { html, jobCount } = await generateDSRHTMLTable(exporterName, true);
 
-    // 4. Send Email
+    if (jobCount === 0) {
+        return res.status(200).json({
+            success: true,
+            message: `No pending jobs found for exporter ${exporterName}. Email not sent.`
+        });
+    }
+
+    // 4. Send Email with HTML DSR table (No Excel Attachment)
+    const dateFormatted = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
     const mailOptions = {
         from: `"Exim Test DSR" <${process.env.SMTP_USER || "connect@surajgroupofcompanies.com"}>`,
         to: emailList.join(", "),
-        subject: `[TEST] Daily Status Report (DSR) - ${exporterName}`,
-        text: `This is a manually triggered TEST email for the Daily Status Report (DSR) feature.\n\nIncluded: Pending + Completed jobs.\n\nSent to: ${emailList.join(", ")}`,
-        attachments: [
-            {
-                filename: `TEST_DSR_Report_${exporterName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`,
-                content: buffer
-            }
-        ]
+        subject: `[TEST] Daily Status Report (DSR) - ${exporterName} - ${dateFormatted}`,
+        html: `
+            <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333333; line-height: 1.5;">
+                <p><strong>[TEST EMAIL]</strong> Dear Sir/Madam,</p>
+                <p>Please find below the Daily Status Report (DSR) for pending jobs for <strong>${exporterName}</strong>:</p>
+                <div style="margin-top: 15px; margin-bottom: 20px; overflow-x: auto;">
+                    ${html}
+                </div>
+                <p>Best Regards,<br/>
+                <strong>Operations Team</strong><br/>
+                Suraj Forwarders Private Limited</p>
+            </div>
+        `
     };
 
     await transporter.sendMail(mailOptions);
 
     res.json({ 
         success: true, 
-        message: `Test DSR email sent successfully to ${emailList.length} addresses: ${emailList.join(", ")}`
+        message: `Test DSR email sent successfully to ${emailList.length} addresses (${jobCount} pending jobs included): ${emailList.join(", ")}`
     });
 
   } catch (error) {
