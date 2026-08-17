@@ -650,7 +650,7 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
                 extractJobSequenceNo(firstValue(job.job_no, job.jobNumber)),
             ),
             User_Job_No: firstText(job.job_no, job.jobNumber),
-            User_Job_Date: toImpexCubeDate(job.job_date),
+            User_Job_Date: toImpexCubeDate(job.job_date) || toImpexCubeDate(new Date()),
             SB_No: firstText(job.sb_no),
             SB_Date: toImpexCubeDate(job.sb_date),
             CHA_License_Number: firstText(
@@ -709,6 +709,7 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
             GSTN_ID: gstin,
             Hand_Carry: toYN(firstValue(job.hand_carry, job.handCarry)),
         },
+        INVOICE: mappedInvoices,
         PACKINGLIST: packingRows.length
             ? packingRows
             : [{ Packing_Number_From: "", Packing_Number_To: "", Packing_Code: "" }],
