@@ -500,7 +500,8 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
 
         const selectProjection = {
             job_no: 1, docClicks: 1, custom_house: 1, job_date: 1, consignmentType: 1, job_owner: 1,
-            exporter: 1, exporter_ref_no: 1, exporter_branch_name: 1, "consignees.consignee_name": 1, "buyerThirdPartyInfo.buyer.name": 1,
+            exporter: 1, exporter_ref_no: 1, exporter_branch_name: 1, "consignees.consignee_name": 1, buyerThirdPartyInfo: 1,
+            forwarder: 1, booking_no: 1, drawback_scroll_no: 1, drawback_scroll_date: 1, rosctl_scroll_no: 1, rosctl_scroll_date: 1,
             ieCode: 1, panNo: 1, gstin: 1, adCode: 1,
             egm_no: 1, egm_date: 1,
             "invoices.invoiceNumber": 1, "invoices.invoiceDate": 1, "invoices.termsOfInvoice": 1,

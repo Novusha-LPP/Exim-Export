@@ -532,17 +532,30 @@ router.post("/api/scmCube/fetch-export-from-imexcube", async (req, res) => {
 
     const accessToken = loginRes.data.data.accessToken;
     const fetchPayload = job.toImpexCubeExportGetDetailsPayload();
+    const fetchUrl = `${IMEXCUBE_BASE_URL}/api/v1/GetJobDetails/getexpdetails`;
+    const fetchHeaders = {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    };
 
-    const fetchRes = await axios({
-      method: "GET",
-      url: `${IMEXCUBE_BASE_URL}/api/v1/GetJobDetails/getexpdetails`,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      data: fetchPayload,
-      timeout: 30000,
-    });
+    let fetchRes;
+    try {
+      // Primary: GET method with JSON payload as specified in ImpexCube Export Get Job Details Specifications
+      fetchRes = await axios({
+        method: "GET",
+        url: fetchUrl,
+        headers: fetchHeaders,
+        data: fetchPayload,
+        params: fetchPayload,
+        timeout: 30000,
+      });
+    } catch (gErr) {
+      // Fallback: POST method if GET is restricted by intermediary proxy
+      fetchRes = await axios.post(fetchUrl, fetchPayload, {
+        headers: fetchHeaders,
+        timeout: 30000,
+      });
+    }
 
     const vendorPayload = fetchRes.data || {};
     const rawSb = vendorPayload.data?.SB_Details || vendorPayload.SB_Details;

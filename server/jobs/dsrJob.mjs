@@ -1,12 +1,12 @@
 import cron from "node-cron";
 import ExportJob from "../model/export/ExJobModel.mjs";
 import Directory from "../model/Directorties/Directory.js";
-import { generateDSRHTMLTable } from "../utils/dsrReportGenerator.mjs";
+import { generateDSRHTMLTable, generateDSRBuffer } from "../utils/dsrReportGenerator.mjs";
 import transporter from "../utils/mailer.mjs";
 
 /**
  * Daily 8 PM DSR Job
- * Sends DSR HTML Table to exporters with pending jobs
+ * Sends DSR HTML Table and Excel Attachment to exporters with pending jobs
  */
 export const initDsrCronJob = () => {
     // Schedule for 8:00 PM every day (20:00)
@@ -84,7 +84,22 @@ export const initDsrCronJob = () => {
                         continue;
                     }
 
-                    // 5. Send Mail with HTML DSR table (No Excel Attachment)
+                    // 5. Generate Excel Attachment for Pending Jobs ONLY
+                    let attachments = [];
+                    try {
+                        const excelBuffer = await generateDSRBuffer(exporterName, true);
+                        const safeExporterName = exporterName.replace(/[^a-zA-Z0-9_-]/g, "_");
+                        const dateStr = new Date().toISOString().split("T")[0];
+                        attachments.push({
+                            filename: `DSR_Report_${safeExporterName}_${dateStr}.xlsx`,
+                            content: excelBuffer,
+                            contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        });
+                    } catch (attachErr) {
+                        console.warn(`Could not generate Excel attachment for ${exporterName}:`, attachErr.message);
+                    }
+
+                    // 6. Send Mail with HTML DSR table AND Excel attachment
                     const dateFormatted = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
                     const mailOptions = {
                         from: `"Exim DSR" <${process.env.SMTP_USER || "connect@surajgroupofcompanies.com"}>`,
@@ -93,7 +108,7 @@ export const initDsrCronJob = () => {
                         html: `
                             <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333333; line-height: 1.5;">
                                 <p>Dear Sir/Madam,</p>
-                                <p>Please find below the Daily Status Report (DSR) for pending jobs for <strong>${exporterName}</strong>:</p>
+                                <p>Please find below the Daily Status Report (DSR) for pending jobs for <strong>${exporterName}</strong>. The complete report is also attached as an Excel spreadsheet for your reference.</p>
                                 <div style="margin-top: 15px; margin-bottom: 20px; overflow-x: auto;">
                                     ${html}
                                 </div>
@@ -101,11 +116,12 @@ export const initDsrCronJob = () => {
                                 <strong>Operations Team</strong><br/>
                                 Suraj Forwarders Private Limited</p>
                             </div>
-                        `
+                        `,
+                        attachments: attachments
                     };
 
                     await transporter.sendMail(mailOptions);
-                    console.log(`✅ DSR email sent successfully to ${exporterName} (${jobCount} pending jobs)`);
+                    console.log(`✅ DSR email with Excel attachment sent successfully to ${exporterName} (${jobCount} pending jobs)`);
 
                 } catch (reportError) {
                     console.error(`❌ Error generating/sending DSR for ${exporterName}:`, reportError);

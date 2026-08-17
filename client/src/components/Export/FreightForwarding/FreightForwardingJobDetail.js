@@ -180,11 +180,7 @@ function FreightForwardingJobDetail() {
     if (isNested) {
       const parts = name.split(".");
       if (parts.length === 3) {
-        // e.g. consignees.0.consignee_name
-        const arrayName = parts[0];
-        const index = parseInt(parts[1]);
-        const key = parts[2];
-        value = formik.values[arrayName]?.[index]?.[key] || "";
+        value = formik.values[parts[0]]?.[parts[1]]?.[parts[2]] || "";
       } else {
         value = formik.values[parts[0]]?.[parts[1]] || "";
       }
@@ -195,14 +191,20 @@ function FreightForwardingJobDetail() {
     return (
       <Box sx={{
         border: "1px solid #cbd5e1",
-        p: "6px 8px",
+        borderRadius: "4px",
+        p: "3px 6px",
         display: "flex",
         flexDirection: "column",
         backgroundColor: disabled || !isEditable ? "#f8fafc" : "#fff",
-        minHeight: "52px",
-        boxSizing: "border-box"
+        minHeight: "36px",
+        boxSizing: "border-box",
+        transition: "border-color 0.15s ease",
+        "&:focus-within": {
+          borderColor: "#2563eb",
+          boxShadow: "0 0 0 1px #2563eb"
+        }
       }}>
-        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "9px", textTransform: "uppercase", mb: 0.5, letterSpacing: "0.2px" }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "8.5px", textTransform: "uppercase", mb: 0.1, letterSpacing: "0.3px", lineHeight: "1" }}>
           {label}
         </Typography>
         <input
@@ -225,11 +227,12 @@ function FreightForwardingJobDetail() {
             border: "none",
             outline: "none",
             fontSize: "11px",
-            fontWeight: "600",
-            color: disabled || !isEditable ? "#64748b" : "#1e293b",
+            fontWeight: "700",
+            color: disabled || !isEditable ? "#64748b" : "#0f172a",
             width: "100%",
             backgroundColor: "transparent",
-            fontFamily: "inherit"
+            fontFamily: "inherit",
+            padding: 0
           }}
         />
       </Box>
@@ -257,14 +260,20 @@ function FreightForwardingJobDetail() {
     return (
       <Box sx={{
         border: "1px solid #cbd5e1",
-        p: "6px 8px",
+        borderRadius: "4px",
+        p: "3px 6px",
         display: "flex",
         flexDirection: "column",
         backgroundColor: disabled || !isEditable ? "#f8fafc" : "#fff",
-        minHeight: "52px",
-        boxSizing: "border-box"
+        minHeight: "36px",
+        boxSizing: "border-box",
+        transition: "border-color 0.15s ease",
+        "&:focus-within": {
+          borderColor: "#2563eb",
+          boxShadow: "0 0 0 1px #2563eb"
+        }
       }}>
-        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "9px", textTransform: "uppercase", mb: 0.5, letterSpacing: "0.2px" }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "8.5px", textTransform: "uppercase", mb: 0.1, letterSpacing: "0.3px", lineHeight: "1" }}>
           {label}
         </Typography>
         <DateInput
@@ -277,8 +286,8 @@ function FreightForwardingJobDetail() {
             border: "none",
             outline: "none",
             fontSize: "11px",
-            fontWeight: "600",
-            color: disabled || !isEditable ? "#64748b" : "#1e293b",
+            fontWeight: "700",
+            color: disabled || !isEditable ? "#64748b" : "#0f172a",
             width: "100%",
             backgroundColor: "transparent",
             fontFamily: "inherit",
@@ -340,14 +349,20 @@ function FreightForwardingJobDetail() {
     return (
       <Box sx={{
         border: "1px solid #cbd5e1",
-        p: "6px 8px",
+        borderRadius: "4px",
+        p: "3px 6px",
         display: "flex",
         flexDirection: "column",
         backgroundColor: disabled || !isEditable ? "#f8fafc" : "#fff",
-        minHeight: "52px",
-        boxSizing: "border-box"
+        minHeight: "36px",
+        boxSizing: "border-box",
+        transition: "border-color 0.15s ease",
+        "&:focus-within": {
+          borderColor: "#2563eb",
+          boxShadow: "0 0 0 1px #2563eb"
+        }
       }}>
-        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "9px", textTransform: "uppercase", mb: 0.5, letterSpacing: "0.2px" }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "8.5px", textTransform: "uppercase", mb: 0.1, letterSpacing: "0.3px", lineHeight: "1" }}>
           {label}
         </Typography>
         <DateInput
@@ -372,8 +387,8 @@ function FreightForwardingJobDetail() {
             border: "none",
             outline: "none",
             fontSize: "11px",
-            fontWeight: "600",
-            color: disabled || !isEditable ? "#64748b" : "#1e293b",
+            fontWeight: "700",
+            color: disabled || !isEditable ? "#64748b" : "#0f172a",
             width: "100%",
             backgroundColor: "transparent",
             fontFamily: "inherit",
@@ -384,7 +399,7 @@ function FreightForwardingJobDetail() {
     );
   };
 
-  const renderTextAreaBox = (label, name, rows = 3, disabled = false) => {
+  const renderTextAreaBox = (label, name, rows = 2, disabled = false) => {
     const isNested = name.includes(".");
     let value = "";
     if (isNested) {
@@ -401,14 +416,20 @@ function FreightForwardingJobDetail() {
     return (
       <Box sx={{
         border: "1px solid #cbd5e1",
-        p: "6px 8px",
+        borderRadius: "4px",
+        p: "3px 6px",
         display: "flex",
         flexDirection: "column",
         backgroundColor: disabled || !isEditable ? "#f8fafc" : "#fff",
-        minHeight: "72px",
-        boxSizing: "border-box"
+        minHeight: "42px",
+        boxSizing: "border-box",
+        transition: "border-color 0.15s ease",
+        "&:focus-within": {
+          borderColor: "#2563eb",
+          boxShadow: "0 0 0 1px #2563eb"
+        }
       }}>
-        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "9px", textTransform: "uppercase", mb: 0.5, letterSpacing: "0.2px" }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "8.5px", textTransform: "uppercase", mb: 0.1, letterSpacing: "0.3px", lineHeight: "1" }}>
           {label}
         </Typography>
         <textarea
@@ -423,12 +444,14 @@ function FreightForwardingJobDetail() {
             border: "none",
             outline: "none",
             fontSize: "11px",
-            fontWeight: "600",
-            color: disabled || !isEditable ? "#64748b" : "#1e293b",
+            fontWeight: "700",
+            color: disabled || !isEditable ? "#64748b" : "#0f172a",
             width: "100%",
             backgroundColor: "transparent",
             fontFamily: "inherit",
-            resize: "vertical"
+            resize: "vertical",
+            padding: 0,
+            lineHeight: "1.3"
           }}
         />
       </Box>
@@ -452,14 +475,20 @@ function FreightForwardingJobDetail() {
     return (
       <Box sx={{
         border: "1px solid #cbd5e1",
-        p: "6px 8px",
+        borderRadius: "4px",
+        p: "3px 6px",
         display: "flex",
         flexDirection: "column",
         backgroundColor: disabled || !isEditable ? "#f8fafc" : "#fff",
-        minHeight: "52px",
-        boxSizing: "border-box"
+        minHeight: "36px",
+        boxSizing: "border-box",
+        transition: "border-color 0.15s ease",
+        "&:focus-within": {
+          borderColor: "#2563eb",
+          boxShadow: "0 0 0 1px #2563eb"
+        }
       }}>
-        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "9px", textTransform: "uppercase", mb: 0.5, letterSpacing: "0.2px" }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "8.5px", textTransform: "uppercase", mb: 0.1, letterSpacing: "0.3px", lineHeight: "1" }}>
           {label}
         </Typography>
         <select
@@ -471,11 +500,12 @@ function FreightForwardingJobDetail() {
             border: "none",
             outline: "none",
             fontSize: "11px",
-            fontWeight: "600",
-            color: disabled || !isEditable ? "#64748b" : "#1e293b",
+            fontWeight: "700",
+            color: disabled || !isEditable ? "#64748b" : "#0f172a",
             width: "100%",
             backgroundColor: "transparent",
-            fontFamily: "inherit"
+            fontFamily: "inherit",
+            padding: 0
           }}
         >
           {options.map((opt) => (
@@ -741,14 +771,20 @@ function FreightForwardingJobDetail() {
     return (
       <Box sx={{
         border: "1px solid #cbd5e1",
-        p: "6px 8px",
+        borderRadius: "4px",
+        p: "3px 6px",
         display: "flex",
         flexDirection: "column",
         backgroundColor: disabled || !isEditable ? "#f8fafc" : "#fff",
-        minHeight: "52px",
-        boxSizing: "border-box"
+        minHeight: "36px",
+        boxSizing: "border-box",
+        transition: "border-color 0.15s ease",
+        "&:focus-within": {
+          borderColor: "#2563eb",
+          boxShadow: "0 0 0 1px #2563eb"
+        }
       }}>
-        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "9px", textTransform: "uppercase", mb: 0.5, letterSpacing: "0.2px" }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700, fontSize: "8.5px", textTransform: "uppercase", mb: 0.1, letterSpacing: "0.3px", lineHeight: "1" }}>
           {label}
         </Typography>
         <div style={{ display: "flex", gap: "4px", width: "100%", alignItems: "center" }}>
@@ -763,14 +799,15 @@ function FreightForwardingJobDetail() {
               border: "none",
               outline: "none",
               fontSize: "11px",
-              fontWeight: "600",
-              color: "#1e293b",
+              fontWeight: "700",
+              color: disabled || !isEditable ? "#64748b" : "#0f172a",
               flex: 1,
               backgroundColor: "transparent",
-              fontFamily: "inherit"
+              fontFamily: "inherit",
+              padding: 0
             }}
           />
-          <span style={{ color: "#cbd5e1", fontSize: "12px", fontWeight: "300" }}>|</span>
+          <span style={{ color: "#cbd5e1", fontSize: "11px", fontWeight: "300" }}>|</span>
           <input
             name={nameUnit}
             type="text"
@@ -782,12 +819,13 @@ function FreightForwardingJobDetail() {
               border: "none",
               outline: "none",
               fontSize: "11px",
-              fontWeight: "600",
+              fontWeight: "700",
               color: "#64748b",
-              width: "45px",
+              width: "40px",
               backgroundColor: "transparent",
               fontFamily: "inherit",
-              textAlign: "right"
+              textAlign: "right",
+              padding: 0
             }}
           />
         </div>

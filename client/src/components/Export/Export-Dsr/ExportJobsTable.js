@@ -580,6 +580,20 @@ const getJobScrollAndEgmInfo = (job) => {
     });
   }
 
+  if (job.drawback_scroll_no && !dbkInfoList.some((item) => item.no === job.drawback_scroll_no)) {
+    dbkInfoList.push({
+      no: job.drawback_scroll_no,
+      date: job.drawback_scroll_date,
+    });
+  }
+
+  if (job.rosctl_scroll_no && !rosctlInfoList.some((item) => item.no === job.rosctl_scroll_no)) {
+    rosctlInfoList.push({
+      no: job.rosctl_scroll_no,
+      date: job.rosctl_scroll_date,
+    });
+  }
+
   return {
     dbkScrolls: dbkInfoList,
     rosctlScrolls: rosctlInfoList,
@@ -2405,6 +2419,15 @@ const ExportJobsTable = () => {
     setSuggestedSequence(nextSequence);
     setShowCopyModal(true);
     setCopyError("");
+  };
+
+  const handleCopyRow = (e, job) => {
+    if (e && typeof e.stopPropagation === "function") {
+      e.stopPropagation();
+    }
+    if (job) {
+      handleCopyJob(job, e);
+    }
   };
 
   const handleCopySubmit = async () => {
@@ -4365,6 +4388,36 @@ const ExportJobsTable = () => {
                                 </div>
                               )}
 
+                              {/* EGM No & Date */}
+                              {job.egm_no && (
+                                <div
+                                  style={{
+                                    fontSize: "10px",
+                                    fontWeight: "700",
+                                    color: "#dc2626",
+                                    marginTop: "4px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "2px",
+                                  }}
+                                >
+                                  <span>EGM: {job.egm_no}</span>
+                                  {job.egm_date && (
+                                    <span style={{ color: "#ef4444", fontWeight: "500" }}>
+                                      ({formatDate(job.egm_date)})
+                                    </span>
+                                  )}
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => handleCopyText(job.egm_no, e)}
+                                    style={{ padding: 0, marginLeft: 2 }}
+                                    title="Copy EGM No"
+                                  >
+                                    <ContentCopyIcon style={{ fontSize: 9, color: "#dc2626" }} />
+                                  </IconButton>
+                                </div>
+                              )}
+
                             </td>
 
                             {/* Column 3: Exporter */}
@@ -4444,16 +4497,34 @@ const ExportJobsTable = () => {
                                   </div>
                                 )}
 
-                                {job.buyerThirdPartyInfo?.buyer?.name && (
-                                  <div style={{ display: "flex", gap: "4px", alignItems: "baseline" }}>
-                                    <span style={{ fontWeight: "700", color: "#94a3b8", fontSize: "9px" }}>3rd PARTY:</span>
-                                    <span style={{ color: "#64748b", fontStyle: "italic" }}>
-                                      {job.buyerThirdPartyInfo.buyer.name.length > 30
-                                        ? `${job.buyerThirdPartyInfo.buyer.name.substring(0, 25)}...`
-                                        : job.buyerThirdPartyInfo.buyer.name}
-                                    </span>
-                                  </div>
-                                )}
+                                {(() => {
+                                  const thirdPartyName =
+                                    job.buyerThirdPartyInfo?.thirdParty?.name ||
+                                    job.buyerThirdPartyInfo?.buyer?.name ||
+                                    (typeof job.buyerThirdPartyInfo === "string" ? job.buyerThirdPartyInfo : "") ||
+                                    job.third_party_name ||
+                                    job.third_party ||
+                                    "";
+                                  if (!thirdPartyName) return null;
+                                  return (
+                                    <div style={{ display: "flex", gap: "4px", alignItems: "baseline" }}>
+                                      <span style={{ fontWeight: "700", color: "#94a3b8", fontSize: "9px" }}>3rd PARTY:</span>
+                                      <span style={{ color: "#64748b", fontStyle: "italic", fontSize: "10px" }}>
+                                        {thirdPartyName.length > 30
+                                          ? `${thirdPartyName.substring(0, 28)}...`
+                                          : thirdPartyName}
+                                      </span>
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => handleCopyText(thirdPartyName, e)}
+                                        style={{ padding: 0, marginLeft: 2 }}
+                                        title="Copy 3rd Party"
+                                      >
+                                        <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                                      </IconButton>
+                                    </div>
+                                  );
+                                })()}
                               </div>
 
                               {/* Booking No section */}
@@ -4700,6 +4771,31 @@ const ExportJobsTable = () => {
                                   <div style={{ color: "#4b5563", fontSize: "10px" }}>
                                     {formatDate(job.sb_date)}
                                   </div>
+                                  {(() => {
+                                    const scrollInfo = getJobScrollAndEgmInfo(job);
+                                    return (
+                                      <>
+                                        {scrollInfo.dbkScrolls.length > 0 && (
+                                          <div style={{ marginTop: "4px" }}>
+                                            {scrollInfo.dbkScrolls.map((item, i) => (
+                                              <div key={i} style={{ fontSize: "9.5px", color: "#2563eb", fontWeight: "700" }}>
+                                                DBK Scroll: {item.no} {item.date ? `(${formatDate(item.date)})` : ""}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                        {scrollInfo.rosctlScrolls.length > 0 && (
+                                          <div style={{ marginTop: "2px" }}>
+                                            {scrollInfo.rosctlScrolls.map((item, i) => (
+                                              <div key={i} style={{ fontSize: "9.5px", color: "#059669", fontWeight: "700" }}>
+                                                RoSCTL Scroll: {item.no} {item.date ? `(${formatDate(item.date)})` : ""}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                 </>
                               ) : (
                                 <div style={{ color: "#94a3b8", fontSize: "10px" }}>N/A</div>

@@ -68,6 +68,84 @@ export const formatDateStr = (dateVal) => {
 };
 
 /**
+ * Helper to extract Drawback, RoSCTL, EGM, Third Party info
+ * @param {Object} job
+ * @returns {Object}
+ */
+export const extractScrollAndEgmInfo = (job) => {
+  const dbkInfoList = [];
+  const rosctlInfoList = [];
+
+  if (Array.isArray(job.invoices)) {
+    job.invoices.forEach((inv) => {
+      if (Array.isArray(inv.products)) {
+        inv.products.forEach((prod) => {
+          if (Array.isArray(prod.drawbackDetails)) {
+            prod.drawbackDetails.forEach((dbk) => {
+              if (dbk.drawback_scroll_no) {
+                const exists = dbkInfoList.some(
+                  (item) => item.no === dbk.drawback_scroll_no
+                );
+                if (!exists) {
+                  dbkInfoList.push({
+                    no: dbk.drawback_scroll_no,
+                    date: dbk.drawback_scroll_date,
+                  });
+                }
+              }
+              if (dbk.rosctl_scroll_no) {
+                const exists = rosctlInfoList.some(
+                  (item) => item.no === dbk.rosctl_scroll_no
+                );
+                if (!exists) {
+                  rosctlInfoList.push({
+                    no: dbk.rosctl_scroll_no,
+                    date: dbk.rosctl_scroll_date,
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+
+  if (job.drawback_scroll_no && !dbkInfoList.some((item) => item.no === job.drawback_scroll_no)) {
+    dbkInfoList.push({
+      no: job.drawback_scroll_no,
+      date: job.drawback_scroll_date,
+    });
+  }
+
+  if (job.rosctl_scroll_no && !rosctlInfoList.some((item) => item.no === job.rosctl_scroll_no)) {
+    rosctlInfoList.push({
+      no: job.rosctl_scroll_no,
+      date: job.rosctl_scroll_date,
+    });
+  }
+
+  const thirdPartyName =
+    job.buyerThirdPartyInfo?.thirdParty?.name ||
+    job.buyerThirdPartyInfo?.buyer?.name ||
+    (typeof job.buyerThirdPartyInfo === "string" ? job.buyerThirdPartyInfo : "") ||
+    job.third_party_name ||
+    job.third_party ||
+    "";
+
+  return {
+    dbkScrolls: dbkInfoList,
+    rosctlScrolls: rosctlInfoList,
+    egmNo: job.egm_no || "",
+    egmDate: job.egm_date || "",
+    thirdPartyName,
+    fwdrName: job.forwarder || (job.operations?.[0]?.statusDetails?.[0]?.forwarderName) || "",
+    bookingNo: job.booking_no || "",
+    shippingLine: job.shipping_line_airline || "",
+  };
+};
+
+/**
  * Generate DSR HTML Table for Email Body
  * @param {string} exporter - Exporter name or "all"
  * @param {boolean} onlyPending - If true, filter out completed/cancelled jobs
@@ -107,43 +185,77 @@ export const generateDSRHTMLTable = async (exporter, onlyPending = true) => {
     jobs.forEach((job, index) => {
       const status = job.operations?.[0]?.statusDetails?.[0] || {};
       const bgColor = index % 2 === 0 ? "#ffffff" : "#f8fafd";
+      const scrollAndEgm = extractScrollAndEgmInfo(job);
 
       // 1. Job No column
       let jobNoCell = `<strong>${job.job_no || job.job_number || ""}</strong>`;
       if (job.exporter_ref_no) jobNoCell += `<br/>Ref: ${job.exporter_ref_no}`;
       if (job.custom_house) jobNoCell += `<br/>${job.custom_house}`;
       if (job.consignmentType) jobNoCell += `<br/>${job.consignmentType}`;
+      if (scrollAndEgm.egmNo) {
+        jobNoCell += `<br/><span style="color: #dc2626; font-weight: bold;">EGM: ${scrollAndEgm.egmNo}${scrollAndEgm.egmDate ? " (" + formatDateStr(scrollAndEgm.egmDate) + ")" : ""}</span>`;
+      }
 
       // 2. Exporter column
       let exporterCell = `<strong>${job.exporter || ""}</strong>`;
-      const fwdr = job.forwarder || status.forwarderName;
-      if (fwdr) exporterCell += `<br/>FWDR: ${fwdr}`;
+      if (scrollAndEgm.fwdrName) {
+        exporterCell += `<br/><span style="color: #fc8019; font-weight: bold;">FWDR:</span> ${scrollAndEgm.fwdrName}`;
+      }
+      if (scrollAndEgm.thirdPartyName) {
+        exporterCell += `<br/><span style="color: #4b5563; font-weight: bold;">3rd PARTY:</span> ${scrollAndEgm.thirdPartyName}`;
+      }
+      if (scrollAndEgm.bookingNo) {
+        exporterCell += `<br/><span style="color: #4b5563; font-weight: bold;">Bk No:</span> ${scrollAndEgm.bookingNo}`;
+      }
+      if (scrollAndEgm.shippingLine) {
+        exporterCell += `<br/><span style="color: #4b5563; font-weight: bold;">S/L:</span> ${scrollAndEgm.shippingLine}`;
+      }
 
       // 3. Consignee Name column
       const consigneeName = job.consignee_name || (job.consignees && job.consignees[0] && job.consignees[0].consignee_name) || "-";
 
-      // 4. Invoice column
+      // 4. Invoice column (allow multiple invoices)
       let invoiceLines = [];
       if (job.invoices && job.invoices.length > 0) {
         job.invoices.forEach(inv => {
-          let line = inv.invoiceNumber || inv.invoiceNo || "";
-          if (inv.invoiceDate) line += `<br/>${formatDateStr(inv.invoiceDate)}`;
-          if (inv.invoiceValue || inv.amount) line += `<br/>${inv.currency || job.currency || "USD"} ${inv.invoiceValue || inv.amount}`;
-          if (line) invoiceLines.push(line);
+          let parts = [];
+          let invNum = inv.invoiceNumber || inv.invoiceNo || "";
+          if (invNum) parts.push(`<strong>${invNum}</strong>`);
+          if (inv.invoiceDate || inv.invoice_date) parts.push(formatDateStr(inv.invoiceDate || inv.invoice_date));
+          const invVal = inv.invoiceValue || inv.amount || inv.invValue || inv.invoice_value;
+          if (invVal !== undefined && invVal !== null && invVal !== "") {
+            const term = inv.termsOfInvoice || inv.terms_of_invoice ? (inv.termsOfInvoice || inv.terms_of_invoice) + " " : "";
+            const curr = inv.currency || job.currency || "USD";
+            parts.push(`${term}${curr} ${invVal}`);
+          }
+          if (parts.length > 0) invoiceLines.push(parts.join("<br/>"));
         });
       }
       if (invoiceLines.length === 0 && (job.invoice_number || job.invoice_no)) {
-        let line = job.invoice_number || job.invoice_no || "";
-        if (job.invoice_date) line += `<br/>${formatDateStr(job.invoice_date)}`;
-        if (job.invoice_value) line += `<br/>${job.currency || "USD"} ${job.invoice_value}`;
-        if (line) invoiceLines.push(line);
+        let parts = [];
+        let invNum = job.invoice_number || job.invoice_no || "";
+        if (invNum) parts.push(`<strong>${invNum}</strong>`);
+        if (job.invoice_date) parts.push(formatDateStr(job.invoice_date));
+        if (job.invoice_value) parts.push(`${job.currency || "USD"} ${job.invoice_value}`);
+        if (parts.length > 0) invoiceLines.push(parts.join("<br/>"));
       }
       const invoiceCell = invoiceLines.length > 0 ? invoiceLines.join("<br/><br/>") : "-";
 
-      // 5. SB / Date column
+      // 5. SB / Date column (including Drawback & RoSCTL Scroll details)
       let sbLines = [];
-      if (job.sb_no) sbLines.push(job.sb_no);
+      if (job.sb_no) sbLines.push(`<strong>${job.sb_no}</strong>`);
       if (job.sb_date) sbLines.push(formatDateStr(job.sb_date));
+
+      if (scrollAndEgm.dbkScrolls.length > 0) {
+        scrollAndEgm.dbkScrolls.forEach(d => {
+          sbLines.push(`<span style="color: #2563eb; font-weight: bold;">DBK Scroll: ${d.no}${d.date ? " (" + formatDateStr(d.date) + ")" : ""}</span>`);
+        });
+      }
+      if (scrollAndEgm.rosctlScrolls.length > 0) {
+        scrollAndEgm.rosctlScrolls.forEach(r => {
+          sbLines.push(`<span style="color: #059669; font-weight: bold;">RoSCTL Scroll: ${r.no}${r.date ? " (" + formatDateStr(r.date) + ")" : ""}</span>`);
+        });
+      }
       const sbCell = sbLines.length > 0 ? sbLines.join("<br/>") : "-";
 
       // 6. Port column
@@ -509,18 +621,28 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
       { header: "Remarks", key: "milestone_remarks", width: 65 },
       { header: "Port of origin", key: "port_of_origin", width: 20 },
       { header: "Job number", key: "job_no", width: 20 },
+      { header: "EGM No", key: "egm_no", width: 18 },
+      { header: "EGM Date", key: "egm_date", width: 15 },
       { header: "Cntr 20 / 40", key: "cntr_size", width: 15 },
+      { header: "Exporter", key: "exporter", width: 25 },
+      { header: "FWDR Name", key: "fwdr_name", width: 25 },
+      { header: "3rd Party", key: "third_party", width: 25 },
+      { header: "Booking No", key: "booking_no", width: 20 },
+      { header: "S/L", key: "shipping_line", width: 25 },
       { header: "Consignee name", key: "consignee_name", width: 30 },
       { header: "Exporter Ref No", key: "exporter_ref_no", width: 20 },
-      { header: "Invoice no", key: "invoice_no", width: 20 },
-      { header: "Invoice date", key: "invoice_date", width: 15 },
-      { header: "Invoice value", key: "invoice_value", width: 15 },
+      { header: "Invoice no", key: "invoice_no", width: 25 },
+      { header: "Invoice date", key: "invoice_date", width: 20 },
+      { header: "Invoice value", key: "invoice_value", width: 25 },
       { header: "Sb number", key: "sb_no", width: 15 },
       { header: "Sb date", key: "sb_date", width: 15 },
+      { header: "Drawback Scroll No", key: "drawback_scroll_no", width: 22 },
+      { header: "Drawback Scroll Date", key: "drawback_scroll_date", width: 22 },
+      { header: "RoSCTL Scroll No", key: "rosctl_scroll_no", width: 22 },
+      { header: "RoSCTL Scroll Date", key: "rosctl_scroll_date", width: 22 },
       { header: "No of packages", key: "no_of_packages", width: 15 },
       { header: "Net weight (kgs)", key: "net_weight", width: 18 },
       { header: "Gross weight (kgs)", key: "gross_weight", width: 18 },
-      { header: "Exporter", key: "exporter", width: 25 },
       { header: "Port", key: "port_details", width: 25 },
       { header: "Country", key: "country_details", width: 25 },
     ];
@@ -590,7 +712,6 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
     jobs.forEach((job) => {
       const firstOp = job.operations?.[0] || {};
       const status = firstOp.statusDetails?.[0] || {};
-      const firstInvoice = job.invoices?.[0] || {};
 
       let cntrSize = "";
       const cType = (job.consignmentType || "").toUpperCase();
@@ -736,6 +857,30 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
           .join(", ") || "";
       }
 
+      const scrollAndEgm = extractScrollAndEgmInfo(job);
+
+      // Handle multiple invoices for Excel
+      let invNos = [];
+      let invDates = [];
+      let invVals = [];
+      if (job.invoices && job.invoices.length > 0) {
+        job.invoices.forEach(inv => {
+          if (inv.invoiceNumber || inv.invoiceNo) invNos.push(inv.invoiceNumber || inv.invoiceNo);
+          if (inv.invoiceDate || inv.invoice_date) invDates.push(formatDate(inv.invoiceDate || inv.invoice_date));
+          const val = inv.invoiceValue || inv.amount || inv.invValue || inv.invoice_value;
+          if (val !== undefined && val !== null && val !== "") {
+            const term = inv.termsOfInvoice || inv.terms_of_invoice ? (inv.termsOfInvoice || inv.terms_of_invoice) + " " : "";
+            const curr = inv.currency || job.currency || "USD";
+            invVals.push(`${term}${curr} ${val}`);
+          }
+        });
+      }
+      if (invNos.length === 0 && (job.invoice_number || job.invoice_no)) {
+        invNos.push(job.invoice_number || job.invoice_no);
+        if (job.invoice_date) invDates.push(formatDate(job.invoice_date));
+        if (job.invoice_value) invVals.push(`${job.currency || "USD"} ${job.invoice_value}`);
+      }
+
       worksheet.addRow({
         container_placement_date: status.containerPlacementDate || "",
         origin_docs_received: job.job_date || "",
@@ -749,18 +894,28 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
         milestone_remarks: milestoneRemarksStr,
         port_of_origin: job.custom_house || "",
         job_no: job.job_no || "",
+        egm_no: scrollAndEgm.egmNo,
+        egm_date: formatDate(scrollAndEgm.egmDate),
         cntr_size: cntrSize,
+        exporter: job.exporter || "",
+        fwdr_name: scrollAndEgm.fwdrName,
+        third_party: scrollAndEgm.thirdPartyName,
+        booking_no: scrollAndEgm.bookingNo,
+        shipping_line: scrollAndEgm.shippingLine,
         consignee_name: job.consignees?.[0]?.consignee_name || "",
         exporter_ref_no: job.exporter_ref_no || "",
-        invoice_no: firstInvoice.invoiceNumber || "",
-        invoice_date: firstInvoice.invoiceDate || "",
-        invoice_value: firstInvoice.invoiceValue || 0,
+        invoice_no: invNos.join("\n"),
+        invoice_date: invDates.join("\n"),
+        invoice_value: invVals.join("\n"),
         sb_no: job.sb_no || "",
-        sb_date: job.sb_date || "",
+        sb_date: sb_date,
+        drawback_scroll_no: scrollAndEgm.dbkScrolls.map(s => s.no).join("\n"),
+        drawback_scroll_date: scrollAndEgm.dbkScrolls.map(s => formatDate(s.date)).join("\n"),
+        rosctl_scroll_no: scrollAndEgm.rosctlScrolls.map(s => s.no).join("\n"),
+        rosctl_scroll_date: scrollAndEgm.rosctlScrolls.map(s => formatDate(s.date)).join("\n"),
         no_of_packages: job.total_no_of_pkgs || 0,
         net_weight: job.net_weight_kg || 0,
         gross_weight: job.gross_weight_kg || 0,
-        exporter: job.exporter || "",
         port_details: `Destination: ${job.destination_port || ""}\nDischarge: ${job.port_of_discharge || ""}`,
         country_details: `Destination: ${job.destination_country || ""}\nDischarge: ${job.discharge_country || ""}`,
       });

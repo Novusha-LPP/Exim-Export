@@ -1024,37 +1024,95 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         email: safeValue(data.email),
         is_manual_cbm: safeValue(data.is_manual_cbm, false),
         dimensions: safeValue(data.dimensions, []),
-        bl_details: {
-          consignor: safeValue(data.bl_details?.consignor, safeValue(data.shipper, safeValue(data.exporter, safeValue(data.organization_name)))),
-          shipment_ref_no: safeValue(data.bl_details?.shipment_ref_no, safeValue(data.hbl_no, safeValue(data.mbl_no, safeValue(data.job_no, safeValue(data.enquiry_no))))),
-          consignee: safeValue(data.bl_details?.consignee, safeValue(data.consignees?.[0]?.consignee_name)),
-          notify_party: safeValue(data.bl_details?.notify_party, safeValue(data.consignees?.[0]?.consignee_name)),
-          vessel_name: safeValue(data.bl_details?.vessel_name, safeValue(data.vessel_name)),
-          voyage_no: safeValue(data.bl_details?.voyage_no, safeValue(data.voyage_no)),
-          mode_of_transport: safeValue(data.bl_details?.mode_of_transport, String(data.shipment_type || "").toLowerCase().includes("air") ? "AIR" : "SEA"),
-          route_transshipment: safeValue(data.bl_details?.route_transshipment),
-          place_of_acceptance: safeValue(data.bl_details?.place_of_acceptance, safeValue(data.place_of_receipt, safeValue(data.port_of_loading))),
-          container_numbers: safeValue(
-            data.bl_details?.container_numbers,
-            Array.isArray(data.containers)
-              ? data.containers.map(c => c.containerNo || c.container_number).filter(Boolean).join(", ")
-              : ""
-          ),
-          seal_numbers: safeValue(data.bl_details?.seal_numbers),
-          marks_numbers: safeValue(data.bl_details?.marks_numbers),
-          packages_description: safeValue(data.bl_details?.packages_description, data.total_no_of_pkgs ? `${data.total_no_of_pkgs} ${data.package_unit || "PACKAGES"}`.trim() : ""),
-          description_of_goods: safeValue(data.bl_details?.description_of_goods, safeValue(data.goods_stuffed, safeValue(data.nature_of_cargo))),
-          hsn_code: safeValue(data.bl_details?.hsn_code, safeValue(data.hsn)),
-          gross_weight: safeValue(data.bl_details?.gross_weight, data.gross_weight_kg ? `${data.gross_weight_kg} ${data.gross_weight_unit || "KGS"}`.trim() : (data.gross_weight ? `${data.gross_weight} KGS`.trim() : "")),
-          net_weight: safeValue(data.bl_details?.net_weight, data.net_weight_kg ? `${data.net_weight_kg} ${data.net_weight_unit || "KGS"}`.trim() : (data.net_weight ? `${data.net_weight} KGS`.trim() : "")),
-          measurement: safeValue(data.bl_details?.measurement, data.volume_cbm ? `${data.volume_cbm} ${data.volume_unit || "CBM"}`.trim() : ""),
-          freight_amount: safeValue(data.bl_details?.freight_amount, "AS AGREED"),
-          other_particulars: safeValue(data.bl_details?.other_particulars),
-          no_of_originals: safeValue(data.bl_details?.no_of_originals),
-          place_of_issue: safeValue(data.bl_details?.place_of_issue),
-          date_of_issue: safeValue(data.bl_details?.date_of_issue),
-          agent_details: safeValue(data.bl_details?.agent_details)
-        },
+        bl_details: (() => {
+          const consigneeObj = (data.consignees || [])[0] || {};
+          const consigneeName = consigneeObj.consignee_name || data.consignee_name || "";
+          const consigneeAddress = consigneeObj.consignee_address || data.consignee_address || "";
+          const defaultConsignee = [consigneeName, consigneeAddress].filter(Boolean).join(" ").trim();
+
+          const firstInv = (data.invoices || [])[0] || {};
+          const buyerName = firstInv.buyerInfo?.name || firstInv.buyer_name || data.buyer_name || "";
+          const buyerAddress = firstInv.buyerInfo?.address || firstInv.buyer_address || data.buyer_address || "";
+          const buyerCombined = [buyerName, buyerAddress].filter(Boolean).join(" ").trim();
+          const defaultNotify = (buyerCombined && buyerCombined !== defaultConsignee) ? buyerCombined : "";
+
+          const totalPkgs = data.total_no_of_pkgs || data.no_packages || "";
+          const pkgUnit = (data.package_unit || "BAGS").toUpperCase();
+          const containerCount = Array.isArray(data.containers) ? data.containers.length : (data.no_of_containers || "");
+          const containerTypeStr = data.containers?.[0]?.type || data.container_size || data.container_qty_type || "20 STANDARD DRY";
+          const consignmentTypeStr = (data.consignmentType || data.consignment_type || "FCL").toUpperCase();
+
+          let defaultPkgDesc = "";
+          if (containerCount && containerTypeStr) {
+            defaultPkgDesc = `${containerCount} X ${containerTypeStr.toUpperCase()} ${consignmentTypeStr} CONTAINER SAID TO CONTAIN TOTAL ${totalPkgs} ${pkgUnit} ONLY`.trim();
+          } else if (totalPkgs) {
+            defaultPkgDesc = `SAID TO CONTAIN TOTAL ${totalPkgs} ${pkgUnit} ONLY`.trim();
+          }
+
+          const firstProd = (firstInv.products || [])[0] || {};
+          const prodDesc = (firstProd.product_description || firstProd.description || data.nature_of_cargo || data.goods_description || "").toUpperCase();
+          const ritcCode = firstProd.ritc_code || firstProd.hsn_code || data.hsn || "";
+          const grossWtVal = data.gross_weight_kg || data.gross_weight || "";
+          const netWtVal = data.net_weight_kg || data.net_weight || "";
+
+          let goodsParts = [];
+          if (prodDesc) goodsParts.push(prodDesc);
+          if (ritcCode) goodsParts.push(`HS CODE: ${ritcCode}`);
+          if (grossWtVal) goodsParts.push(`GROSS WT : ${grossWtVal} KGS`);
+          if (totalPkgs) goodsParts.push(`PACKING : ${totalPkgs} ${pkgUnit}`);
+          if (netWtVal) goodsParts.push(`NET WT.: ${netWtVal} KGS`);
+
+          (data.invoices || []).forEach(inv => {
+            if (inv.invoiceNumber) {
+              const dtStr = inv.invoiceDate ? ` DT.: ${inv.invoiceDate}` : "";
+              goodsParts.push(`AS PER INV. NO.: ${inv.invoiceNumber}${dtStr}`);
+            }
+          });
+
+          if (data.sb_no) {
+            const sbDtStr = data.sb_date ? ` DT.: ${data.sb_date}` : "";
+            goodsParts.push(`SD NO.: ${data.sb_no}${sbDtStr}`);
+          }
+          const defaultGoodsDesc = goodsParts.join(" ");
+
+          const rawGross = data.gross_weight_kg || data.gross_weight || "";
+          const defaultGrossWeight = rawGross ? `${rawGross}`.trim() : "";
+
+          const rawNet = data.net_weight_kg || data.net_weight || "";
+          const defaultNetWeight = rawNet ? `${rawNet} KG`.trim() : "";
+
+          return {
+            consignor: safeValue(data.bl_details?.consignor, safeValue(data.exporter, safeValue(data.shipper, safeValue(data.organization_name)))),
+            shipment_ref_no: safeValue(data.bl_details?.shipment_ref_no, safeValue(data.hbl_no, safeValue(data.mbl_no, safeValue(data.shipment_ref_no, safeValue(data.job_no, safeValue(data.enquiry_no)))))),
+            consignee: safeValue(data.bl_details?.consignee, defaultConsignee),
+            notify_party: safeValue(data.bl_details?.notify_party, defaultNotify),
+            vessel_name: safeValue(data.bl_details?.vessel_name, safeValue(data.vessel_name, safeValue(data.vessel))),
+            voyage_no: safeValue(data.bl_details?.voyage_no, safeValue(data.voyage_no, safeValue(data.voyage))),
+            mode_of_transport: safeValue(data.bl_details?.mode_of_transport, String(data.shipment_type || data.transportMode || "").toLowerCase().includes("air") ? "AIR" : "SEA"),
+            route_transshipment: safeValue(data.bl_details?.route_transshipment),
+            place_of_acceptance: safeValue(data.bl_details?.place_of_acceptance, safeValue(data.custom_house, safeValue(data.port_of_loading, safeValue(data.place_of_receipt)))),
+            container_numbers: safeValue(
+              data.bl_details?.container_numbers,
+              Array.isArray(data.containers)
+                ? data.containers.map(c => c.containerNo || c.container_number || c.container_no).filter(Boolean).join(", ")
+                : ""
+            ),
+            seal_numbers: safeValue(data.bl_details?.seal_numbers),
+            marks_numbers: safeValue(data.bl_details?.marks_numbers),
+            packages_description: safeValue(data.bl_details?.packages_description, defaultPkgDesc),
+            description_of_goods: safeValue(data.bl_details?.description_of_goods, defaultGoodsDesc),
+            hsn_code: safeValue(data.bl_details?.hsn_code, ritcCode),
+            gross_weight: safeValue(data.bl_details?.gross_weight, defaultGrossWeight),
+            net_weight: safeValue(data.bl_details?.net_weight, defaultNetWeight),
+            measurement: safeValue(data.bl_details?.measurement, data.volume_cbm ? `${data.volume_cbm} CBM`.trim() : ""),
+            freight_amount: safeValue(data.bl_details?.freight_amount, "AS AGREED"),
+            other_particulars: safeValue(data.bl_details?.other_particulars),
+            no_of_originals: safeValue(data.bl_details?.no_of_originals),
+            place_of_issue: safeValue(data.bl_details?.place_of_issue),
+            date_of_issue: safeValue(data.bl_details?.date_of_issue),
+            agent_details: safeValue(data.bl_details?.agent_details)
+          };
+        })(),
         loose_pkgs: safeValue(data.loose_pkgs),
         no_of_containers: safeValue(data.no_of_containers),
         marks_nos: safeValue(data.marks_nos),

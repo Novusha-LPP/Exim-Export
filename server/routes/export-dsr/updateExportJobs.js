@@ -392,7 +392,9 @@ async function syncClubFields(job) {
 }
 
 const IMPEXCUBE_BASE_URL =
-  process.env.IMPEXCUBE_BASE_URL || "https://testimpexapi.impexcube.in";
+  process.env.IMPEXCUBE_BASE_URL ||
+  process.env.IMEXCUBE_BASE_URL ||
+  "https://impexapi.impexcube.in";
 const IMPEXCUBE_LOGIN_PATH =
   process.env.IMPEXCUBE_LOGIN_PATH || "/api/Authentication/login";
 const IMPEXCUBE_EXPORT_CREATE_PATH =
@@ -1149,7 +1151,13 @@ router.get("/global-search-jobs", async (req, res) => {
           exporter: 1,
           exporter_ref_no: 1,
           "consignees.consignee_name": 1,
-          "buyerThirdPartyInfo.buyer.name": 1,
+          buyerThirdPartyInfo: 1,
+          forwarder: 1,
+          booking_no: 1,
+          drawback_scroll_no: 1,
+          drawback_scroll_date: 1,
+          rosctl_scroll_no: 1,
+          rosctl_scroll_date: 1,
           ieCode: 1,
           panNo: 1,
           gstin: 1,
@@ -1813,7 +1821,12 @@ router.get("/exports/:status?", async (req, res) => {
       exporter_ref_no: 1,
       exporter_branch_name: 1,
       "consignees.consignee_name": 1,
-      "buyerThirdPartyInfo.buyer.name": 1,
+      buyerThirdPartyInfo: 1,
+      forwarder: 1,
+      drawback_scroll_no: 1,
+      drawback_scroll_date: 1,
+      rosctl_scroll_no: 1,
+      rosctl_scroll_date: 1,
       ieCode: 1,
       panNo: 1,
       gstin: 1,
@@ -2378,6 +2391,7 @@ const classifyImexcubeAction = (payload, fallbackStatus = null) => {
   const statusCode = normalizeVendorStatusCode(payload, fallbackStatus);
   const text = [
     payload?.message,
+    payload?.Message,
     payload?.data?.[0]?.Message,
     payload?.data?.[0]?.ErrorMsg,
   ]
@@ -2396,7 +2410,9 @@ const getVendorMessage = (payload, fallback = "") => {
   return (
     payload?.data?.[0]?.Message ||
     payload?.data?.[0]?.ErrorMsg ||
+    payload?.Message ||
     payload?.message ||
+    (Array.isArray(payload?.Errors) && payload.Errors.length > 0 ? payload.Errors.join(", ") : "") ||
     fallback
   );
 };
@@ -2600,49 +2616,119 @@ router.post("/impexcube/export-jobs/fetch", auditMiddleware("Job"), async (req, 
       });
     }
 
-    const payload = ExJobModel.buildImpexCubeExportGetDetailsPayload(exportJob);
     const accessToken = await getImpexCubeAccessToken(exportJob.financial_year || exportJob.year, exportJob.branch_code);
 
-    console.log("[IMEXCUBE EXPORT DSR] Fetching details from ImpexCube for job:", jobNo);
-    let impexCubeResponse;
-    const targetUrl = buildImpexCubeUrl(IMPEXCUBE_EXPORT_GET_DETAILS_PATH);
+    const seqNo = exportJob.job_sequence_no || (jobNo.match(/\d+/g) ? jobNo.match(/\d+/g).pop() : "");
+    const fullFyearNo = jobNo.replace(/(\d{2})-(\d{2})$/, (m, y1, y2) => `20${y1}-20${y2}`);
+    const candidateJobNos = [
+      jobNo,
+      fullFyearNo,
+      seqNo,
+      seqNo ? String(seqNo).padStart(5, "0") : null,
+    ].filter(Boolean);
+    const uniqueCandidates = [...new Set(candidateJobNos)];
+
+    console.log("[IMEXCUBE EXPORT DSR] Fetching details from ImpexCube with candidate job nos:", uniqueCandidates);
+
+    const candidatePaths = [
+      IMPEXCUBE_EXPORT_GET_DETAILS_PATH,
+      "/api/v1/GetJobDetails/get-expdetails",
+      "/api/v1/GetJobDetails/getexpdetails",
+    ].filter(Boolean);
+    const uniquePaths = [...new Set(candidatePaths)];
+
+    let impexCubeResponse = null;
+    let vendorPayload = null;
     const reqHeaders = {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
+      accept: "*/*",
     };
 
-    try {
-      impexCubeResponse = await axios({
-        method: "GET",
-        url: targetUrl,
-        headers: reqHeaders,
-        data: payload,
-        timeout: IMPEXCUBE_TIMEOUT_MS,
-      });
-    } catch (getErr) {
-      if (getErr.response?.status === 405 || getErr.response?.status === 400 || getErr.response?.status === 403) {
-        console.log("[IMEXCUBE EXPORT DSR] GET failed, retrying with POST...");
-        impexCubeResponse = await axios.post(targetUrl, payload, {
-          headers: reqHeaders,
-          timeout: IMPEXCUBE_TIMEOUT_MS,
-        });
-      } else {
-        throw getErr;
+    pathLoop: for (const path of uniquePaths) {
+      const targetUrl = buildImpexCubeUrl(path);
+      for (const candNo of uniqueCandidates) {
+        const payload = {
+          Method: "GetJobInfo",
+          User_Job_No: candNo,
+        };
+
+        try {
+          console.log(`[IMEXCUBE EXPORT DSR] Trying fetch for candNo '${candNo}' on URL: ${targetUrl}`);
+
+          let res = null;
+          // 1. Try GET method with JSON body payload (as per ImpexCube vendor specification)
+          try {
+            res = await axios({
+              method: "GET",
+              url: targetUrl,
+              headers: reqHeaders,
+              data: payload,
+              timeout: IMPEXCUBE_TIMEOUT_MS,
+            });
+          } catch (getErr) {
+            // 2. Try GET method with query parameters fallback
+            try {
+              res = await axios.get(targetUrl, {
+                params: {
+                  Method: "GetJobInfo",
+                  "User Job No.": candNo,
+                  User_Job_No: candNo,
+                },
+                headers: reqHeaders,
+                timeout: IMPEXCUBE_TIMEOUT_MS,
+              });
+            } catch (queryErr) {
+              // 3. Try POST method fallback
+              res = await axios.post(targetUrl, payload, {
+                headers: reqHeaders,
+                timeout: IMPEXCUBE_TIMEOUT_MS,
+              });
+            }
+          }
+
+          const vData = res.data || {};
+          const hasData = vData.data || vData.SB_Details || (Array.isArray(vData) && vData.length > 0);
+          if (vData.success !== false && vData.statusCode !== 404 && hasData) {
+            impexCubeResponse = res;
+            vendorPayload = vData;
+            console.log(`[IMEXCUBE EXPORT DSR] Fetch succeeded for User_Job_No '${candNo}' on ${targetUrl}`);
+            break pathLoop;
+          }
+
+          if (!vendorPayload) {
+            impexCubeResponse = res;
+            vendorPayload = vData;
+          }
+        } catch (err) {
+          console.log(`[IMEXCUBE EXPORT DSR] Candidate fetch error for '${candNo}' on ${targetUrl}:`, err.message);
+          if (err.response?.data) {
+            vendorPayload = err.response.data;
+          }
+        }
       }
     }
 
-    const vendorPayload = impexCubeResponse.data || {};
-    const isSuccess = vendorPayload.success !== false && (impexCubeResponse.status === 200 || vendorPayload.statusCode === 200);
+    const isSuccess = vendorPayload && vendorPayload.success !== false && (vendorPayload.data || vendorPayload.SB_Details);
 
     if (!isSuccess) {
-      return res.status(vendorPayload.statusCode || 404).json({
+      const vendorMsg =
+        vendorPayload?.message ||
+        vendorPayload?.data?.[0]?.Message ||
+        vendorPayload?.data?.[0]?.ErrorMsg;
+
+      const displayMsg = (vendorMsg && !vendorMsg.includes("status code 404"))
+        ? vendorMsg
+        : `Job details are not available in ImpexCube for job '${jobNo}'. Please ensure the job has been uploaded to ImpexCube first.`;
+
+      return res.status(vendorPayload?.statusCode || 404).json({
         success: false,
-        message: vendorPayload.message || "Export job details not available in ImpexCube",
-        data: vendorPayload,
+        message: displayMsg,
+        data: vendorPayload || null,
       });
     }
 
-    const rawSb = vendorPayload.data?.SB_Details || vendorPayload.SB_Details;
+    const rawSb = vendorPayload?.data?.SB_Details || vendorPayload?.SB_Details;
     const sbDetails = Array.isArray(rawSb) ? (rawSb[0] || {}) : (rawSb || {});
 
     const updateFields = {
@@ -2988,7 +3074,7 @@ router.get("/:job_no(.*)", async (req, res, next) => {
         ],
         job_no: { $ne: exportJob.job_no }
       }).lean();
-      
+
       const mergedContainers = [];
 
       for (const j of childJobs) {
@@ -2997,7 +3083,7 @@ router.get("/:job_no(.*)", async (req, res, next) => {
         const st = op.statusDetails?.[0] || {};
         const product = inv.products?.[0] || {};
         const hsnList = [...new Set((inv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
-        
+
         for (const c of (j.containers || [])) {
           mergedContainers.push({
             ...c,

@@ -372,11 +372,132 @@ router.get("/freight-enquiries", async (req, res) => {
   }
 });
 
+function buildBlDetailsFromExportJob(job = {}, reqBlDetails = {}) {
+  // 1. Consignor (Exporter) -> Exporter Name
+  const consignor = reqBlDetails.consignor || job.exporter || job.shipper || job.organization_name || "";
+
+  // 2. Consignee (Name & Address) -> Consignee Name + Address
+  const consigneeObj = (job.consignees || [])[0] || {};
+  const consigneeName = consigneeObj.consignee_name || job.consignee_name || "";
+  const consigneeAddress = consigneeObj.consignee_address || job.consignee_address || "";
+  const defaultConsignee = [consigneeName, consigneeAddress].filter(Boolean).join(" ").trim();
+  const consignee = reqBlDetails.consignee || defaultConsignee;
+
+  // 3. Notify Address (Leave blank if Same as Consignee) -> Map Buyer Info name and address
+  let defaultNotify = "";
+  const invoice = (job.invoices || [])[0] || {};
+  const buyerName = invoice.buyerInfo?.name || invoice.buyer_name || job.buyer_name || "";
+  const buyerAddress = invoice.buyerInfo?.address || invoice.buyer_address || job.buyer_address || "";
+  const buyerCombined = [buyerName, buyerAddress].filter(Boolean).join(" ").trim();
+
+  if (buyerCombined && buyerCombined !== defaultConsignee) {
+    defaultNotify = buyerCombined;
+  }
+  const notify_party = reqBlDetails.notify_party !== undefined ? reqBlDetails.notify_party : defaultNotify;
+
+  // 4. Mode of Transport -> SEA / AIR
+  const rawTransport = String(job.transportMode || job.shipment_type || job.movement_type || "").toUpperCase();
+  const defaultMode = rawTransport.includes("AIR") ? "AIR" : "SEA";
+  const mode_of_transport = reqBlDetails.mode_of_transport || defaultMode;
+
+  // 5. Vessel & Voyage No.
+  const vessel_name = reqBlDetails.vessel_name || job.vessel_name || job.vessel || "";
+  const voyage_no = reqBlDetails.voyage_no || job.voyage_no || job.voyage || "";
+
+  // 6. Place of Acceptance (Custom House)
+  const place_of_acceptance = reqBlDetails.place_of_acceptance || job.custom_house || job.port_of_loading || job.place_of_receipt || "";
+
+  // 7. Container No (s)
+  const containerNumbersFromList = Array.isArray(job.containers)
+    ? job.containers.map(c => c.containerNo || c.container_number || c.container_no).filter(Boolean).join(", ")
+    : "";
+  const container_numbers = reqBlDetails.container_numbers || containerNumbersFromList;
+
+  // 8. Number and kind of packages: "6 X 20 STANDARD DRY FCL CONTAINER SAID TO CONTAIN TOTAL 102 BAGS ONLY"
+  let defaultPkgDesc = "";
+  const totalPkgs = job.total_no_of_pkgs || job.no_packages || "";
+  const pkgUnit = (job.package_unit || "BAGS").toUpperCase();
+
+  const containerCount = (job.containers || []).length || job.no_of_containers || "";
+  const containerTypeStr = job.containers?.[0]?.type || job.container_size || job.container_qty_type || "20 STANDARD DRY";
+  const consignmentTypeStr = (job.consignmentType || job.consignment_type || "FCL").toUpperCase();
+
+  if (containerCount && containerTypeStr) {
+    defaultPkgDesc = `${containerCount} X ${containerTypeStr.toUpperCase()} ${consignmentTypeStr} CONTAINER SAID TO CONTAIN TOTAL ${totalPkgs} ${pkgUnit} ONLY`.trim();
+  } else if (totalPkgs) {
+    defaultPkgDesc = `SAID TO CONTAIN TOTAL ${totalPkgs} ${pkgUnit} ONLY`.trim();
+  }
+  const packages_description = reqBlDetails.packages_description || defaultPkgDesc;
+
+  // 9. General Description of Goods (description of first product + details)
+  let defaultGoodsDesc = "";
+  const firstInv = (job.invoices || [])[0] || {};
+  const firstProd = (firstInv.products || [])[0] || {};
+  const productDesc = (firstProd.product_description || firstProd.description || job.nature_of_cargo || job.goods_description || "").toUpperCase();
+  const ritcCode = firstProd.ritc_code || firstProd.hsn_code || job.hsn || "";
+  const grossWtVal = job.gross_weight_kg || job.gross_weight || "";
+  const netWtVal = job.net_weight_kg || job.net_weight || "";
+
+  let goodsParts = [];
+  if (productDesc) goodsParts.push(productDesc);
+  if (ritcCode) goodsParts.push(`HS CODE: ${ritcCode}`);
+  if (grossWtVal) goodsParts.push(`GROSS WT : ${grossWtVal} KGS`);
+  if (totalPkgs) goodsParts.push(`PACKING : ${totalPkgs} ${pkgUnit}`);
+  if (netWtVal) goodsParts.push(`NET WT.: ${netWtVal} KGS`);
+
+  (job.invoices || []).forEach(inv => {
+    if (inv.invoiceNumber) {
+      const dtStr = inv.invoiceDate ? ` DT.: ${inv.invoiceDate}` : "";
+      goodsParts.push(`AS PER INV. NO.: ${inv.invoiceNumber}${dtStr}`);
+    }
+  });
+
+  if (job.sb_no) {
+    const sbDtStr = job.sb_date ? ` DT.: ${job.sb_date}` : "";
+    goodsParts.push(`SD NO.: ${job.sb_no}${sbDtStr}`);
+  }
+
+  defaultGoodsDesc = goodsParts.join(" ");
+  const description_of_goods = reqBlDetails.description_of_goods || defaultGoodsDesc;
+
+  // 10. MTD / Ref. No. (HBL No from other details form)
+  const shipment_ref_no = reqBlDetails.shipment_ref_no || job.hbl_no || job.mbl_no || job.shipment_ref_no || job.job_no || "";
+
+  // 11. Gross Weight
+  const rawGross = job.gross_weight_kg || job.gross_weight || "";
+  const defaultGrossWeight = rawGross ? `${rawGross}`.trim() : "";
+  const gross_weight = reqBlDetails.gross_weight || defaultGrossWeight;
+
+  // 12. Net Weight
+  const rawNet = job.net_weight_kg || job.net_weight || "";
+  const defaultNetWeight = rawNet ? `${rawNet} KG`.trim() : "";
+  const net_weight = reqBlDetails.net_weight || defaultNetWeight;
+
+  return {
+    ...reqBlDetails,
+    consignor,
+    consignee,
+    notify_party,
+    mode_of_transport,
+    vessel_name,
+    voyage_no,
+    place_of_acceptance,
+    container_numbers,
+    packages_description,
+    description_of_goods,
+    shipment_ref_no,
+    gross_weight,
+    net_weight,
+    hsn_code: reqBlDetails.hsn_code || ritcCode,
+    measurement: reqBlDetails.measurement || (job.volume_cbm ? `${job.volume_cbm} CBM` : ""),
+  };
+}
+
 // Create new enquiry
 router.post("/freight-enquiries", async (req, res) => {
   try {
     // Generate sequential enquiry number based on shipment type
-    const { shipment_type } = req.body;
+    const { shipment_type, source_job_no } = req.body;
     let typeCode = "MISC";
     if (shipment_type === "Import-Sea") typeCode = "IMP/SEA";
     else if (shipment_type === "Export-Sea") typeCode = "EXP/SEA";
@@ -404,11 +525,29 @@ router.post("/freight-enquiries", async (req, res) => {
 
     const enquiry_no = await getNextNo("enquiry_no", "FF");
 
+    let sourceJob = null;
+    if (source_job_no) {
+      sourceJob = await ExJobModel.findOne({
+        job_no: { $regex: `^${String(source_job_no).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" }
+      }).lean();
+    }
+
+    const bl_details = sourceJob
+      ? buildBlDetailsFromExportJob(sourceJob, req.body.bl_details || {})
+      : (req.body.bl_details || {});
+
     const newEnquiry = new FreightEnquiryModel({
       ...req.body,
       enquiry_no,
-      consignment_type: req.body.consignment_type || "",
-      goods_stuffed: req.body.goods_stuffed || ""
+      organization_name: req.body.organization_name || sourceJob?.exporter || sourceJob?.organization_name || "",
+      gross_weight: req.body.gross_weight || sourceJob?.gross_weight_kg || sourceJob?.gross_weight || "",
+      net_weight: req.body.net_weight || sourceJob?.net_weight_kg || sourceJob?.net_weight || "",
+      no_packages: req.body.no_packages || sourceJob?.total_no_of_pkgs || sourceJob?.no_packages || "",
+      consignment_type: req.body.consignment_type || sourceJob?.consignmentType || "",
+      goods_stuffed: req.body.goods_stuffed || (sourceJob?.goods_stuffed_at === "DOCK" ? "DOCK STUFFED" : (sourceJob?.goods_stuffed_at === "FACTORY" ? "FACTORY STUFFED" : "")),
+      container_size: req.body.container_size || sourceJob?.containers?.[0]?.type || "",
+      containers: req.body.containers?.length > 0 ? req.body.containers : (sourceJob?.containers || []),
+      bl_details
     });
     
     const savedEnquiry = await newEnquiry.save();

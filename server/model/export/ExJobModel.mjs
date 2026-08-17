@@ -427,14 +427,14 @@ const factoryStuffedFlag = (value) => {
 const sealTypeCode = (...values) => {
     const raw = firstUpperText(...values);
     if (!raw) return "";
-    if (raw === "S" || raw.includes("SELF") || raw.includes("SHIPPER") || raw.includes("AGENT")) {
+    if (raw === "S" || raw.includes("SELF") || raw.includes("SHIPPER") || raw.includes("AGENT") || raw.includes("RFID") || raw === "R") {
         return "S";
     }
     if (raw === "W" || raw.includes("WAREHOUSE") || raw.includes("WEARHOUSE")) {
         return "W";
     }
     if (raw === "C" || raw.includes("CUSTOM")) return "C";
-    return raw.slice(0, 1);
+    return "S";
 };
 
 const getFirstProduct = (job) => {
@@ -513,22 +513,97 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
         Sample_accompanied: toYN(job.sample_accompanied),
     };
 
+    const rawInvoices = firstArray(job.invoices);
+    const invoiceList = rawInvoices.length > 0 ? rawInvoices : [
+        {
+            invoiceNumber: firstText(job.invoice_number, job.invoice_no, job.invoiceNo, "1"),
+            invoiceDate: firstValue(job.invoice_date, job.invoiceDate),
+            invoiceValue: firstValue(job.invoice_value, job.invoiceValue),
+            currency: firstText(job.currency, "USD"),
+            termsOfInvoice: firstText(job.termsOfInvoice, job.terms_of_invoice, "FOB"),
+            products: firstArray(job.products, job.items)
+        }
+    ];
+
+    const mappedInvoices = invoiceList.map((inv, invIdx) => {
+        const invProducts = firstArray(inv.products, inv.items);
+        const productsList = invProducts.map((prod, prodIdx) => {
+            const ritc = firstText(prod.ritcNo, prod.hsnCode, prod.hsn_code, prod.ritc_code, prod.ritc, "00000000");
+            const desc = firstText(prod.productName, prod.item_description, prod.description, prod.product_description, "GOODS");
+            const qty = numberString(firstValue(prod.quantity, prod.qty), 3);
+            const unit = firstUpperText(prod.unit, prod.uom, prod.unit_of_measurement, "KGS");
+            const price = numberString(firstValue(prod.unitPrice, prod.unit_price, prod.price), 4);
+            const amount = numberString(firstValue(prod.totalAmount, prod.total_amount, prod.amount, prod.value), 2);
+            const scheme = firstText(prod.eximCode, prod.scheme_code, prod.schemeCode, "00");
+
+            return {
+                Invoice_Serial_No: String(invIdx + 1),
+                Item_Serial_No: String(prodIdx + 1),
+                RITC_Code: ritc,
+                Item_Description: desc,
+                Quantity: qty,
+                Unit_of_measurement: unit,
+                Unit_Price: price,
+                Total_Amount: amount,
+                Scheme_Code: scheme,
+            };
+        }).filter(hasAnyValue);
+
+        return {
+            Invoice_Number: firstText(inv.invoiceNumber, inv.invoiceNo, inv.invoice_number, inv.invoice_no, `INV-${invIdx + 1}`),
+            Invoice_Date: toImpexCubeDate(firstValue(inv.invoiceDate, inv.invoice_date)),
+            Invoice_Value: numberString(firstValue(inv.invoiceValue, inv.invoice_value, inv.amount, inv.invValue), 2),
+            Currency_Code: firstUpperText(inv.currency, job.currency, "USD"),
+            Terms_of_Invoice: firstUpperText(inv.termsOfInvoice, inv.terms_of_invoice, job.termsOfInvoice, "FOB"),
+            Nature_of_Contract: firstUpperText(inv.natureOfContract, inv.nature_of_contract, "FOB"),
+            Buyer_Name: firstText(consignee.consignee_name),
+            Buyer_Address1: consigneeAddressLines[0] || "",
+            Buyer_Address2: consigneeAddressLines[1] || "",
+            Buyer_Address3: consigneeAddressLines[2] || "",
+            Buyer_Address4: consigneeAddressLines[3] || "",
+            Buyer_Country: countryCode(consignee.consignee_country),
+            PRODUCTS: productsList
+        };
+    });
+
+    const mappedContainers = containers
+        .map((container) => {
+            const cNo = firstText(container.containerNo, container.container_number);
+            if (!cNo) return null;
+            return {
+                Container_number: cNo,
+                Container_Size: firstText(container.containerSize, container.container_size, container.type).replace(/[^0-9]/g, "").slice(0, 2),
+                "Excise_Seal_No.": firstText(container.customSealNo, container.exciseSealNo, container.sealNo, container.shippingLineSealNo),
+                Seal_Date: toImpexCubeDate(container.sealDate),
+                Seal_Type_Indicator: sealTypeCode(container.sealType, job.stuffing_seal_type),
+                Seal_Device_ID: firstText(container.sealDeviceId, container.rfid),
+                Movement_Document_Type: firstText(container.movementDocumentType, container.movement_document_type),
+                Movement_Document_Number: firstText(container.movementDocumentNumber, container.movement_document_number),
+            };
+        })
+        .filter(Boolean);
+
+    const mappedDocs = docs
+        .map((doc) => {
+            const filePath = firstText(doc.documentFilePath, doc.fileUrl, doc.icegateFilename);
+            const docName = firstText(doc.DocumentName, doc.documentName, doc.documentReferenceNo, doc.icegateFilename);
+            if (!filePath && !docName) return null;
+            return {
+                DocumentCode: firstText(doc.DocumentCode, doc.documentCode, doc.documentType),
+                DocumentName: docName,
+                DocumentFilePath: filePath,
+                DocumentFileFormat: firstUpperText(doc.DocumentFileFormat, doc.documentFileFormat, extensionFromPath(filePath)),
+            };
+        })
+        .filter(Boolean);
+
+    const branchSrNoVal = firstText(job.branchSrNo, job.branch_sno, job.branch_sr_no);
+
     return {
         CHADetails: {
             CHA_Code: firstText(options.chaCode, process.env.IMPEXCUBE_CHA_CODE, job.cha_code, job.chaCode, "NOVU"),
-            "CHA Code": firstText(options.chaCode, process.env.IMPEXCUBE_CHA_CODE, job.cha_code, job.chaCode, "NOVU"),
-            CHA_Branch_Code: mapBranchToChaBranch(firstText(options.chaBranchCode, process.env.IMPEXCUBE_CHA_BRANCH_CODE, job.cha_branch_code, job.chaBranchCode, job.branch_code, "NOVUAMD")),
-            "CHA Branch Code": mapBranchToChaBranch(firstText(options.chaBranchCode, process.env.IMPEXCUBE_CHA_BRANCH_CODE, job.cha_branch_code, job.chaBranchCode, job.branch_code, "NOVUAMD")),
+            CHA_Branch_Code: firstText(options.chaBranchCode, process.env.IMPEXCUBE_CHA_BRANCH_CODE, job.cha_branch_code, job.chaBranchCode, mapBranchToChaBranch(job.branch_code), "NOVUAMD"),
             Financial_Year: firstText(
-                options.financialYear,
-                process.env.IMPEXCUBE_FYEAR,
-                process.env.FYEAR,
-                job.financial_year,
-                job.financialYear,
-                normalizeFinancialYear(job.year, job.job_date),
-                "2026-2027",
-            ),
-            "Financial Year": firstText(
                 options.financialYear,
                 process.env.IMPEXCUBE_FYEAR,
                 process.env.FYEAR,
@@ -567,19 +642,16 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
                 customHouseCode(job.custom_house) === "INMUN1" ? "OFS1766LCH006" : "OFS1766LCH005",
             ),
             Importer_Exporter_Code: firstText(job.ieCode, job.iec, job.importer_exporter_code),
-            Branch_Sr_No_of_Exporter: firstText(job.branchSrNo, job.branch_sno, job.branch_sr_no, "1"),
+            Branch_Sr_No_of_Exporter: (!branchSrNoVal || branchSrNoVal === "0") ? "1" : branchSrNoVal,
             Imp_Exp_Name: firstText(job.exporter),
             Imp_Exp_Address1: firstText(job.exporter_address1, exporterAddressLines[0]),
             Imp_Exp_Address2: firstText(job.exporter_address2, exporterAddressLines[1]),
-            Imp_Exp_City: firstText(job.exporter_city, job.city),
-            Imp_Exp_State: firstText(job.exporter_state, job.state),
+            Imp_Exp_City: firstText(job.exporter_city, job.city, "AHMEDABAD"),
+            Imp_Exp_State: firstUpperText(job.exporter_state, job.state, "GUJARAT"),
             Imp_Exp_PIN: firstText(job.exporter_pincode, exporterAddressInfo.pin),
             Type_of_Exporter: exporterTypeCode(job.exporter_type),
             Exporter_Class: firstUpperText(job.exporter_class, "P"),
-            State_of_origin_Exporter: firstText(
-                job.state_of_origin,
-                stateCode(firstValue(job.exporter_state, job.state)),
-            ),
+            State_of_origin_Exporter: stateCode(firstValue(job.state_of_origin, job.exporter_state, job.state)) || "24",
             Authorized_Dealer_Code: firstText(job.adCode, job.ad_code),
             EPZ_code: firstText(job.epz_code, job.epzCode),
             Consignee_name: firstText(consignee.consignee_name),
@@ -607,32 +679,23 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
             Net_weight: numberString(job.net_weight_kg, 3),
             Unit_of_measurement: firstUpperText(job.gross_weight_unit, job.net_weight_unit, "KGS"),
             Total_number_of_packages: firstText(job.total_no_of_pkgs, job.totalPackages),
-            Marks_Numbers: firstText(job.marks_nos, job.marksAndNumbers),
+            Marks_Numbers: firstText(job.marks_nos, job.marksAndNumbers).slice(0, 100),
             Number_of_loose_packets: firstText(job.loose_pkgs, "0"),
-            Number_of_containers: firstText(job.no_of_containers, containers.length ? String(containers.length) : "0"),
+            Number_of_containers: firstText(job.no_of_containers, mappedContainers.length ? String(mappedContainers.length) : "0"),
             MAWB_Number: firstText(job.mawb_no, job.mbl_no),
             HAWB_Number: firstText(job.hawb_no, job.hbl_no),
             GSTN_Type: firstUpperText(job.gstn_type, job.gstnType, gstnTypeCode(gstin)),
             GSTN_ID: gstin,
             Hand_Carry: toYN(firstValue(job.hand_carry, job.handCarry)),
         },
-        PACKINGLIST: packingRows.length || !includeEmptyRows
+        PACKINGLIST: packingRows.length
             ? packingRows
             : [{ Packing_Number_From: "", Packing_Number_To: "", Packing_Code: "" }],
-        STUFF: stuffRows.length || !includeEmptyRows
+        STUFF: stuffRows.length
             ? stuffRows
-            : [defaultStuffRow],
-        CONTAINER: containers.length || !includeEmptyRows
-            ? containers.map((container) => ({
-                Container_number: firstText(container.containerNo, container.container_number),
-                Container_Size: firstText(container.containerSize, container.container_size, container.type).replace(/[^0-9]/g, "").slice(0, 2),
-                "Excise_Seal_No.": firstText(container.customSealNo, container.exciseSealNo, container.sealNo, container.shippingLineSealNo),
-                Seal_Date: toImpexCubeDate(container.sealDate),
-                Seal_Type_Indicator: sealTypeCode(container.sealType, job.stuffing_seal_type),
-                Seal_Device_ID: firstText(container.sealDeviceId, container.rfid),
-                Movement_Document_Type: firstText(container.movementDocumentType, container.movement_document_type),
-                Movement_Document_Number: firstText(container.movementDocumentNumber, container.movement_document_number),
-            }))
+            : [{ Factory_stuffed: "", Sample_accompanied: "" }],
+        CONTAINER: mappedContainers.length
+            ? mappedContainers
             : [{
                 Container_number: "",
                 Container_Size: "",
@@ -643,16 +706,8 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
                 Movement_Document_Type: "",
                 Movement_Document_Number: "",
             }],
-        Supportingdocs: docs.length || !includeEmptyRows
-            ? docs.map((doc) => {
-                const filePath = firstText(doc.documentFilePath, doc.fileUrl, doc.icegateFilename);
-                return {
-                    DocumentCode: firstText(doc.DocumentCode, doc.documentCode, doc.documentType),
-                    DocumentName: firstText(doc.DocumentName, doc.documentName, doc.documentReferenceNo, doc.icegateFilename),
-                    DocumentFilePath: filePath,
-                    DocumentFileFormat: firstUpperText(doc.DocumentFileFormat, doc.documentFileFormat, extensionFromPath(filePath)),
-                };
-            })
+        Supportingdocs: mappedDocs.length
+            ? mappedDocs
             : [{ DocumentCode: "", DocumentName: "", DocumentFilePath: "", DocumentFileFormat: "" }],
     };
 }
@@ -768,13 +823,17 @@ const isImpexCubeExportPayload = (payload) =>
         (payload.CHADetails || payload.SB_Details || payload.PACKINGLIST || payload.CONTAINER || payload.Supportingdocs),
     );
 
-const buildImpexCubeExportGetDetailsPayload = (jobOrJobNo) => ({
-    Method: "GetJobInfo",
-    User_Job_No:
-        typeof jobOrJobNo === "string"
-            ? text(jobOrJobNo)
-            : firstText(toPlainObject(jobOrJobNo).job_no, toPlainObject(jobOrJobNo).jobNumber),
-});
+const buildImpexCubeExportGetDetailsPayload = (jobOrJobNo) => {
+    const rawJob = typeof jobOrJobNo === "object" && jobOrJobNo ? toPlainObject(jobOrJobNo) : {};
+    const targetJobNo = typeof jobOrJobNo === "string"
+        ? text(jobOrJobNo)
+        : firstText(rawJob.job_no, rawJob.jobNumber);
+
+    return {
+        Method: "GetJobInfo",
+        User_Job_No: targetJobNo,
+    };
+};
 
 // Sub-schemas for complex nested data
 const areDetailsSchema = new Schema(
