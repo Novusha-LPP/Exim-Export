@@ -144,6 +144,10 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [productToExportIndex, setProductToExportIndex] = useState(null);
 
+  // Drag & Drop Reorder State
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
   const setProducts = useCallback(
     (updatedProducts) => {
       const updatedInvoices = [...invoices];
@@ -157,6 +161,46 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
     },
     [formik, invoices, selectedInvoiceIndex],
   );
+
+  const moveProduct = useCallback(
+    (fromIndex, toIndex) => {
+      if (toIndex < 0 || toIndex >= products.length || fromIndex === toIndex) return;
+      const next = [...products];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+
+      const resequenced = next.map((p, i) => ({
+        ...p,
+        serialNumber: i + 1,
+      }));
+      setProducts(resequenced);
+    },
+    [products, setProducts],
+  );
+
+  const handleDragStart = (e, idx) => {
+    setDraggedIndex(idx);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(idx));
+  };
+
+  const handleDragOver = (e, idx) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverIndex !== idx) {
+      setDragOverIndex(idx);
+    }
+  };
+
+  const handleDrop = (e, targetIdx) => {
+    e.preventDefault();
+    const fromIdx = draggedIndex !== null ? draggedIndex : Number(e.dataTransfer.getData("text/plain"));
+    if (!isNaN(fromIdx) && fromIdx !== targetIdx) {
+      moveProduct(fromIdx, targetIdx);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   const recalcAmount = useCallback((prod) => {
     const qty = Number(prod.quantity) || 0;
@@ -601,7 +645,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={{ ...styles.th, width: 50 }}>Sr No</th>
+                <th style={{ ...styles.th, width: 85, textTransform: "uppercase" }}>Sr No ↕</th>
                 <th style={{ ...styles.th, width: 200 }}>Description</th>
                 <th style={{ ...styles.th, width: 140 }}>RITC</th>
                 <th style={{ ...styles.th, width: 170 }}>Quantity</th>
@@ -616,8 +660,78 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
             </thead>
             <tbody>
               {products.map((prod, idx) => (
-                <tr key={idx}>
-                  <td style={styles.td}>{prod.serialNumber || idx + 1}</td>
+                <tr
+                  key={idx}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDrop={(e) => handleDrop(e, idx)}
+                  onDragEnd={() => {
+                    setDraggedIndex(null);
+                    setDragOverIndex(null);
+                  }}
+                  style={{
+                    backgroundColor: dragOverIndex === idx ? "#eff6ff" : "transparent",
+                    borderTop: dragOverIndex === idx ? "2px solid #2563eb" : undefined,
+                    borderBottom: dragOverIndex === idx ? "2px solid #2563eb" : undefined,
+                    transition: "background-color 0.15s ease",
+                  }}
+                >
+                  <td style={{ ...styles.td, userSelect: "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                      <span
+                        style={{
+                          cursor: "grab",
+                          color: "#64748b",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          paddingRight: 2,
+                        }}
+                        title="Drag to reposition product"
+                      >
+                        ⋮⋮
+                      </span>
+                      <span style={{ fontWeight: 700, minWidth: 14 }}>{prod.serialNumber || idx + 1}</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1, marginLeft: "auto" }}>
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => moveProduct(idx, idx - 1)}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            cursor: idx === 0 ? "default" : "pointer",
+                            color: idx === 0 ? "#cbd5e1" : "#1e40af",
+                            fontSize: 9,
+                            lineHeight: 1,
+                            padding: "0 1px",
+                            fontWeight: 800,
+                          }}
+                          title="Move Product Up"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === products.length - 1}
+                          onClick={() => moveProduct(idx, idx + 1)}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            cursor: idx === products.length - 1 ? "default" : "pointer",
+                            color: idx === products.length - 1 ? "#cbd5e1" : "#1e40af",
+                            fontSize: 9,
+                            lineHeight: 1,
+                            padding: "0 1px",
+                            fontWeight: 800,
+                          }}
+                          title="Move Product Down"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    </div>
+                  </td>
                   <td style={styles.td}>
                     <textarea
                       style={styles.textarea}

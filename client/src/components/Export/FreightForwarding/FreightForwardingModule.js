@@ -641,11 +641,11 @@ function FreightForwardingModule() {
     if (dateStr.includes("/")) return dateStr;
     if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr.replace(/-/g, "/");
     if (/^\d{2}-[A-Za-z]{3}-\d{4}$/.test(dateStr)) return dateStr;
-    
+
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return dateStr.split("-").reverse().join("/");
     }
-    
+
     try {
       const d = new Date(dateStr);
       if (!isNaN(d.getTime())) {
@@ -654,8 +654,8 @@ function FreightForwardingModule() {
         const year = d.getFullYear();
         return `${day}/${month}/${year}`;
       }
-    } catch (e) {}
-    
+    } catch (e) { }
+
     return dateStr;
   };
 
@@ -767,7 +767,7 @@ function FreightForwardingModule() {
     Rejected: 0,
     Pending: 0,
     "Draft BL": 0,
-    SBO: 0,
+    SOB: 0,
     Billing: 0,
     "ETA Pending": 0,
     Delivery: 0,
@@ -891,7 +891,7 @@ function FreightForwardingModule() {
     setSelectedEnquiry(prev => prev?._id === updated._id ? updated : prev);
   };
 
-  const isPipelineTab = ["Pending", "Draft BL", "SBO", "Billing", "ETA Pending", "Delivery", "Completed"].includes(activeTab);
+  const isPipelineTab = ["Pending", "Draft BL", "SOB", "Billing", "ETA Pending", "Delivery", "Completed"].includes(activeTab);
 
   const handleRowClick = (row) => {
     if (!isPipelineTab) {
@@ -990,14 +990,14 @@ function FreightForwardingModule() {
 
       {/* Tabs */}
       <Box sx={s.tabsContainer}>
-        {["Enquiry", "Rejected", "Pending", "Draft BL", "SBO", "Billing", "ETA Pending", "Delivery", "Completed", "Historic Rates"].map((tab) => {
+        {["Enquiry", "Rejected", "Pending", "Draft BL", "SOB", "Billing", "ETA Pending", "Delivery", "Completed", "Historic Rates"].map((tab) => {
           const isActive = activeTab === tab;
           const getCount = () => {
             if (tab === "Enquiry") return serverCounts.Enquiry;
             if (tab === "Rejected") return serverCounts.Rejected;
             if (tab === "Pending") return serverCounts.Pending;
             if (tab === "Draft BL") return serverCounts["Draft BL"];
-            if (tab === "SBO") return serverCounts.SBO;
+            if (tab === "SOB") return serverCounts.SOB;
             if (tab === "Billing") return serverCounts.Billing;
             if (tab === "ETA Pending") return serverCounts["ETA Pending"];
             if (tab === "Delivery") return serverCounts.Delivery;

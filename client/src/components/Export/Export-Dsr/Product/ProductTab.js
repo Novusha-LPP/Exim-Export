@@ -234,6 +234,45 @@ const ProductTab = ({ formik, directories, params, isEditable = true }) => {
     }
   };
 
+  const handleReorderProducts = (fromIndex, toIndex) => {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= products.length ||
+      toIndex >= products.length
+    )
+      return;
+
+    const updatedInvoices = [...invoices];
+    const activeInv = { ...updatedInvoices[selectedInvoiceIndex] };
+    const nextProducts = [...(activeInv.products || [])];
+    const [moved] = nextProducts.splice(fromIndex, 1);
+    nextProducts.splice(toIndex, 0, moved);
+
+    activeInv.products = nextProducts.map((p, i) => ({
+      ...p,
+      serialNumber: i + 1,
+    }));
+
+    updatedInvoices[selectedInvoiceIndex] = activeInv;
+    formik.setFieldValue("invoices", updatedInvoices);
+
+    if (selectedProductIndex === fromIndex) {
+      setSelectedProductIndex(toIndex);
+    } else if (
+      selectedProductIndex > fromIndex &&
+      selectedProductIndex <= toIndex
+    ) {
+      setSelectedProductIndex(selectedProductIndex - 1);
+    } else if (
+      selectedProductIndex < fromIndex &&
+      selectedProductIndex >= toIndex
+    ) {
+      setSelectedProductIndex(selectedProductIndex + 1);
+    }
+  };
+
   return (
     <Box sx={{ p: 2 }}>
       <Box
@@ -281,8 +320,20 @@ const ProductTab = ({ formik, directories, params, isEditable = true }) => {
                 {products.map((product, index) => (
                   <Chip
                     key={index}
-                    label={product.serialNumber || index + 1}
+                    label={`⋮⋮ ${product.serialNumber || index + 1}`}
                     onClick={() => setSelectedProductIndex(index)}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/plain", String(index));
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const fromIdx = Number(e.dataTransfer.getData("text/plain"));
+                      if (!isNaN(fromIdx)) {
+                        handleReorderProducts(fromIdx, index);
+                      }
+                    }}
                     color={
                       selectedProductIndex === index ? "primary" : "default"
                     }
@@ -290,6 +341,8 @@ const ProductTab = ({ formik, directories, params, isEditable = true }) => {
                       selectedProductIndex === index ? "filled" : "outlined"
                     }
                     size="small"
+                    sx={{ cursor: "grab", "&:active": { cursor: "grabbing" } }}
+                    title="Drag chip to reorder products"
                   />
                 ))}
               </Box>

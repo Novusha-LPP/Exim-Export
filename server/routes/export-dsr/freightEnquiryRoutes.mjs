@@ -119,7 +119,7 @@ router.get("/freight-enquiries", async (req, res) => {
 
     const enquiries = await FreightEnquiryModel.find().sort({ createdAt: -1 });
     const dataList = enquiries.map(e => e.toObject());
-    
+
     // Sync missing documents (like LEO copy) from source Export Jobs
     await Promise.all(dataList.map(e => syncEnquiryDocuments(e)));
 
@@ -133,13 +133,13 @@ router.get("/freight-enquiries", async (req, res) => {
       const jobNos = convertedEnquiries.flatMap(e => [e.enquiry_no, e.success_no, e.source_job_no]).filter(Boolean);
       const exJobs = await ExJobModel.find(
         { job_no: { $in: jobNos } },
-        { 
-          job_no: 1, 
-          place_of_receipt: 1, 
-          hbl_no: 1, 
+        {
+          job_no: 1,
+          place_of_receipt: 1,
+          hbl_no: 1,
           bl_details: 1,
-          consignees: 1, 
-          shipper: 1, 
+          consignees: 1,
+          shipper: 1,
           shipped_on_board_date: 1,
           sailing_date: 1,
           "operations.statusDetails.billing_details": 1,
@@ -198,13 +198,13 @@ router.get("/freight-enquiries", async (req, res) => {
             }
             // Merge shipper from ExJob for export shipments
             if (job.shipper) e.shipper_name = job.shipper;
-            
-            // Merge SBO and arrival dates
+
+            // Merge SOB and arrival dates
             if (job.shipped_on_board_date) e.shipped_on_board_date = job.shipped_on_board_date;
             if (job.sailing_date) e.sailing_date = job.sailing_date;
             if (job.arrival_date) e.arrival_date = job.arrival_date;
             if (job.final_delivery_date) e.final_delivery_date = job.final_delivery_date;
- 
+
             // Merge timeline and document details
             if (job.booking_no) e.booking_no = job.booking_no;
             if (job.booking_date) e.booking_date = job.booking_date;
@@ -224,7 +224,7 @@ router.get("/freight-enquiries", async (req, res) => {
             if (job.consol_no) e.consol_no = job.consol_no;
             if (job.consol_date) e.consol_date = job.consol_date;
             if (job.eta_date) e.eta_date = job.eta_date;
-            
+
             // Merge transport/sales fields
             if (job.booking_thru) e.booking_thru = job.booking_thru;
             if (job.sales_person) e.sales_person = job.sales_person;
@@ -264,7 +264,7 @@ router.get("/freight-enquiries", async (req, res) => {
               e.bl_details.shipment_ref_no = job.hbl_no;
               e.hbl_no = job.hbl_no;
             }
- 
+
             // Merge billing submission details
             if (job.operations?.[0]?.statusDetails?.[0]?.billing_details) {
               e.billing_details = job.operations[0].statusDetails[0].billing_details;
@@ -288,9 +288,9 @@ router.get("/freight-enquiries", async (req, res) => {
       const draftApproved = e.draft_bl_approved === true;
       if (!draftApproved) return "Draft BL";
 
-      // Gate 2: SBO – must have ETD (sailing_date) AFTER draft approved
+      // Gate 2: SOB – must have ETD (sailing_date) AFTER draft approved
       const sboDate = !!(e.sailing_date);
-      if (!sboDate) return "SBO";
+      if (!sboDate) return "SOB";
 
       // Gate 3: Billing – must have all 4 billing fields AFTER ETD
       const hasBillingDetails = !!(
@@ -314,7 +314,7 @@ router.get("/freight-enquiries", async (req, res) => {
     };
 
     // Pending = all converted jobs that have NOT yet reached ETA Pending or beyond
-    const PRE_ETA_STAGES = new Set(["Draft BL", "SBO", "Billing"]);
+    const PRE_ETA_STAGES = new Set(["Draft BL", "SOB", "Billing"]);
 
     let enquiryCount = 0;
     let rejectedCount = 0;
@@ -333,7 +333,7 @@ router.get("/freight-enquiries", async (req, res) => {
       if (computedTab === "Enquiry") enquiryCount++;
       else if (computedTab === "Rejected") rejectedCount++;
       else if (computedTab === "Draft BL") { draftBlCount++; pendingCount++; }
-      else if (computedTab === "SBO") { sboCount++; pendingCount++; }
+      else if (computedTab === "SOB") { sboCount++; pendingCount++; }
       else if (computedTab === "Billing") { billingCount++; pendingCount++; }
       else if (computedTab === "ETA Pending") etaPendingCount++;
       else if (computedTab === "Delivery") deliveryCount++;
@@ -360,7 +360,7 @@ router.get("/freight-enquiries", async (req, res) => {
         Rejected: rejectedCount,
         Pending: pendingCount,
         "Draft BL": draftBlCount,
-        SBO: sboCount,
+        SOB: sboCount,
         Billing: billingCount,
         "ETA Pending": etaPendingCount,
         Delivery: deliveryCount,
@@ -505,10 +505,10 @@ router.post("/freight-enquiries", async (req, res) => {
     else if (shipment_type === "Export-Air") typeCode = "EXP/AIR";
 
     const currentFY = getCurrentFinancialYear();
-    
+
     // Helper to generate sequential numbers for different series
     const getNextNo = async (field, prefix) => {
-      const lastEntry = await FreightEnquiryModel.findOne({ 
+      const lastEntry = await FreightEnquiryModel.findOne({
         shipment_type,
         [field]: { $exists: true, $ne: null }
       }).sort({ [field]: -1 });
@@ -549,7 +549,7 @@ router.post("/freight-enquiries", async (req, res) => {
       containers: req.body.containers?.length > 0 ? req.body.containers : (sourceJob?.containers || []),
       bl_details
     });
-    
+
     const savedEnquiry = await newEnquiry.save();
 
     // Send emails to forwarders
@@ -643,7 +643,7 @@ router.put("/freight-enquiries/:id", async (req, res) => {
       else if (shipment_type === "Import-Air") typeCode = "IMP/AIR";
       else if (shipment_type === "Export-Air") typeCode = "EXP/AIR";
 
-      const lastEntry = await FreightEnquiryModel.findOne({ 
+      const lastEntry = await FreightEnquiryModel.findOne({
         shipment_type,
         [field]: { $exists: true, $ne: null }
       }).sort({ [field]: -1 });
@@ -960,19 +960,19 @@ router.get("/freight-forwarding/generate-dsr", async (req, res) => {
       worksheet.addRow([]);
       const leg1 = worksheet.addRow(["", "", "", "", "", "COLOR CODE MEANING FOR IMPORT DSR:"]);
       leg1.getCell(6).font = { bold: true };
-      
+
       const leg2 = worksheet.addRow(["", "", "", "", "", "CUSTOM CLEARANCE COMPLETED / BILLING", "", ""]);
       leg2.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFB4C6E7" } };
-      
+
       const leg3 = worksheet.addRow(["", "", "", "", "", "B/E NOTED / CLEARNCE PENDING", "", ""]);
       leg3.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDEBF7" } };
-      
+
       const leg4 = worksheet.addRow(["", "", "", "", "", "NOTING PENDING / DISCHARGED @ PORT", "", ""]);
       leg4.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCE4D6" } };
-      
+
       const leg5 = worksheet.addRow(["", "", "", "", "", "ETA PENDING", "", ""]);
       leg5.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2CC" } };
-      
+
       const leg6 = worksheet.addRow(["", "", "", "", "", "ETD CONFIRMED", "", ""]);
       leg6.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EFDA" } };
 
@@ -1091,19 +1091,19 @@ router.get("/freight-forwarding/generate-dsr", async (req, res) => {
       worksheet.addRow([]);
       const leg1 = worksheet.addRow(["", "", "", "", "", "COLOR CODE MEANING FOR EXPORT DSR:"]);
       leg1.getCell(6).font = { bold: true };
-      
+
       const leg2 = worksheet.addRow(["", "", "", "", "", "B/L RELED - RECD / JOB SHEET PENDING / BILLING", "", ""]);
       leg2.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC6EFCE" } };
-      
+
       const leg3 = worksheet.addRow(["", "", "", "", "", "DRAFT PROCESS", "", ""]);
       leg3.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDEBF7" } };
-      
+
       const leg4 = worksheet.addRow(["", "", "", "", "", "CUSTOM CLRANCE CMPLTD / DRAFT PROCESS", "", ""]);
       leg4.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCE4D6" } };
-      
+
       const leg5 = worksheet.addRow(["", "", "", "", "", "CARGO PENDING / UNDER CLEARANCE", "", ""]);
       leg5.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2CC" } };
-      
+
       const leg6 = worksheet.addRow(["", "", "", "", "", "ORG PENDING / BOOKING PENDING", "", ""]);
       leg6.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8CBAD" } };
     }
@@ -1124,7 +1124,7 @@ router.get("/freight-forwarding/generate-dsr", async (req, res) => {
     // Style the data rows
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return;
-      
+
       // If it's a legend row, don't draw border or format text like data
       if (rowNumber > enquiries.length + 2) {
         row.eachCell({ includeEmpty: false }, (cell, colNo) => {
