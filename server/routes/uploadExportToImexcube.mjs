@@ -44,7 +44,11 @@ const REQUIRED_FIELDS = {
   "Name of the exporter": "SB_Details.Imp_Exp_Name",
   "Port of Loading": "SB_Details.Port_of_Loading",
   "Port of Final Destination": "SB_Details.Port_of_final_destination",
+  "Country of Final Destination": "SB_Details.Country_of_final_destination",
+  "Consignee Name": "SB_Details.Consignee_name",
   "Total No. of Packages": "SB_Details.Total_number_of_packages",
+  "Gross Weight": "SB_Details.Gross_weight",
+  "Net Weight": "SB_Details.Net_weight",
 };
 
 const normalizeVendorStatusCode = (payload, fallbackStatus = null) => {
@@ -89,7 +93,11 @@ const getRequiredFieldValue = (payload, path) => {
   if (path === "SB_Details.Imp_Exp_Name") return payload?.SB_Details?.Imp_Exp_Name;
   if (path === "SB_Details.Port_of_Loading") return payload?.SB_Details?.Port_of_Loading;
   if (path === "SB_Details.Port_of_final_destination") return payload?.SB_Details?.Port_of_final_destination;
+  if (path === "SB_Details.Country_of_final_destination") return payload?.SB_Details?.Country_of_final_destination;
+  if (path === "SB_Details.Consignee_name") return payload?.SB_Details?.Consignee_name;
   if (path === "SB_Details.Total_number_of_packages") return payload?.SB_Details?.Total_number_of_packages;
+  if (path === "SB_Details.Gross_weight") return payload?.SB_Details?.Gross_weight;
+  if (path === "SB_Details.Net_weight") return payload?.SB_Details?.Net_weight;
   return "";
 };
 

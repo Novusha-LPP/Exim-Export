@@ -1254,17 +1254,27 @@ function FreightForwardingModule() {
                             )}
                             {row.email && (
                               <div style={{ color: "#64748b", fontSize: "10px" }}>
-                                {row.email}
+                                <span style={{ fontWeight: "600" }}>Email:</span> {row.email}
                               </div>
                             )}
                             {row.contact_no && (
                               <div style={{ color: "#64748b", fontSize: "10px" }}>
-                                {row.contact_no}
+                                <span style={{ fontWeight: "600" }}>Contact:</span> {row.contact_no}
+                              </div>
+                            )}
+                            {row.booking_thru && (
+                              <div style={{ color: "#64748b", fontSize: "10px" }}>
+                                <span style={{ fontWeight: "600" }}>Booking Thru:</span> {row.booking_thru}
+                              </div>
+                            )}
+                            {row.sales_person && (
+                              <div style={{ color: "#64748b", fontSize: "10px" }}>
+                                <span style={{ fontWeight: "600" }}>Sales Person:</span> {row.sales_person}
                               </div>
                             )}
                             {row.remarks && !row.remarks.toLowerCase().includes("created automatically from export job") && (
                               <div style={{ color: "#475569", fontSize: "9.5px", fontStyle: "italic", marginTop: "2px" }}>
-                                {row.remarks}
+                                Remarks: {row.remarks}
                               </div>
                             )}
                           </div>
@@ -1278,6 +1288,14 @@ function FreightForwardingModule() {
                                 <span style={{ color: "#64748b", fontWeight: "600" }}>SB No: </span>
                                 <span style={{ fontWeight: "700", color: "#0f172a" }}>
                                   {row.sb_no || row.bl_details?.sb_no} {row.sb_date ? `(${formatDateDisplay(row.sb_date)})` : ""}
+                                </span>
+                              </div>
+                            ) : null}
+                            {row.egm_no ? (
+                              <div>
+                                <span style={{ color: "#64748b", fontWeight: "600" }}>EGM No: </span>
+                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                  {row.egm_no} {row.egm_date ? `(${formatDateDisplay(row.egm_date)})` : ""}
                                 </span>
                               </div>
                             ) : null}
@@ -1297,13 +1315,7 @@ function FreightForwardingModule() {
                                 </span>
                               </div>
                             ) : null}
-                            {row.egm_no ? (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>EGM: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.egm_no}</span>
-                              </div>
-                            ) : null}
-                            {!row.sb_no && !row.bl_details?.sb_no && !row.mbl_no && !row.hbl_no && (
+                            {!row.sb_no && !row.bl_details?.sb_no && !row.egm_no && !row.mbl_no && !row.hbl_no && (
                               <span style={{ color: "#94a3b8", fontStyle: "italic" }}>-</span>
                             )}
                           </div>
@@ -1328,27 +1340,63 @@ function FreightForwardingModule() {
                             </div>
                             {(row.vessel_name || row.bl_details?.vessel_name) && (
                               <div style={{ color: "#1e40af", fontWeight: "700", marginTop: "2px" }}>
-                                {row.vessel_name || row.bl_details?.vessel_name} {(row.voyage_no || row.bl_details?.voyage_no) ? `(${row.voyage_no || row.bl_details?.voyage_no})` : ""}
+                                Vessel: {row.vessel_name || row.bl_details?.vessel_name} {(row.voyage_no || row.bl_details?.voyage_no) ? `(Voy: ${row.voyage_no || row.bl_details?.voyage_no})` : ""}
+                              </div>
+                            )}
+                            {row.flight_no && (
+                              <div>
+                                <span style={{ color: "#64748b", fontWeight: "600" }}>Flight: </span>
+                                <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.flight_no} {row.flight_date ? `(${formatDateDisplay(row.flight_date)})` : ""}</span>
                               </div>
                             )}
                             {row.shipping_line_airline && (
-                              <div style={{ color: "#475569", fontSize: "9.5px" }}>
-                                {row.shipping_line_airline}
+                              <div>
+                                <span style={{ color: "#64748b", fontWeight: "600" }}>Carrier: </span>
+                                <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.shipping_line_airline}</span>
+                              </div>
+                            )}
+                            {row.bl_details?.place_of_issue && (
+                              <div>
+                                <span style={{ color: "#64748b", fontWeight: "600" }}>Issue Place: </span>
+                                <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.bl_details.place_of_issue}</span>
+                              </div>
+                            )}
+                            {row.bl_details?.no_of_originals && (
+                              <div>
+                                <span style={{ color: "#64748b", fontWeight: "600" }}>No of MTD: </span>
+                                <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.bl_details.no_of_originals}</span>
+                              </div>
+                            )}
+                            {row.delay_reason && (
+                              <div style={{ color: "#b45309", backgroundColor: "#fffbeb", border: "1px solid #fde68a", padding: "2px 6px", borderRadius: "3px", marginTop: "2px" }}>
+                                <span style={{ fontWeight: "700" }}>Delay:</span> {row.delay_reason}
                               </div>
                             )}
                           </div>
                         </td>
 
                         {/* Col 5: Container & Cargo Details */}
-                        <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "190px", maxWidth: "230px" }}>
+                        <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "210px", maxWidth: "250px" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            {/* Inline container badges */}
-                            {row.containers && row.containers.length > 0 && (
-                              <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginBottom: "2px" }}>
+                            {/* Containers list with Seals rendered in compact inline rows */}
+                            {row.containers && row.containers.length > 0 && row.containers.some(c => c.container_number || c.custom_seal || c.line_seal) && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginBottom: "2px" }}>
                                 {row.containers.map((c, cIdx) => (
-                                  <span key={cIdx} style={{ fontSize: "9.5px", fontWeight: "700", fontFamily: "monospace", color: "#1e40af", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", padding: "1px 5px", borderRadius: "3px" }}>
-                                    {c.container_number || "CNTR"}
-                                  </span>
+                                  <div key={cIdx} style={{ fontSize: "9.5px", display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                                    <span style={{ fontWeight: "800", color: "#1e40af", fontFamily: "monospace", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", padding: "1px 5px", borderRadius: "3px" }}>
+                                      {c.container_number || "CNTR"}
+                                    </span>
+                                    {c.custom_seal && (
+                                      <span style={{ color: "#64748b", fontSize: "9px" }}>
+                                        Seal: <strong style={{ color: "#334155" }}>{c.custom_seal}</strong>
+                                      </span>
+                                    )}
+                                    {c.line_seal && (
+                                      <span style={{ color: "#64748b", fontSize: "9px" }}>
+                                        L.Seal: <strong style={{ color: "#334155" }}>{c.line_seal}</strong>
+                                      </span>
+                                    )}
+                                  </div>
                                 ))}
                               </div>
                             )}
@@ -1374,17 +1422,38 @@ function FreightForwardingModule() {
                                   <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.volume_cbm} {row.volume_unit || "CBM"}</span>
                                 </div>
                               )}
+                              {row.chargeable_weight && (
+                                <div>
+                                  <span style={{ color: "#64748b", fontWeight: "600" }}>Chg Wt: </span>
+                                  <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.chargeable_weight} {row.chargeable_weight_unit || "KG"}</span>
+                                </div>
+                              )}
                             </div>
+
+                            {/* Dimensions Grid Summary if present */}
+                            {row.dimensions && row.dimensions.length > 0 && row.dimensions.some(d => d.length && d.breadth && d.height) && (
+                              <div style={{ fontSize: "9px", color: "#6b21a8", backgroundColor: "#faf5ff", border: "1px solid #e9d5ff", padding: "3px 6px", borderRadius: "3px", marginTop: "2px" }}>
+                                <span style={{ fontWeight: "800" }}>Dims: </span>
+                                {row.dimensions.map((d, dIdx) => (
+                                  <span key={dIdx}>
+                                    {dIdx > 0 ? " | " : ""}
+                                    {d.no_packages ? `${d.no_packages} pkgs ` : ""}({d.length}x{d.breadth}x{d.height} {d.uom})
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </td>
 
                         {/* Col 6: Transit Dates & Terms */}
-                        <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "170px" }}>
+                        <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "175px" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "10px" }}>
                             {(row.booking_date || row.bl_details?.booking_date) && (
                               <div>
                                 <span style={{ color: "#64748b", fontWeight: "600" }}>Booking: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.booking_date || row.bl_details?.booking_date)}</span>
+                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                  {(row.booking_no || row.bl_details?.booking_no) ? `${row.booking_no || row.bl_details?.booking_no} (${formatDateDisplay(row.booking_date || row.bl_details?.booking_date)})` : formatDateDisplay(row.booking_date || row.bl_details?.booking_date)}
+                                </span>
                               </div>
                             )}
                             {(row.cut_off_date || row.bl_details?.cut_off_date) && (
@@ -1405,11 +1474,44 @@ function FreightForwardingModule() {
                                 <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.eta_date || row.bl_details?.eta_date)}</span>
                               </div>
                             )}
-                            {(row.shipment_terms || row.bl_details?.shipment_terms) && (
-                              <div style={{ marginTop: "2px" }}>
+                            {(row.arrival_date || row.bl_details?.arrival_date) && (
+                              <div>
+                                <span style={{ color: "#64748b", fontWeight: "600" }}>Arrival: </span>
+                                <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.arrival_date || row.bl_details?.arrival_date)}</span>
+                              </div>
+                            )}
+                            {row.consol_date && (
+                              <div>
+                                <span style={{ color: "#64748b", fontWeight: "600" }}>Consol: </span>
+                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                  {row.consol_no ? `${row.consol_no} (${formatDateDisplay(row.consol_date)})` : formatDateDisplay(row.consol_date)}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Terms & Freight Type Badges */}
+                            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "2px" }}>
+                              {(row.shipment_terms || row.bl_details?.shipment_terms) && (
                                 <span style={{ color: "#0f766e", fontWeight: "700", backgroundColor: "#f0fdfa", padding: "1px 5px", borderRadius: "3px", border: "1px solid #99f6e4", fontSize: "9px" }}>
                                   {row.shipment_terms || row.bl_details?.shipment_terms}
                                 </span>
+                              )}
+                              {(row.freight_type || row.bl_details?.freight_type) && (
+                                <span style={{ color: "#1e40af", fontWeight: "700", backgroundColor: "#eff6ff", padding: "1px 5px", borderRadius: "3px", border: "1px solid #bfdbfe", fontSize: "9px" }}>
+                                  {row.freight_type || row.bl_details?.freight_type}
+                                </span>
+                              )}
+                              {(row.cargo_type || row.bl_details?.cargo_type) && (
+                                <span style={{ color: "#334155", fontWeight: "700", backgroundColor: "#f1f5f9", padding: "1px 5px", borderRadius: "3px", border: "1px solid #cbd5e1", fontSize: "9px" }}>
+                                  {row.cargo_type || row.bl_details?.cargo_type}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Manual Weights Summary */}
+                            {(row.net_weight_kg || row.gross_weight_kg || row.total_no_of_pkgs) && (
+                              <div style={{ color: "#475569", fontSize: "9px", marginTop: "2px", borderTop: "1px dashed #e2e8f0", paddingTop: "2px" }}>
+                                <span style={{ fontWeight: "700" }}>Manual:</span> {row.net_weight_kg ? `N: ${row.net_weight_kg}kg ` : ""}{row.gross_weight_kg ? `G: ${row.gross_weight_kg}kg ` : ""}{row.total_no_of_pkgs ? `P: ${row.total_no_of_pkgs}` : ""}
                               </div>
                             )}
                           </div>
