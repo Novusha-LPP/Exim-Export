@@ -660,6 +660,15 @@ function FreightForwardingModule() {
   };
 
   const [rows, setRows] = useState([]);
+  const [expandedContainers, setExpandedContainers] = useState({});
+
+  const toggleExpandContainers = (rowId) => {
+    setExpandedContainers((prev) => ({
+      ...prev,
+      [rowId]: !prev[rowId],
+    }));
+  };
+
   const [openCreate, setOpenCreate] = useState(false);
   const [openDSRDialog, setOpenDSRDialog] = useState(false);
   const [dsrMode, setDsrMode] = useState("Export");
@@ -1378,10 +1387,10 @@ function FreightForwardingModule() {
                         {/* Col 5: Container & Cargo Details */}
                         <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "210px", maxWidth: "250px" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            {/* Containers list with Seals rendered in compact inline rows */}
+                            {/* Containers list with Seals rendered in compact inline rows (Show max 2 unless expanded) */}
                             {row.containers && row.containers.length > 0 && row.containers.some(c => c.container_number || c.custom_seal || c.line_seal) && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginBottom: "2px" }}>
-                                {row.containers.map((c, cIdx) => (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginBottom: "4px" }}>
+                                {(expandedContainers[row._id || row.id || row.enquiry_no] ? row.containers : row.containers.slice(0, 2)).map((c, cIdx) => (
                                   <div key={cIdx} style={{ fontSize: "9.5px", display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
                                     <span style={{ fontWeight: "800", color: "#1e40af", fontFamily: "monospace", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", padding: "1px 5px", borderRadius: "3px" }}>
                                       {c.container_number || "CNTR"}
@@ -1398,6 +1407,32 @@ function FreightForwardingModule() {
                                     )}
                                   </div>
                                 ))}
+                                {row.containers.length > 2 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleExpandContainers(row._id || row.id || row.enquiry_no);
+                                    }}
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      color: "#2563eb",
+                                      fontSize: "9.5px",
+                                      fontWeight: "700",
+                                      cursor: "pointer",
+                                      padding: "1px 0",
+                                      textAlign: "left",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "3px"
+                                    }}
+                                  >
+                                    {expandedContainers[row._id || row.id || row.enquiry_no]
+                                      ? "▲ Show Less"
+                                      : `▼ +${row.containers.length - 2} More Containers`}
+                                  </button>
+                                )}
                               </div>
                             )}
 
