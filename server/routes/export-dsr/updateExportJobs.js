@@ -1816,6 +1816,8 @@ router.get("/exports/:status?", async (req, res) => {
       job_date: 1,
       consignmentType: 1,
       job_owner: 1,
+      send_for_billing: 1,
+      send_for_billing_date: 1,
       operational_lock: 1,
       exporter: 1,
       exporter_ref_no: 1,

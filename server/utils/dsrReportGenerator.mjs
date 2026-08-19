@@ -958,3 +958,463 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
     throw error;
   }
 };
+
+/**
+ * Generate Table DSR Excel Buffer (9 columns matching Image 3)
+ * @param {string} exporter - Exporter name or "all"
+ * @param {boolean} onlyPending - If true, only include pending jobs
+ * @param {string} year - Financial year e.g. "26-27"
+ * @param {string} startDate - Start date string YYYY-MM-DD
+ * @param {string} endDate - End date string YYYY-MM-DD
+ * @param {string} status - Tab/Status filter
+ * @returns {Promise<Buffer>} - Excel workbook buffer
+ */
+export const generateTableDSRBuffer = async (
+  exporter,
+  onlyPending = false,
+  year = "",
+  startDate = "",
+  endDate = "",
+  status = "all"
+) => {
+  try {
+    const isAll = String(exporter || "").toLowerCase() === "all";
+    const filter = {};
+    if (!filter.$and) filter.$and = [];
+
+    if (!isAll && exporter) {
+      filter.$and.push({ exporter: { $regex: `^${exporter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" } });
+    }
+
+    if (year && year !== "" && year.toLowerCase() !== "all") {
+      filter.$and.push({ year });
+    }
+
+    const statusLower = (status || "all").toLowerCase();
+
+    // 1. Exclude/Include General Jobs & Freight Forwarding based on status selection
+    if (statusLower === "general jobs" || statusLower === "general-jobs") {
+      filter.$and.push({ isGeneralJob: true });
+      filter.$and.push({ job_no: { $regex: "^GEN/", $options: "i" } });
+    } else if (statusLower === "freight forwarding" || statusLower === "freight-forwarding") {
+      filter.$and.push({ job_no: { $regex: "^FF", $options: "i" } });
+    } else {
+      filter.$and.push({ job_no: { $regex: "^(?!GEN|FF).*", $options: "i" } });
+      filter.$and.push({ isGeneralJob: { $ne: true } });
+    }
+
+    // 2. Status specific queries
+    if (statusLower === "pending") {
+      filter.$and.push({
+        $and: [
+          { status: { $regex: "^pending$", $options: "i" } },
+          { detailedStatus: { $ne: "Billing Done" } },
+          { isJobCanceled: { $ne: true } },
+        ],
+      });
+    } else if (statusLower === "completed") {
+      filter.$and.push({
+        $and: [
+          {
+            $and: [
+              { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+              { isJobCanceled: { $ne: true } },
+            ],
+          },
+          {
+            $or: [
+              { status: { $regex: "^completed$", $options: "i" } },
+              { detailedStatus: "Billing Done" },
+            ],
+          },
+        ],
+      });
+    } else if (statusLower === "cancelled") {
+      filter.$and.push({
+        $or: [
+          { status: { $regex: "^cancelled$", $options: "i" } },
+          { isJobCanceled: true },
+        ],
+      });
+    } else if (statusLower === "booking pending") {
+      filter.$and.push({
+        $and: [
+          {
+            $or: [
+              { status: { $regex: "^pending$", $options: "i" } },
+              { status: { $exists: false } },
+              { status: null },
+              { status: "" },
+            ],
+          },
+          { detailedStatus: { $ne: "Billing Done" } },
+        ],
+        goods_stuffed_at: "DOCK",
+        consignmentType: "FCL",
+        sb_no: { $type: "string", $ne: "" },
+        $or: [
+          { "operations.statusDetails.leoDate": { $exists: false } },
+          { "operations.statusDetails.leoDate": null },
+          { "operations.statusDetails.leoDate": "" },
+          { "operations.statusDetails": { $size: 0 } }
+        ]
+      });
+    } else if (statusLower === "handover pending") {
+      filter.$and.push({
+        $and: [
+          {
+            $or: [
+              { status: { $regex: "^pending$", $options: "i" } },
+              { status: { $exists: false } },
+              { status: null },
+              { status: "" },
+            ],
+          },
+          { detailedStatus: { $ne: "Billing Done" } },
+        ],
+        "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
+        $or: [
+          { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
+          { "operations.statusDetails": { $size: 0 } }
+        ]
+      });
+    } else if (statusLower === "prepare for billing" || statusLower === "op completed" || statusLower === "op-completed") {
+      filter.$and.push({
+        $and: [
+          {
+            $or: [
+              { status: { $regex: "^pending$", $options: "i" } },
+              { status: { $exists: false } },
+              { status: null },
+              { status: "" },
+            ],
+          },
+          { detailedStatus: { $ne: "Billing Done" } },
+        ]
+      });
+      filter.$and.push({
+        $or: [
+          {
+            $and: [
+              { consignmentType: { $ne: "LCL" } },
+              { job_no: { $not: { $regex: "/AIR/", $options: "i" } } },
+              { "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] } },
+              { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } },
+              { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: true, $nin: [null, ""] } },
+              { "operations.statusDetails.railOutReachedDate": { $exists: true, $nin: [null, ""] } }
+            ]
+          },
+          {
+            $and: [
+              {
+                $or: [
+                  { consignmentType: "LCL" },
+                  { job_no: { $regex: "/AIR/", $options: "i" } }
+                ]
+              },
+              { "operations.statusDetails.leoDate": { $exists: true, $nin: [null, ""] } },
+              { "operations.statusDetails.handoverForwardingNoteDate": { $exists: true, $nin: [null, ""] } }
+            ]
+          }
+        ]
+      });
+      filter.$and.push({
+        $or: [
+          { send_for_billing: { $exists: false } },
+          { send_for_billing: null },
+          { send_for_billing: false },
+        ]
+      });
+    } else if (statusLower === "sent for billing") {
+      filter.$and.push({
+        $and: [
+          {
+            $or: [
+              { status: { $regex: "^pending$", $options: "i" } },
+              { status: { $exists: false } },
+              { status: null },
+              { status: "" },
+            ],
+          },
+          { detailedStatus: { $ne: "Billing Done" } },
+        ]
+      });
+      filter.$and.push({
+        send_for_billing: true
+      });
+    } else if (statusLower === "club-jobs") {
+      filter.$and.push({
+        $or: [
+          { is_club_job_parent: true },
+          { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
+        ]
+      });
+      filter.$and.push({
+        $or: [
+          { status: { $regex: "^pending$", $options: "i" } },
+          { status: { $exists: false } },
+          { status: null },
+          { status: "" },
+        ]
+      });
+      filter.$and.push({ detailedStatus: { $ne: "Billing Done" } });
+      filter.$and.push({ isJobCanceled: { $ne: true } });
+    } else {
+      if (onlyPending) {
+        filter.$and.push({
+          status: { $nin: ["Completed", "completed", "Cancelled", "cancelled"] },
+          isJobCanceled: { $ne: true },
+          detailedStatus: { $ne: "Billing Done" }
+        });
+      }
+    }
+
+    if (startDate || endDate) {
+      const getEffDateExpr = () => ({
+        $cond: {
+          if: {
+            $and: [
+              { $ne: ["$job_date", null] },
+              { $ne: ["$job_date", ""] },
+              { $regexMatch: { input: { $ifNull: ["$job_date", ""] }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } }
+            ]
+          },
+          then: {
+            $dateFromString: {
+              dateString: "$job_date",
+              format: "%d-%m-%Y",
+              onError: "$createdAt"
+            }
+          },
+          else: "$createdAt"
+        }
+      });
+
+      filter.$and.push({
+        $expr: {
+          $let: {
+            vars: {
+              effDate: getEffDateExpr()
+            },
+            in: {
+              $and: [
+                ...(startDate ? [{ $gte: ["$$effDate", new Date(startDate + "T00:00:00.000Z")] }] : []),
+                ...(endDate ? [{ $lte: ["$$effDate", new Date(endDate + "T23:59:59.999Z")] }] : [])
+              ]
+            }
+          }
+        }
+      });
+    }
+
+    if (filter.$and.length === 0) {
+      delete filter.$and;
+    }
+
+    const MAX_JOBS_FOR_REPORT = 5000;
+
+    const jobs = await ExportJob.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(MAX_JOBS_FOR_REPORT)
+      .lean();
+
+    if (!jobs || jobs.length === 0) {
+      throw new Error("No jobs found for the selected exporter");
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Table DSR");
+
+    // Define 9 columns matching Image 3
+    worksheet.columns = [
+      { header: "Job No", key: "job_no", width: 28 },
+      { header: "Exporter", key: "exporter", width: 35 },
+      { header: "Consignee Name", key: "consignee_name", width: 30 },
+      { header: "Invoice", key: "invoice", width: 35 },
+      { header: "SB / Date", key: "sb_date", width: 25 },
+      { header: "Port", key: "port", width: 32 },
+      { header: "Container", key: "container", width: 32 },
+      { header: "Handover", key: "handover", width: 22 },
+      { header: "Status", key: "status", width: 18 },
+    ];
+
+    jobs.forEach((job) => {
+      const statusObj = job.operations?.[0]?.statusDetails?.[0] || {};
+      const scrollAndEgm = extractScrollAndEgmInfo(job);
+
+      // 1. Job No column
+      let jobNoLines = [];
+      if (job.job_no || job.job_number) jobNoLines.push(job.job_no || job.job_number);
+      if (job.exporter_ref_no) jobNoLines.push(`Ref: ${job.exporter_ref_no}`);
+      if (job.custom_house) jobNoLines.push(job.custom_house);
+      if (job.consignmentType) jobNoLines.push(job.consignmentType);
+      if (scrollAndEgm.egmNo) {
+        jobNoLines.push(`EGM: ${scrollAndEgm.egmNo}${scrollAndEgm.egmDate ? " (" + formatDateStr(scrollAndEgm.egmDate) + ")" : ""}`);
+      }
+
+      // 2. Exporter column
+      let exporterLines = [];
+      if (job.exporter) exporterLines.push(job.exporter);
+      if (scrollAndEgm.fwdrName) exporterLines.push(`FWDR: ${scrollAndEgm.fwdrName}`);
+      if (scrollAndEgm.thirdPartyName) exporterLines.push(`3rd PARTY: ${scrollAndEgm.thirdPartyName}`);
+      if (scrollAndEgm.bookingNo) exporterLines.push(`Bk No: ${scrollAndEgm.bookingNo}`);
+      if (scrollAndEgm.shippingLine) exporterLines.push(`S/L: ${scrollAndEgm.shippingLine}`);
+
+      // 3. Consignee Name column
+      const consigneeName = job.consignee_name || (job.consignees && job.consignees[0] && job.consignees[0].consignee_name) || "-";
+
+      // 4. Invoice column
+      let invoiceLines = [];
+      if (job.invoices && job.invoices.length > 0) {
+        job.invoices.forEach(inv => {
+          let parts = [];
+          let invNum = inv.invoiceNumber || inv.invoiceNo || "";
+          if (invNum) parts.push(invNum);
+          if (inv.invoiceDate || inv.invoice_date) parts.push(formatDateStr(inv.invoiceDate || inv.invoice_date));
+          const invVal = inv.invoiceValue || inv.amount || inv.invValue || inv.invoice_value;
+          if (invVal !== undefined && invVal !== null && invVal !== "") {
+            const term = inv.termsOfInvoice || inv.terms_of_invoice ? (inv.termsOfInvoice || inv.terms_of_invoice) + " " : "";
+            const curr = inv.currency || job.currency || "USD";
+            parts.push(`${term}${curr} ${invVal}`);
+          }
+          if (parts.length > 0) invoiceLines.push(parts.join(" / "));
+        });
+      }
+      if (invoiceLines.length === 0 && (job.invoice_number || job.invoice_no)) {
+        let parts = [];
+        let invNum = job.invoice_number || job.invoice_no || "";
+        if (invNum) parts.push(invNum);
+        if (job.invoice_date) parts.push(formatDateStr(job.invoice_date));
+        if (job.invoice_value) parts.push(`${job.currency || "USD"} ${job.invoice_value}`);
+        if (parts.length > 0) invoiceLines.push(parts.join(" / "));
+      }
+
+      // 5. SB / Date column
+      let sbLines = [];
+      if (job.sb_no) sbLines.push(job.sb_no);
+      if (job.sb_date) sbLines.push(formatDateStr(job.sb_date));
+      if (scrollAndEgm.dbkScrolls.length > 0) {
+        scrollAndEgm.dbkScrolls.forEach(d => {
+          sbLines.push(`DBK Scroll: ${d.no}${d.date ? " (" + formatDateStr(d.date) + ")" : ""}`);
+        });
+      }
+      if (scrollAndEgm.rosctlScrolls.length > 0) {
+        scrollAndEgm.rosctlScrolls.forEach(r => {
+          sbLines.push(`RoSCTL Scroll: ${r.no}${r.date ? " (" + formatDateStr(r.date) + ")" : ""}`);
+        });
+      }
+
+      // 6. Port column
+      let portLines = [];
+      if (job.destination_port || job.destination_country) {
+        portLines.push(`Dest: ${job.destination_port || ""} ${job.destination_country ? "(" + job.destination_country + ")" : ""}`.trim());
+      }
+      if (job.discharge_port || job.discharge_country) {
+        portLines.push(`Discharge: ${job.discharge_port || ""} ${job.discharge_country ? "(" + job.discharge_country + ")" : ""}`.trim());
+      }
+      if (job.port_of_loading) {
+        portLines.push(`POL: ${job.port_of_loading}`);
+      }
+
+      // 7. Container column
+      let cntrLines = [];
+      const pkgs = job.total_no_of_pkgs || job.no_of_packages;
+      if (pkgs) cntrLines.push(`Pkgs: ${pkgs} ${job.package_unit || ""}`.trim());
+      const gross = job.gross_weight_kg || job.gross_weight;
+      if (gross) cntrLines.push(`G: ${gross} kg`);
+      const net = job.net_weight_kg || job.net_weight;
+      if (net) cntrLines.push(`N: ${net} kg`);
+
+      if (job.containers && job.containers.length > 0) {
+        job.containers.forEach(c => {
+          const cntrNo = c.containerNo || c.container_number;
+          if (cntrNo) cntrLines.push(`Cont: ${cntrNo}`);
+          const cleanSize = getCleanContainerSize(c);
+          if (cleanSize) cntrLines.push(`Size/Type: ${cleanSize}`);
+        });
+      }
+
+      // 8. Handover column
+      let handoverLines = [];
+      const vgmDate = job.vgm_date || statusObj.vgmDate || (job.vgm_done ? formatDateStr(job.updatedAt) : "");
+      if (vgmDate) handoverLines.push(`VGM: ${formatDateStr(vgmDate)}`);
+
+      const form13Date = job.form13_date || statusObj.form13Date || (job.form13_done ? formatDateStr(job.updatedAt) : "");
+      if (form13Date) handoverLines.push(`F13: ${formatDateStr(form13Date)}`);
+
+      const esabDate = job.esanchit_completed_date_time || job.esab_date || job.eSanchitDate || statusObj.esanchitDate;
+      if (esabDate) handoverLines.push(`ESAB: ${formatDateStr(esabDate)}`);
+
+      const handoverDate = statusObj.handoverForwardingNoteDate || statusObj.handoverConcorTharSanganaRailRoadDate || job.handover_date;
+      if (handoverDate) handoverLines.push(`Handover: ${formatDateStr(handoverDate)}`);
+
+      // 9. Status column
+      const statusText = job.detailedStatus || job.status || "Pending";
+
+      worksheet.addRow({
+        job_no: jobNoLines.join("\n"),
+        exporter: exporterLines.join("\n"),
+        consignee_name: consigneeName,
+        invoice: invoiceLines.join("\n\n"),
+        sb_date: sbLines.join("\n"),
+        port: portLines.join("\n"),
+        container: cntrLines.join("\n"),
+        handover: handoverLines.join("\n"),
+        status: statusText,
+      });
+    });
+
+    // Style Header Row (Dark Navy Blue background, white bold text)
+    const headerRow = worksheet.getRow(1);
+    headerRow.height = 32;
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, size: 11, color: { argb: "FFFFFF" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "1F4E78" },
+      };
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      cell.border = {
+        top: { style: "thin", color: { argb: "000000" } },
+        left: { style: "thin", color: { argb: "FFFFFF" } },
+        bottom: { style: "medium", color: { argb: "000000" } },
+        right: { style: "thin", color: { argb: "FFFFFF" } },
+      };
+    });
+
+    // Style Data Rows
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const isEven = rowNumber % 2 === 0;
+      const bgColor = isEven ? "FFFFFF" : "F8FAFD";
+
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: bgColor },
+        };
+        cell.border = {
+          top: { style: "thin", color: { argb: "D0D7DE" } },
+          left: { style: "thin", color: { argb: "D0D7DE" } },
+          bottom: { style: "thin", color: { argb: "D0D7DE" } },
+          right: { style: "thin", color: { argb: "D0D7DE" } },
+        };
+
+        if (colNumber === 9) { // Status column
+          cell.font = { bold: true, size: 10, color: { argb: "1F4E78" } };
+          cell.alignment = { vertical: "top", horizontal: "center", wrapText: true };
+        } else {
+          cell.font = { size: 10, color: { argb: "1E293B" } };
+          cell.alignment = { vertical: "top", horizontal: "left", wrapText: true };
+        }
+      });
+    });
+
+    return await workbook.xlsx.writeBuffer();
+  } catch (error) {
+    console.error("Error generating Table DSR buffer:", error);
+    throw error;
+  }
+};

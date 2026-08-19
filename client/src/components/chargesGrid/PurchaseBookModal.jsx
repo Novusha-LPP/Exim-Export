@@ -44,7 +44,14 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
         "jobRef": '',
         "apiKeyName": '',
         isClubJob: false,
-        clubbedJobs: []
+        clubbedJobs: [],
+        "Currency": 'INR',
+        "Currency Amount": '',
+        "Exchange Rate": '',
+        "ETA Date": '',
+        "Volume (CBM)": '',
+        "IGM Number": '',
+        "IGM Date": ''
     });
 
     useEffect(() => {
@@ -188,7 +195,14 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                         "jobRef": initialData.jobId || '',
                         isClubJob: initialData.isClubJob || false,
                         clubbedJobs: initialData.clubbedJobs || [],
-                        "Virtual Balance Terminal": initialData.virtualBalanceTerminal || ''
+                        "Virtual Balance Terminal": initialData.virtualBalanceTerminal || '',
+                        "Currency": initialData.currency || initialData.costCurrency || 'INR',
+                        "Currency Amount": initialData.currencyAmount || initialData.foreignCurrencyAmount || (initialData.currency && initialData.currency !== 'INR' ? (initialData.basicAmount || initialData.amount || '') : ''),
+                        "Exchange Rate": initialData.exchangeRate || initialData.exRate || '',
+                        "ETA Date": formatDate(initialData.eta_date || initialData.etaDate, 'yyyy-MM-dd') || '',
+                        "Volume (CBM)": initialData.volume_cbm || initialData.volume || '',
+                        "IGM Number": initialData.igm_no || initialData.igmNo || '',
+                        "IGM Date": formatDate(initialData.igm_date || initialData.igmDate, 'yyyy-MM-dd') || ''
                     }));
                 }
             };
@@ -272,7 +286,10 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     revenueIgst: Number(tallyData["Revenue IGST"] || initialData.revenueIgst || 0),
                     revenueTotal: revTot,
                     invoiceNumber: tallyData["Supplier Inv No"] || initialData.invoice_number || '',
-                    invoiceDate: tallyData["Supplier Inv Date"] || initialData.invoice_date || ''
+                    invoiceDate: tallyData["Supplier Inv Date"] || initialData.invoice_date || '',
+                    currency: tallyData["Currency"] || initialData.currency || 'INR',
+                    currencyAmount: Number(tallyData["Currency Amount"] || 0),
+                    exchangeRate: Number(tallyData["Exchange Rate"] || 1)
                 };
 
                 const submissionData = {

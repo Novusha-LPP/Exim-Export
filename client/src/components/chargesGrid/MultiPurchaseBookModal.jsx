@@ -139,7 +139,10 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                     revenueTotal: revTot,
 
                     invoiceNumber: c.invoice_number || '',
-                    invoiceDate: c.invoice_date || ''
+                    invoiceDate: c.invoice_date || '',
+                    currency: c.currency || c.costCurrency || 'INR',
+                    currencyAmount: Number(c.currencyAmount || c.foreignCurrencyAmount || 0),
+                    exchangeRate: Number(c.exchangeRate || c.exRate || 1)
                 };
             });
             setChargeItems(items);
@@ -248,7 +251,14 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                 "jobRef": firstCharge.jobId || '',
                 isClubJob: firstCharge.isClubJob || false,
                 clubbedJobs: firstCharge.clubbedJobs || [],
-                "Virtual Balance Terminal": firstCharge.virtualBalanceTerminal || ''
+                "Virtual Balance Terminal": firstCharge.virtualBalanceTerminal || '',
+                "Currency": firstCharge.currency || firstCharge.costCurrency || 'INR',
+                "Currency Amount": firstCharge.currencyAmount || firstCharge.foreignCurrencyAmount || (firstCharge.currency && firstCharge.currency !== 'INR' ? (firstCharge.basicAmount || firstCharge.amount || '') : ''),
+                "Exchange Rate": firstCharge.exchangeRate || firstCharge.exRate || '',
+                "ETA Date": formatDate(firstCharge.eta_date || firstCharge.etaDate, 'yyyy-MM-dd') || '',
+                "Volume (CBM)": firstCharge.volume_cbm || firstCharge.volume || '',
+                "IGM Number": firstCharge.igm_no || firstCharge.igmNo || '',
+                "IGM Date": formatDate(firstCharge.igm_date || firstCharge.igmDate, 'yyyy-MM-dd') || ''
             }));
         };
 

@@ -325,6 +325,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
 
         const selectProjection = {
             job_no: 1, docClicks: 1, custom_house: 1, job_date: 1, consignmentType: 1, job_owner: 1,
+            send_for_billing: 1, send_for_billing_date: 1,
             exporter: 1, exporter_ref_no: 1, exporter_branch_name: 1,
             "consignees.consignee_name": 1, buyerThirdPartyInfo: 1, forwarder: 1,
             drawback_scroll_no: 1, drawback_scroll_date: 1, rosctl_scroll_no: 1, rosctl_scroll_date: 1,

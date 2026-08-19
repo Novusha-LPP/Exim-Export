@@ -49,6 +49,13 @@ const purchaseBookEntrySchema = new mongoose.Schema({
     isMultiCharge: { type: Boolean, default: false },
     chargeItems: { type: Array, default: [] },
     chargeRefs: { type: [String], default: [] },
+    currency: { type: String, default: 'INR' },
+    currencyAmount: { type: Number },
+    exchangeRate: { type: Number },
+    etaDate: { type: String, default: '' },
+    volumeCbm: { type: String, default: '' },
+    igmNo: { type: String, default: '' },
+    igmDate: { type: String, default: '' },
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

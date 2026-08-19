@@ -1822,7 +1822,8 @@ const ExportJobsTable = () => {
             onlyPending: dsrTab === "only-pending",
             status: dsrTab === "only-pending" ? "all" : dsrTab,
             startDate: dsrStartDate,
-            endDate: dsrEndDate
+            endDate: dsrEndDate,
+            format: "old"
           },
           responseType: "blob",
         },
@@ -1832,7 +1833,7 @@ const ExportJobsTable = () => {
       link.href = url;
       const fileName = isAll
         ? `DSR_Report_All_Exporters_${format(new Date(), "yyyyMMdd")}.xlsx`
-        : `DSR_Report_${selectedExporter}_${format(new Date(), "yyyyMMdd")}.xlsx`;
+        : `DSR_Report_${selectedExporter.replace(/\s+/g, '_')}_${format(new Date(), "yyyyMMdd")}.xlsx`;
       link.setAttribute(
         "download",
         fileName,
@@ -1857,227 +1858,36 @@ const ExportJobsTable = () => {
     try {
       const isAll = selectedExporter === "All Exporters";
       const response = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/exports`,
+        `${import.meta.env.VITE_API_STRING}/export-dsr/generate-dsr-report`,
         {
           params: {
-            exporter: isAll ? "all" : selectedExporter,
+            exporter: isAll ? "All" : selectedExporter,
             year: dsrYear,
-            status: dsrTab === "only-pending" ? "Pending" : dsrTab,
-            limit: 5000,
+            onlyPending: dsrTab === "only-pending",
+            status: dsrTab === "only-pending" ? "all" : dsrTab,
             startDate: dsrStartDate,
-            endDate: dsrEndDate
+            endDate: dsrEndDate,
+            format: "table"
           },
-        }
+          responseType: "blob",
+        },
       );
-      if (response.data.success) {
-        const jobsToExport = response.data.data.jobs || [];
-        if (jobsToExport.length === 0) {
-          alert(`No jobs found for ${isAll ? "all exporters" : "this exporter"}.`);
-          return;
-        }
-
-        const exportData = jobsToExport.map((job) => {
-          const rowData = {};
-
-          // Column 1: Job No
-          let jobNoCol = [];
-          if (job.job_no) jobNoCol.push(job.job_no);
-          if (job.exporter_ref_no) jobNoCol.push(`Ref: ${job.exporter_ref_no}`);
-          if (job.custom_house) jobNoCol.push(job.custom_house);
-          if (job.consignmentType) jobNoCol.push(job.consignmentType);
-          rowData["Job No"] = jobNoCol.join("\n");
-          let expVal = job.exporter || "";
-          const fwdName = job.forwarder || job.operations?.[0]?.statusDetails?.[0]?.forwarderName;
-          if (fwdName) {
-            expVal += `\nFWDR: ${fwdName}`;
-          }
-          rowData["Exporter"] = expVal;
-
-          // Column 2: Consignee Name
-          let consigneeCol = [];
-          if (job.consignees?.[0]?.consignee_name) consigneeCol.push(job.consignees[0].consignee_name);
-          else if (job.invoices?.[0]?.consigneeName) consigneeCol.push(job.invoices[0].consigneeName);
-          rowData["Consignee Name"] = consigneeCol.join("\n") || "";
-
-          // Column 3: Invoice
-          let invCol = [];
-          if (job.invoices && job.invoices.length > 0) {
-            job.invoices.forEach(inv => {
-              if (inv.invoiceNumber) invCol.push(inv.invoiceNumber);
-              if (inv.invoiceDate) invCol.push(formatDate(inv.invoiceDate, "dd-MM-yy"));
-              if (inv.invoiceValue && inv.currency) invCol.push(`${inv.currency} ${inv.invoiceValue}`);
-            });
-          }
-          const bd = job.operations?.[0]?.statusDetails?.[0]?.billing_details;
-          if (bd) {
-            if (bd.agency_bill_no) {
-              invCol.push(`Bill (A): ${bd.agency_bill_no}${bd.agency_bill_date ? ` / ${formatDate(bd.agency_bill_date, "dd-MM-yy")}` : ''}`);
-            }
-            if (bd.reimbursement_bill_no) {
-              invCol.push(`Bill (R): ${bd.reimbursement_bill_no}${bd.reimbursement_bill_date ? ` / ${formatDate(bd.reimbursement_bill_date, "dd-MM-yy")}` : ''}`);
-            }
-          }
-          rowData["Invoice"] = invCol.join("\n");
-
-          // Column 4: SB / Date
-          let sbCol = [];
-          if (job.sb_no) sbCol.push(job.sb_no);
-          if (job.sb_date) sbCol.push(job.sb_date);
-          rowData["SB / Date"] = sbCol.join("\n");
-
-          // Column 5: Port
-          let portCol = [];
-          if (job.destination_port) portCol.push(`Dest: ${job.destination_port}`);
-          if (job.destination_country) portCol.push(job.destination_country);
-          if (job.port_of_discharge) portCol.push(`Discharge: ${job.port_of_discharge}`);
-          if (job.discharge_country) portCol.push(job.discharge_country);
-          if (job.port_of_loading) portCol.push(`POL: ${job.port_of_loading}`);
-          rowData["Port"] = portCol.join("\n");
-
-          // Column 6: Container
-          let contCol = [];
-          if (job.total_no_of_pkgs) contCol.push(`Pkgs: ${job.total_no_of_pkgs} ${job.package_unit || ""}`);
-          if (job.gross_weight_kg) contCol.push(`G: ${job.gross_weight_kg} kg`);
-          if (job.net_weight_kg) contCol.push(`N: ${job.net_weight_kg} kg`);
-
-          if (job.containers && job.containers.length > 0) {
-            job.containers.forEach(c => {
-              if (c.containerNo) contCol.push(`Cont: ${c.containerNo}`);
-              const cSize = c.container_size || c.containerSize || c.size || c.isoCode || job.container_size || "";
-              const cType = c.container_type || c.containerType || c.type || job.container_type || "";
-              const cLabel = [cSize, cType].filter(Boolean).join(" ");
-              if (cLabel) contCol.push(`Size/Type: ${getContainerSizeLabel(cLabel)}`);
-            });
-          }
-          const placeDate = job.operations?.[0]?.statusDetails?.[0]?.containerPlacementDate;
-          if (placeDate) contCol.push(`Place: ${formatDate(placeDate, "dd-MM-yy")}`);
-          rowData["Container"] = contCol.join("\n");
-
-          // Column 7: Handover
-          let handCol = [];
-          const opDetails = job.operations?.[0]?.statusDetails?.[0] || {};
-          const isLcl = job.consignmentType === "LCL";
-          const isAir = job.transportMode?.toUpperCase() === "AIR" || job.job_no?.toUpperCase().includes("/AIR/");
-          const showRailRoad = !isLcl && !isAir;
-          const outLbl = opDetails.railRoad === "road" ? "Road Out" : "Rail Out";
-          const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
-
-          if (opDetails.leoDate) handCol.push(`Leo: ${formatDate(opDetails.leoDate, "dd-MM-yy")}`);
-          if (job.vgm_date) handCol.push(`VGM: ${formatDate(job.vgm_date, "dd-MM-yy")}`);
-          if (job.form13_date) handCol.push(`F-13: ${formatDate(job.form13_date, "dd-MM-yy")}`);
-          if (job.shipping_bill_done_date) handCol.push(`ESB: ${formatDate(job.shipping_bill_done_date, "dd-MM-yy")}`);
-          if (opDetails.handoverForwardingNoteDate) handCol.push(`DHo: ${formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}`);
-          if (showRailRoad) {
-            if (opDetails.handoverConcorTharSanganaRailRoadDate) handCol.push(`${outLbl}: ${formatDate(opDetails.handoverConcorTharSanganaRailRoadDate, "dd-MM-yy")}`);
-            if (opDetails.railOutReachedDate) handCol.push(`${reachedLbl}: ${formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}`);
-          }
-          if (opDetails.billing_details?.agency_bill_date || opDetails.billing_details?.reimbursement_bill_date) {
-            const agencyDate = opDetails.billing_details.agency_bill_date ? formatDate(opDetails.billing_details.agency_bill_date, "dd-MM-yy") : "";
-            const reimbursementDate = opDetails.billing_details.reimbursement_bill_date ? formatDate(opDetails.billing_details.reimbursement_bill_date, "dd-MM-yy") : "";
-            const displayDates = [agencyDate, reimbursementDate].filter(Boolean).join(" & ");
-            handCol.push(`Bill: ${displayDates}`);
-          } else if (opDetails.billingDocsSentDt) {
-            handCol.push(`Bill: ${formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}`);
-          }
-
-          rowData["Handover"] = handCol.join("\n");
-
-          // Column 8: Status
-          let statusCol = [];
-          const statusValue = (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
-            ? job.detailedStatus[job.detailedStatus.length - 1]
-            : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "-";
-          statusCol.push(statusValue);
-          rowData["Status"] = statusCol.join("\n");
-
-          // We also attach raw status for color reference (removed later if needed, but it helps below)
-          rowData["_StatusColorRef"] = statusValue;
-
-          // Remove entirely empty columns dynamically as per user rule:
-          Object.keys(rowData).forEach(key => {
-            if (key !== "_StatusColorRef" && (!rowData[key] || rowData[key].trim() === "")) {
-              delete rowData[key];
-            }
-          });
-
-          return rowData;
-        });
-        // Use ExcelJS
-        const ExcelJS = (await import("exceljs")).default;
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet("DSR Report");
-
-        // Define columns based on our structure map
-        worksheet.columns = [
-          { header: "Job No", key: "Job No", width: 25 },
-          { header: "Exporter", key: "Exporter", width: 30 },
-          { header: "Consignee Name", key: "Consignee Name", width: 30 },
-          { header: "Invoice", key: "Invoice", width: 30 },
-          { header: "SB / Date", key: "SB / Date", width: 15 },
-          { header: "Port", key: "Port", width: 25 },
-          { header: "Container", key: "Container", width: 30 },
-          { header: "Handover", key: "Handover", width: 20 },
-          { header: "Status", key: "Status", width: 20 },
-        ];
-
-        // Format Headers
-        worksheet.getRow(1).eachCell((cell) => {
-          cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FF2C5AA0" }, // Custom Blue
-          };
-          cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
-          cell.border = {
-            top: { style: "thin" }, left: { style: "thin" },
-            bottom: { style: "thin" }, right: { style: "thin" }
-          };
-        });
-
-        // Add Data Rows and Format
-        exportData.forEach((rowObj) => {
-          const newRow = worksheet.addRow(rowObj);
-
-          // Apply styling to all cells in the row
-          newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-            cell.alignment = { vertical: "top", horizontal: "left", wrapText: true };
-            cell.border = {
-              top: { style: "thin" }, left: { style: "thin" },
-              bottom: { style: "thin" }, right: { style: "thin" }
-            };
-
-            // Apply background color if available
-            if (rowObj["_StatusColorRef"]) {
-              const colorHex = getStatusColor(rowObj["_StatusColorRef"]).replace("#", "");
-              if (colorHex !== "transparent") {
-                let finalHex = colorHex;
-                if (finalHex.length === 8) finalHex = finalHex.substring(0, 6); // RRGGBBAA -> RRGGBB
-                if (finalHex.length === 4) finalHex = finalHex.substring(0, 3);
-                // Standardize to 6 chars ARGB for exceljs (opaque)
-                if (finalHex.length === 6) {
-                  cell.fill = {
-                    type: "pattern",
-                    pattern: "solid",
-                    fgColor: { argb: "FF" + finalHex }
-                  };
-                }
-              }
-            }
-          });
-        });
-
-        // Export file
-        const buffer = await workbook.xlsx.writeBuffer();
-        const dateStr = format(new Date(), "yyyyMMdd");
-        saveAs(new Blob([buffer]), `Table_DSR_${selectedExporter}_${dateStr}.xlsx`);
-        setOpenDSRDialog(false);
-      } else {
-        alert("Failed to fetch jobs data");
-      }
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      const fileName = isAll
+        ? `Table_DSR_All_Exporters_${format(new Date(), "yyyyMMdd")}.xlsx`
+        : `Table_DSR_${selectedExporter.replace(/\s+/g, '_')}_${format(new Date(), "yyyyMMdd")}.xlsx`;
+      link.setAttribute(
+        "download",
+        fileName,
+      );
+      document.body.appendChild(link);
+      link.click();
+      setOpenDSRDialog(false);
     } catch (err) {
-      console.error(err);
-      alert("Error generating table DSR report");
+      console.error("Error downloading Table DSR:", err);
+      alert("Failed to download Table DSR report");
     } finally {
       setDSRLoading(false);
     }
@@ -4075,7 +3885,7 @@ const ExportJobsTable = () => {
                                   const fileCoverUser = docClicks.file_cover?.clickedBy;
                                   const esanchitUser = docClicks.esanchit?.clickedBy;
                                   const hasCustomFileGenerated = checklistUser && fileCoverUser && esanchitUser &&
-                                    checklistUser === fileCoverUser && checklistUser === esanchitUser;
+                                    checklistUser === fileCoverUser && checklistUser === esanchitUser && !job.send_for_billing;
 
                                   if (hasCustomFileGenerated) return "#e6f4ea";
                                   if (job.sb_or_seal_changed_notif) return "#ffedd5";
@@ -4245,7 +4055,7 @@ const ExportJobsTable = () => {
                                 const fileCoverUser = docClicks.file_cover?.clickedBy;
                                 const esanchitUser = docClicks.esanchit?.clickedBy;
                                 const hasCustomFileGenerated = checklistUser && fileCoverUser && esanchitUser &&
-                                  checklistUser === fileCoverUser && checklistUser === esanchitUser;
+                                  checklistUser === fileCoverUser && checklistUser === esanchitUser && !job.send_for_billing;
 
                                 if (hasCustomFileGenerated) {
                                   return (

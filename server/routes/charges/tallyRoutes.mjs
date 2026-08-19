@@ -394,7 +394,11 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
             const rate = parseFloat(job.exchange_rate || inv.freightInsuranceCharges?.freight?.exchangeRate || 1);
             return (fob * rate).toFixed(2);
         })(),
-        "Sb Heading": inv?.products?.[0]?.description || ""
+        "Sb Heading": inv?.products?.[0]?.description || "",
+        "ETA Date": normalizeDate(job.eta_date || job.etaDate || job.bl_details?.eta_date || job.operations?.[0]?.statusDetails?.[0]?.etaDate || ""),
+        "Volume (CBM)": job.volume_cbm ? String(job.volume_cbm) : (job.volume ? String(job.volume) : (job.cbm ? String(job.cbm) : (job.bl_details?.volume ? String(job.bl_details.volume) : ""))),
+        "IGM Number": job.igm_no || job.igm_number || job.igmNo || "",
+        "IGM Date": normalizeDate(job.igm_date || job.igmDate || "")
     };
 };
 
@@ -475,7 +479,11 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
             const rate = parseFloat(job.exchange_rate || inv.freightInsuranceCharges?.freight?.exchangeRate || 1);
             return (fob * rate).toFixed(2);
         })(),
-        "Sb Heading": inv?.products?.[0]?.description || ""
+        "Sb Heading": inv?.products?.[0]?.description || "",
+        "ETA Date": normalizeDate(job.eta_date || job.bl_details?.eta_date || job.etaDate || ""),
+        "Volume (CBM)": job.volume_cbm ? String(job.volume_cbm) : (job.volume ? String(job.volume) : (job.cbm ? String(job.cbm) : (job.bl_details?.volume ? String(job.bl_details.volume) : ""))),
+        "IGM Number": job.igm_no || job.igm_number || job.igmNo || "",
+        "IGM Date": normalizeDate(job.igm_date || job.igmDate || "")
     };
 };
 
@@ -597,8 +605,10 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
 
     if (!job) return null;
 
+    const isFreight = isFreightJob(job) || String(job_number).toUpperCase().includes("FF-") || String(job_number).toUpperCase().startsWith("FF");
+
     // If it's a child job of a club job, resolve and retrieve the parent job details instead
-    if (!job.is_club_job_parent && job.parent_club_job) {
+    if (!isFreight && !job.is_club_job_parent && job.parent_club_job) {
         let parentJob = await ExJobModel.findOne({
             $or: [{ job_no: job.parent_club_job }, { tally_club_ref_no: job.parent_club_job }]
         }).lean();
@@ -614,7 +624,7 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
         }
     }
 
-    if (job.is_club_job_parent && Array.isArray(job.clubbed_jobs) && job.clubbed_jobs.length > 0) {
+    if (!isFreight && job.is_club_job_parent && Array.isArray(job.clubbed_jobs) && job.clubbed_jobs.length > 0) {
         // Format the club job series
         const clubJobSeries = formatClubJobSeries(job.clubbed_jobs, job.tally_club_ref_no || job.job_no);
         job.tally_club_ref_no = clubJobSeries;
@@ -749,7 +759,9 @@ router.get("/next-sequence", authApiKey, async (req, res) => {
             $or: resolveJobNumberQuery(jobNo)
         }).sort({ is_club_job_parent: -1 }).lean();
 
-        if (job) {
+        const isFreight = isFreightJob(job) || String(jobNo).toUpperCase().includes("FF-") || String(jobNo).toUpperCase().startsWith("FF");
+
+        if (job && !isFreight) {
             if (!job.is_club_job_parent && job.parent_club_job) {
                 const parentJob = await ExJobModel.findOne({
                     $or: [{ job_no: job.parent_club_job }, { tally_club_ref_no: job.parent_club_job }]
@@ -761,7 +773,7 @@ router.get("/next-sequence", authApiKey, async (req, res) => {
         }
 
         let countQuery = {};
-        if (job && job.is_club_job_parent && Array.isArray(job.clubbed_jobs) && job.clubbed_jobs.length > 0) {
+        if (!isFreight && job && job.is_club_job_parent && Array.isArray(job.clubbed_jobs) && job.clubbed_jobs.length > 0) {
             const formattedSeries = formatClubJobSeries(job.clubbed_jobs, job.tally_club_ref_no || job.job_no);
             resolvedJobNo = formattedSeries;
 
@@ -941,7 +953,14 @@ const mapPurchaseEntryData = (data) => {
         virtualBalanceTerminal: data["Virtual Balance Terminal"] || data["Virtual Balance"] || data.virtualBalanceTerminal || data.virtualBalance || '',
         isMultiCharge: data.isMultiCharge !== undefined ? data.isMultiCharge : false,
         chargeItems: Array.isArray(data.chargeItems) ? data.chargeItems : [],
-        chargeRefs: Array.isArray(data.chargeRefs) ? data.chargeRefs : []
+        chargeRefs: Array.isArray(data.chargeRefs) ? data.chargeRefs : [],
+        currency: data["Currency"] || data["Invoice Currency"] || data.currency || "INR",
+        currencyAmount: Number(data["Currency Amount"] || data["Foreign Currency Amount"] || data.currencyAmount || data.foreignCurrencyAmount || 0),
+        exchangeRate: Number(data["Exchange Rate"] || data.exchangeRate || 1),
+        etaDate: normalizeDate(data["ETA Date"] || data.etaDate),
+        volumeCbm: data["Volume (CBM)"] || data["Volume"] || data.volumeCbm || '',
+        igmNo: data["IGM Number"] || data["IGM No"] || data.igmNo || '',
+        igmDate: normalizeDate(data["IGM Date"] || data.igmDate)
     };
 };
 
@@ -1054,10 +1073,11 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             }).sort({ is_club_job_parent: -1 }).lean();
         } catch (e) { }
 
-        let isClub = entry.isClubJob;
-        let clubbedList = entry.clubbedJobs || [];
+        const isFreightForwardingJob = isFreightJob(rawJobDB) || String(firstJobRaw).toUpperCase().includes("FF-") || String(firstJobRaw).toUpperCase().startsWith("FF");
+        let isClub = !isFreightForwardingJob && entry.isClubJob;
+        let clubbedList = !isFreightForwardingJob ? (entry.clubbedJobs || []) : [];
 
-        if (rawJobDB) {
+        if (rawJobDB && !isFreightForwardingJob) {
             if (rawJobDB.is_club_job_parent && rawJobDB.clubbed_jobs?.length > 0) {
                 isClub = true;
                 clubbedList = rawJobDB.clubbed_jobs;
@@ -1135,7 +1155,14 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "TDS Category": tdsKey,
             "Status": entry.status,
             "isClubJob": entry.isClubJob || false,
-            "clubbedJobs": entry.clubbedJobs || []
+            "clubbedJobs": entry.clubbedJobs || [],
+            "Currency": entry.currency || "INR",
+            "Currency Amount": entry.currencyAmount !== undefined && entry.currencyAmount !== null ? entry.currencyAmount : (entry.currency && entry.currency !== "INR" ? entry.taxableValue : ""),
+            "Exchange Rate": entry.exchangeRate !== undefined && entry.exchangeRate !== null ? entry.exchangeRate : (entry.currency && entry.currency !== "INR" ? 1 : ""),
+            "ETA Date": normalizeDate(entry.etaDate),
+            "Volume (CBM)": entry.volumeCbm || "",
+            "IGM Number": entry.igmNo || "",
+            "IGM Date": normalizeDate(entry.igmDate)
         };
 
         // SAFETY: If it's a reimbursement, zero out GST fields for Tally even if saved in DB
@@ -1241,6 +1268,14 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     ? Number(item.revenueAmount)
                     : revenueAmount;
 
+                const itemCurrency = item.currency || item.costCurrency || item.chargeCurrency || entry.currency || "INR";
+                const itemCurrencyAmt = item.currencyAmount !== undefined && item.currencyAmount !== null && item.currencyAmount !== 0
+                    ? Number(item.currencyAmount)
+                    : (item.foreignCurrencyAmount !== undefined ? Number(item.foreignCurrencyAmount) : (itemCurrency !== "INR" ? itemTaxable : ""));
+                const itemExRate = item.exchangeRate !== undefined && item.exchangeRate !== null && item.exchangeRate !== 0
+                    ? Number(item.exchangeRate)
+                    : (entry.exchangeRate || (itemCurrency !== "INR" ? 1 : ""));
+
                 return {
                     "Charge Heading": itemHead,
                     "Description of Services": itemDesc,
@@ -1259,7 +1294,10 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     "Net Amount": Math.round(itemNet),
                     "Revenue Amount": itemRevAmt.toFixed(2),
                     "Supplier Inv No": item.invoiceNumber || supplierInvNo || '',
-                    "Supplier Inv Date": item.invoiceDate || supplierInvDate || ''
+                    "Supplier Inv Date": item.invoiceDate || supplierInvDate || '',
+                    "Currency": itemCurrency,
+                    "Currency Amount": itemCurrencyAmt,
+                    "Exchange Rate": itemExRate
                 };
             })
             : (() => {
@@ -1309,7 +1347,10 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     "Net Amount": Math.round(formattedData["Net Amount"] !== undefined ? formattedData["Net Amount"] : (netAmount || 0)),
                     "Revenue Amount": revenueAmount.toFixed(2),
                     "Supplier Inv No": supplierInvNo || '',
-                    "Supplier Inv Date": supplierInvDate || ''
+                    "Supplier Inv Date": supplierInvDate || '',
+                    "Currency": entry.currency || "INR",
+                    "Currency Amount": entry.currencyAmount !== undefined && entry.currencyAmount !== null ? entry.currencyAmount : (entry.currency && entry.currency !== "INR" ? entry.taxableValue : ""),
+                    "Exchange Rate": entry.exchangeRate !== undefined && entry.exchangeRate !== null ? entry.exchangeRate : (entry.currency && entry.currency !== "INR" ? 1 : "")
                 }];
             })();
         formattedData["chargeRefs"] = entry.chargeRefs || (entry.chargeRef ? [entry.chargeRef] : []);

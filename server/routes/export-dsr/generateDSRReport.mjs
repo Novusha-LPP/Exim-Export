@@ -1,4 +1,4 @@
-import { generateDSRBuffer } from "../../utils/dsrReportGenerator.mjs";
+import { generateDSRBuffer, generateTableDSRBuffer } from "../../utils/dsrReportGenerator.mjs";
 import express from "express";
 
 const router = express.Router();
@@ -8,7 +8,7 @@ const router = express.Router();
  */
 router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
   try {
-    const { exporter, onlyPending, year, startDate, endDate, status } = req.query;
+    const { exporter, onlyPending, year, startDate, endDate, status, format } = req.query;
 
     if (!exporter) {
       return res.status(400).json({
@@ -18,16 +18,25 @@ router.get("/api/export-dsr/generate-dsr-report", async (req, res) => {
     }
 
     const isAll = String(exporter).toLowerCase() === "all";
-    const buffer = await generateDSRBuffer(exporter, onlyPending === "true", year, startDate, endDate, status || "all");
+    const isTableFormat = String(format).toLowerCase() === "table";
+
+    const buffer = isTableFormat
+      ? await generateTableDSRBuffer(exporter, onlyPending === "true", year, startDate, endDate, status || "all")
+      : await generateDSRBuffer(exporter, onlyPending === "true", year, startDate, endDate, status || "all");
 
     // Set response headers
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
+
+    const prefix = isTableFormat ? "Table_DSR" : "DSR_Report";
+    const safeExporterName = isAll ? "All_Exporters" : exporter.replace(/\s+/g, '_');
+    const dateStr = new Date().toISOString().split('T')[0];
+
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="DSR_Report_${isAll ? "All_Exporters" : exporter.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx"`,
+      `attachment; filename="${prefix}_${safeExporterName}_${dateStr}.xlsx"`,
     );
 
     res.send(buffer);
