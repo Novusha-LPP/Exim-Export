@@ -1178,7 +1178,7 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                   </div>
                   <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
                     <label style={{ ...s.label, color: "#1e40af", fontWeight: 700 }}>
-                      Manual Volume (CBM) *
+                      Manual Volume CBM *
                     </label>
                     <input
                       type="number"

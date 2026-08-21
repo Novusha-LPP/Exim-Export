@@ -8,12 +8,12 @@ ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 # Only copy package files first (better layer cache)
 COPY package*.json ./
 
-# Install production dependencies
-RUN npm ci --only=production
+# Install production dependencies and clean npm cache
+RUN npm ci --only=production && npm cache clean --force
 
-# Install only Chromium and its system dependencies, then clean apt cache to save space
+# Install only Chromium and its system dependencies, then clean all apt, tmp, and npm/playwright cache to save space
 RUN npx playwright install --with-deps chromium && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.cache /root/.npm
 
 # Copy rest of the code
 COPY . .

@@ -254,44 +254,49 @@ const resolveJobNumberQuery = (jobNoInput) => {
         const padded4 = seqNum.toString().padStart(4, '0');
         const padded5 = seqNum.toString().padStart(5, '0');
 
-        conditions.push({ sequence_number: seqNum });
-        conditions.push({ sequence_no: seqNum });
-        conditions.push({ job_no: seqNum.toString() });
-        conditions.push({ job_no: padded4 });
-        conditions.push({ job_no: padded5 });
-
         let yearRegexPart = "";
         if (yearSuffix) {
             const shortYear = yearSuffix.slice(-5);
             yearRegexPart = `.*${shortYear}`;
         }
 
-        const flexRegex = new RegExp(`(?:^|/|-)0*${seqNum}(?:/|-|$)${yearRegexPart}`, "i");
-        conditions.push({ job_no: { $regex: flexRegex } });
-        conditions.push({ job_number: { $regex: flexRegex } });
-        conditions.push({ tally_club_ref_no: { $regex: flexRegex } });
-
+        let branchRegexStr = "";
         if (prefixPart) {
-            let branchRegexStr = "";
-            if (prefixPart.startsWith("GH")) {
+            if (prefixPart.startsWith("GH") || prefixPart.startsWith("HAZ")) {
                 branchRegexStr = "^(HAZ|GH)";
-            } else if (prefixPart.startsWith("GG")) {
+            } else if (prefixPart.startsWith("GG") || prefixPart.startsWith("GND") || prefixPart.startsWith("GAN")) {
                 branchRegexStr = "^(GND|GAN|GG)";
-            } else if (prefixPart.startsWith("GC")) {
+            } else if (prefixPart.startsWith("GC") || prefixPart.startsWith("COK") || prefixPart.startsWith("COC")) {
                 branchRegexStr = "^(COK|COC|GC)";
-            } else if (prefixPart.startsWith("GB")) {
+            } else if (prefixPart.startsWith("GB") || prefixPart.startsWith("BAR")) {
                 branchRegexStr = "^(BAR|GB)";
-            } else if (prefixPart.startsWith("GE") || prefixPart.startsWith("GI") || prefixPart === "GIA" || prefixPart === "GEA") {
+            } else if (prefixPart.startsWith("GE") || prefixPart.startsWith("GI") || prefixPart === "GIA" || prefixPart === "GEA" || prefixPart.startsWith("AMD") || prefixPart.startsWith("AHM")) {
                 branchRegexStr = "^(AMD|AHM|G)";
+            } else if (prefixPart.startsWith("KAN") || prefixPart.startsWith("KANDLA")) {
+                branchRegexStr = "^(KAN|KANDLA)";
+            } else if (prefixPart.startsWith("MUM") || prefixPart.startsWith("MUMBAI")) {
+                branchRegexStr = "^(MUM|MUMBAI)";
             } else if (prefixPart.startsWith("FF")) {
                 branchRegexStr = "^(FF|FF-)";
             }
+        }
 
-            if (branchRegexStr) {
-                const branchSpecificRegex = new RegExp(`${branchRegexStr}.*0*${seqNum}`, "i");
-                conditions.push({ job_no: { $regex: branchSpecificRegex } });
-                conditions.push({ job_number: { $regex: branchSpecificRegex } });
-            }
+        if (branchRegexStr) {
+            const branchSpecificRegex = new RegExp(`${branchRegexStr}.*0*${seqNum}(?:/|-|$)${yearRegexPart}`, "i");
+            conditions.push({ job_no: { $regex: branchSpecificRegex } });
+            conditions.push({ job_number: { $regex: branchSpecificRegex } });
+            conditions.push({ tally_club_ref_no: { $regex: branchSpecificRegex } });
+        } else {
+            conditions.push({ sequence_number: seqNum });
+            conditions.push({ sequence_no: seqNum });
+            conditions.push({ job_no: seqNum.toString() });
+            conditions.push({ job_no: padded4 });
+            conditions.push({ job_no: padded5 });
+
+            const flexRegex = new RegExp(`(?:^|/|-)0*${seqNum}(?:/|-|$)${yearRegexPart}`, "i");
+            conditions.push({ job_no: { $regex: flexRegex } });
+            conditions.push({ job_number: { $regex: flexRegex } });
+            conditions.push({ tally_club_ref_no: { $regex: flexRegex } });
         }
     }
 
@@ -396,7 +401,7 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         })(),
         "Sb Heading": inv?.products?.[0]?.description || "",
         "ETA Date": normalizeDate(job.eta_date || job.etaDate || job.bl_details?.eta_date || job.operations?.[0]?.statusDetails?.[0]?.etaDate || ""),
-        "Volume (CBM)": job.volume_cbm ? String(job.volume_cbm) : (job.volume ? String(job.volume) : (job.cbm ? String(job.cbm) : (job.bl_details?.volume ? String(job.bl_details.volume) : ""))),
+        "Volume CBM": job.volume_cbm ? String(job.volume_cbm) : (job.volume ? String(job.volume) : (job.cbm ? String(job.cbm) : (job.bl_details?.volume ? String(job.bl_details.volume) : ""))),
         "IGM Number": job.igm_no || job.igm_number || job.igmNo || "",
         "IGM Date": normalizeDate(job.igm_date || job.igmDate || "")
     };
@@ -481,7 +486,7 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         })(),
         "Sb Heading": inv?.products?.[0]?.description || "",
         "ETA Date": normalizeDate(job.eta_date || job.bl_details?.eta_date || job.etaDate || ""),
-        "Volume (CBM)": job.volume_cbm ? String(job.volume_cbm) : (job.volume ? String(job.volume) : (job.cbm ? String(job.cbm) : (job.bl_details?.volume ? String(job.bl_details.volume) : ""))),
+        "Volume CBM": job.volume_cbm ? String(job.volume_cbm) : (job.volume ? String(job.volume) : (job.cbm ? String(job.cbm) : (job.bl_details?.volume ? String(job.bl_details.volume) : ""))),
         "IGM Number": job.igm_no || job.igm_number || job.igmNo || "",
         "IGM Date": normalizeDate(job.igm_date || job.igmDate || "")
     };
@@ -749,15 +754,41 @@ router.get("/job-data", authApiKey, async (req, res) => {
  */
 router.get("/next-sequence", authApiKey, async (req, res) => {
     try {
-        const { type, jobNo } = req.query;
+        const { type, jobNo, jobId } = req.query;
         if (!type || !jobNo) {
             return res.status(400).json({ error: "type (purchase/payment) and jobNo are required" });
         }
 
         let resolvedJobNo = jobNo;
-        let job = await ExJobModel.findOne({
-            $or: resolveJobNumberQuery(jobNo)
-        }).sort({ is_club_job_parent: -1 }).lean();
+        let job = null;
+
+        // 1. Try finding job by exact jobId first if provided
+        if (jobId) {
+            job = await ExJobModel.findById(jobId).lean();
+        }
+
+        // 2. Direct exact match check on standard job fields
+        if (!job) {
+            const cleanNo = String(jobNo).trim();
+            const safeNo = cleanNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            job = await ExJobModel.findOne({
+                $or: [
+                    { job_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                    { tally_club_ref_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                    { agency_bill_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                    { reimbursement_bill_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                    { tally_bill_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                    { custom_job_no: { $regex: new RegExp("^" + safeNo + "$", "i") } }
+                ]
+            }).lean();
+        }
+
+        // 3. Fallback to resolveJobNumberQuery if exact match was not found
+        if (!job) {
+            job = await ExJobModel.findOne({
+                $or: resolveJobNumberQuery(jobNo)
+            }).sort({ is_club_job_parent: -1 }).lean();
+        }
 
         const isFreight = isFreightJob(job) || String(jobNo).toUpperCase().includes("FF-") || String(jobNo).toUpperCase().startsWith("FF");
 
@@ -958,7 +989,7 @@ const mapPurchaseEntryData = (data) => {
         currencyAmount: Number(data["Currency Amount"] || data["Foreign Currency Amount"] || data.currencyAmount || data.foreignCurrencyAmount || 0),
         exchangeRate: Number(data["Exchange Rate"] || data.exchangeRate || 1),
         etaDate: normalizeDate(data["ETA Date"] || data.etaDate),
-        volumeCbm: data["Volume (CBM)"] || data["Volume"] || data.volumeCbm || '',
+        volumeCbm: data["Volume CBM"] || data["Volume (CBM)"] || data["Volume"] || data.volumeCbm || '',
         igmNo: data["IGM Number"] || data["IGM No"] || data.igmNo || '',
         igmDate: normalizeDate(data["IGM Date"] || data.igmDate)
     };
@@ -1160,7 +1191,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "Currency Amount": entry.currencyAmount !== undefined && entry.currencyAmount !== null ? entry.currencyAmount : (entry.currency && entry.currency !== "INR" ? entry.taxableValue : ""),
             "Exchange Rate": entry.exchangeRate !== undefined && entry.exchangeRate !== null ? entry.exchangeRate : (entry.currency && entry.currency !== "INR" ? 1 : ""),
             "ETA Date": normalizeDate(entry.etaDate),
-            "Volume (CBM)": entry.volumeCbm || "",
+            "Volume CBM": entry.volumeCbm || "",
             "IGM Number": entry.igmNo || "",
             "IGM Date": normalizeDate(entry.igmDate)
         };

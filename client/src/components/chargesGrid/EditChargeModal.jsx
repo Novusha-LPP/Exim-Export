@@ -1607,7 +1607,7 @@ const EditChargeModal = ({
         onSuccess={(entryNo) => {
           // Update the localized formData state with the new number
           const updated = [...formData];
-          const activeIndex = formData.findIndex(c => c.chargeHead === purchaseBookData.chargeHead);
+          const activeIndex = formData.findIndex(c => (c._id && (c._id === purchaseBookData.chargeId || c._id === purchaseBookData._id)) || c.chargeHead === purchaseBookData.chargeHead);
           if (activeIndex !== -1) {
             const initialStatus = 'Pending';
             updated[activeIndex].purchase_book_no = entryNo;

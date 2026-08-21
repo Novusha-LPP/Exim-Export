@@ -1289,7 +1289,7 @@ function FreightForwardingJobDetail() {
                   </div>
                   <div style={{ flex: 1, minWidth: "140px", display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "11px", fontWeight: 700, color: "#1e40af" }}>
-                      Manual Volume (CBM)
+                      Manual Volume CBM
                     </label>
                     <input
                       type="number"

@@ -8,7 +8,8 @@
     "dev": "nodemon --max-old-space-size=4096 app.js",
     "convert:drawback": "node scripts/convertDrawbackExcelToJson.mjs",
     "convert:rodtep": "node scripts/convertRodtepExcelToJson.mjs",
-    "pull:data": "node scripts/pull_prod_data.mjs"
+    "pull:data": "node scripts/pull_prod_data.mjs",
+    "docker:build": "bash build-docker.sh"
   },
   "keywords": [
     "export",

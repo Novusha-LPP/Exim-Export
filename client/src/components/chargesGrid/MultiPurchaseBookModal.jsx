@@ -256,7 +256,7 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                 "Currency Amount": firstCharge.currencyAmount || firstCharge.foreignCurrencyAmount || (firstCharge.currency && firstCharge.currency !== 'INR' ? (firstCharge.basicAmount || firstCharge.amount || '') : ''),
                 "Exchange Rate": firstCharge.exchangeRate || firstCharge.exRate || '',
                 "ETA Date": formatDate(firstCharge.eta_date || firstCharge.etaDate, 'yyyy-MM-dd') || '',
-                "Volume (CBM)": firstCharge.volume_cbm || firstCharge.volume || '',
+                "Volume CBM": firstCharge.volume_cbm || firstCharge.volume || '',
                 "IGM Number": firstCharge.igm_no || firstCharge.igmNo || '',
                 "IGM Date": formatDate(firstCharge.igm_date || firstCharge.igmDate, 'yyyy-MM-dd') || ''
             }));

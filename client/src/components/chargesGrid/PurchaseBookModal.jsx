@@ -49,7 +49,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
         "Currency Amount": '',
         "Exchange Rate": '',
         "ETA Date": '',
-        "Volume (CBM)": '',
+        "Volume CBM": '',
         "IGM Number": '',
         "IGM Date": ''
     });
@@ -200,7 +200,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                         "Currency Amount": initialData.currencyAmount || initialData.foreignCurrencyAmount || (initialData.currency && initialData.currency !== 'INR' ? (initialData.basicAmount || initialData.amount || '') : ''),
                         "Exchange Rate": initialData.exchangeRate || initialData.exRate || '',
                         "ETA Date": formatDate(initialData.eta_date || initialData.etaDate, 'yyyy-MM-dd') || '',
-                        "Volume (CBM)": initialData.volume_cbm || initialData.volume || '',
+                        "Volume CBM": initialData.volume_cbm || initialData.volume || '',
                         "IGM Number": initialData.igm_no || initialData.igmNo || '',
                         "IGM Date": formatDate(initialData.igm_date || initialData.igmDate, 'yyyy-MM-dd') || ''
                     }));
