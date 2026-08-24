@@ -172,7 +172,12 @@ const ChargesGrid = ({
         branchIndex: cost.branchIndex || 0,
         isClubJob: c.isClubJob || false,
         clubbedJobs: c.clubbedJobs || [],
-        virtualBalanceTerminal: cost.virtualBalanceTerminal || ''
+        virtualBalanceTerminal: cost.virtualBalanceTerminal || '',
+        currency: cost.currency || c.currency || 'INR',
+        currencyAmount: (cost.currency && cost.currency !== 'INR') ? (cost.amount !== undefined && cost.amount !== null ? cost.amount : (cost.qty && cost.rate ? Number(cost.qty) * Number(cost.rate) : '')) : (cost.currencyAmount || cost.foreignCurrencyAmount || ''),
+        exchangeRate: cost.exchangeRate || cost.exRate || c.exchangeRate || c.exRate || 1,
+        qty: cost.qty !== undefined && cost.qty !== null ? Number(cost.qty) : 1,
+        rate: cost.rate !== undefined && cost.rate !== null ? Number(cost.rate) : (cost.amount !== undefined && cost.amount !== null ? Number(cost.amount) : 0)
       };
     });
 

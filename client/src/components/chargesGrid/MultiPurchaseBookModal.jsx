@@ -140,8 +140,10 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
 
                     invoiceNumber: c.invoice_number || '',
                     invoiceDate: c.invoice_date || '',
+                    qty: c.qty !== undefined && c.qty !== null ? Number(c.qty) : 1,
+                    rate: c.rate !== undefined && c.rate !== null ? Number(c.rate) : Number(c.basicAmount || c.amount || 0),
                     currency: c.currency || c.costCurrency || 'INR',
-                    currencyAmount: Number(c.currencyAmount || c.foreignCurrencyAmount || 0),
+                    currencyAmount: Number(c.currencyAmount || c.foreignCurrencyAmount || (c.currency && c.currency !== 'INR' ? (c.amount || c.basicAmount) : 0)),
                     exchangeRate: Number(c.exchangeRate || c.exRate || 1)
                 };
             });
@@ -174,7 +176,7 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
             let updatedJobNum = jobNum;
             try {
                 const API_KEY = selectedKey?.key;
-                if (API_KEY) {
+                if (API_KEY && firstCharge.jobId) {
                     const response = await axios.get(
                         `${import.meta.env.VITE_API_STRING}/tally/next-sequence`,
                         {
@@ -252,9 +254,11 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                 isClubJob: firstCharge.isClubJob || false,
                 clubbedJobs: firstCharge.clubbedJobs || [],
                 "Virtual Balance Terminal": firstCharge.virtualBalanceTerminal || '',
+                "Qty": firstCharge.qty !== undefined && firstCharge.qty !== null ? firstCharge.qty : 1,
+                "Rate": firstCharge.rate !== undefined && firstCharge.rate !== null ? firstCharge.rate : (firstCharge.amount || 0),
                 "Currency": firstCharge.currency || firstCharge.costCurrency || 'INR',
-                "Currency Amount": firstCharge.currencyAmount || firstCharge.foreignCurrencyAmount || (firstCharge.currency && firstCharge.currency !== 'INR' ? (firstCharge.basicAmount || firstCharge.amount || '') : ''),
-                "Exchange Rate": firstCharge.exchangeRate || firstCharge.exRate || '',
+                "Currency Amount": firstCharge.currencyAmount || firstCharge.foreignCurrencyAmount || (firstCharge.currency && firstCharge.currency !== 'INR' ? (firstCharge.amount || firstCharge.basicAmount || '') : ''),
+                "Exchange Rate": firstCharge.exchangeRate || firstCharge.exRate || 1,
                 "ETA Date": formatDate(firstCharge.eta_date || firstCharge.etaDate, 'yyyy-MM-dd') || '',
                 "Volume CBM": firstCharge.volume_cbm || firstCharge.volume || '',
                 "IGM Number": firstCharge.igm_no || firstCharge.igmNo || '',

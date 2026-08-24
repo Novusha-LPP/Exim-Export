@@ -348,6 +348,8 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Shipper": job.shipper || job.supplier_name || job.supplier || "",
         "Origin Port": job.port_of_loading || job.origin_port || job.pol || "",
         "Destination Port": job.port_of_discharge || job.destination_port || job.pod || "",
+        "Discharge Port": job.port_of_discharge || job.discharge_port || job.portOfDischarge || job.dischargePort || job.destination_port || job.pod || job.bl_details?.port_of_discharge || "",
+        "Shipping Line": job.shipping_line_airline || job.shipping_line || job.shipping_line_name || job.shippingLine || job.carrier || job.carrier_name || job.line || job.bl_details?.shipping_line || job.bl_details?.carrier || "",
         "Custom House": job.custom_house || job.custom_house_name || "",
         "Gross Weight": job.gross_weight_kg ? String(Math.round(parseFloat(job.gross_weight_kg))) : (job.gross_weight ? String(Math.round(parseFloat(job.gross_weight))) : ""),
         "Net Wt": job.net_weight_kg ? String(Math.round(parseFloat(job.net_weight_kg))) : (job.net_weight ? String(Math.round(parseFloat(job.net_weight))) : ""),
@@ -433,6 +435,8 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Shipper": job.shipper || job.exporter || job.organization_name || job.supplier_name || "",
         "Origin Port": job.port_of_loading || job.place_of_receipt || job.origin_port || "",
         "Destination Port": job.port_of_discharge || job.port_of_destination || job.destination_port || "",
+        "Discharge Port": job.port_of_discharge || job.discharge_port || job.portOfDischarge || job.dischargePort || job.port_of_destination || job.destination_port || job.pod || job.bl_details?.port_of_discharge || job.bl_details?.pod || "",
+        "Shipping Line": job.shipping_line_airline || job.shipping_line || job.shipping_line_name || job.shippingLine || job.carrier || job.carrier_name || job.line || job.bl_details?.shipping_line || job.bl_details?.carrier || job.bl_details?.line || "",
         "Custom House": job.custom_house || "",
         "Gross Weight": grossVal ? String(Math.round(parseFloat(String(grossVal).replace(/KGS?/gi, "")))) : "",
         "Net Wt": netVal ? String(Math.round(parseFloat(String(netVal).replace(/KGS?/gi, "")))) : "",
@@ -988,6 +992,8 @@ const mapPurchaseEntryData = (data) => {
         currency: data["Currency"] || data["Invoice Currency"] || data.currency || "INR",
         currencyAmount: Number(data["Currency Amount"] || data["Foreign Currency Amount"] || data.currencyAmount || data.foreignCurrencyAmount || 0),
         exchangeRate: Number(data["Exchange Rate"] || data.exchangeRate || 1),
+        qty: data["Qty"] !== undefined && data["Qty"] !== null ? Number(data["Qty"]) : (data.qty !== undefined ? Number(data.qty) : 1),
+        rate: data["Rate"] !== undefined && data["Rate"] !== null ? Number(data["Rate"]) : (data.rate !== undefined ? Number(data.rate) : 0),
         etaDate: normalizeDate(data["ETA Date"] || data.etaDate),
         volumeCbm: data["Volume CBM"] || data["Volume (CBM)"] || data["Volume"] || data.volumeCbm || '',
         igmNo: data["IGM Number"] || data["IGM No"] || data.igmNo || '',
@@ -1046,8 +1052,8 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         let chargeCategory = entry.chargeHeadCategory;
         let tdsRate = 0;
         let chargeObj = null;
+        let job = null;
         try {
-            let job = null;
             if (entry.jobRef) {
                 job = await ExJobModel.findById(entry.jobRef).lean();
             }
@@ -1151,6 +1157,35 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             grossTotal = netAmount + tdsVal;
         }
 
+        // Resolve cost currency, exchange rate, qty, and rate from chargeObj in job.charges if entry values are missing or default
+        const costObj = chargeObj?.cost || {};
+        const costCurrency = costObj.currency || chargeObj?.currency || "";
+        const costExRate = costObj.exchangeRate || costObj.exRate || chargeObj?.exchangeRate || chargeObj?.exRate || 1;
+        const costQty = costObj.qty !== undefined ? costObj.qty : (chargeObj?.qty !== undefined ? chargeObj.qty : 1);
+        const costRate = costObj.rate !== undefined ? costObj.rate : (chargeObj?.rate !== undefined ? chargeObj.rate : 0);
+        const costForeignAmt = costObj.amount !== undefined ? costObj.amount : (costObj.currencyAmount || costObj.foreignCurrencyAmount);
+
+        let finalCurrency = entry.currency;
+        if (!finalCurrency || finalCurrency === "INR") {
+            if (costCurrency && costCurrency !== "INR") {
+                finalCurrency = costCurrency;
+            }
+        }
+        if (!finalCurrency) finalCurrency = "INR";
+
+        let finalExRate = entry.exchangeRate !== undefined && entry.exchangeRate !== null && entry.exchangeRate !== 0
+            ? Number(entry.exchangeRate)
+            : (costExRate !== 1 ? Number(costExRate) : (finalCurrency !== "INR" ? 1 : 1));
+
+        let finalCurrencyAmt = entry.currencyAmount !== undefined && entry.currencyAmount !== null && entry.currencyAmount !== 0
+            ? Number(entry.currencyAmount)
+            : (costForeignAmt !== undefined && costForeignAmt !== null && costForeignAmt !== 0
+                ? Number(costForeignAmt)
+                : (finalCurrency !== "INR" ? (entry.taxableValue || (costQty * costRate)) : ""));
+
+        let finalQty = entry.qty !== undefined && entry.qty !== null ? Number(entry.qty) : Number(costQty || 1);
+        let finalRate = entry.rate !== undefined && entry.rate !== null ? Number(entry.rate) : Number(costRate || 0);
+
         const formattedData = {
             "Entry No": entry.entryNo,
             "Entry Date": normalizeDate(entry.entryDate),
@@ -1187,9 +1222,11 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "Status": entry.status,
             "isClubJob": entry.isClubJob || false,
             "clubbedJobs": entry.clubbedJobs || [],
-            "Currency": entry.currency || "INR",
-            "Currency Amount": entry.currencyAmount !== undefined && entry.currencyAmount !== null ? entry.currencyAmount : (entry.currency && entry.currency !== "INR" ? entry.taxableValue : ""),
-            "Exchange Rate": entry.exchangeRate !== undefined && entry.exchangeRate !== null ? entry.exchangeRate : (entry.currency && entry.currency !== "INR" ? 1 : ""),
+            "Qty": finalQty,
+            "Rate": finalRate,
+            "Currency": finalCurrency,
+            "Currency Amount": finalCurrencyAmt,
+            "Exchange Rate": finalExRate,
             "ETA Date": normalizeDate(entry.etaDate),
             "Volume CBM": entry.volumeCbm || "",
             "IGM Number": entry.igmNo || "",
@@ -1299,13 +1336,50 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     ? Number(item.revenueAmount)
                     : revenueAmount;
 
-                const itemCurrency = item.currency || item.costCurrency || item.chargeCurrency || entry.currency || "INR";
-                const itemCurrencyAmt = item.currencyAmount !== undefined && item.currencyAmount !== null && item.currencyAmount !== 0
+                let targetJob = job || rawJobDB;
+                let itemMatchedCharge = null;
+                if (targetJob && Array.isArray(targetJob.charges)) {
+                    if (item.chargeId || item.chargeRef) {
+                        const targetId = String(item.chargeId || item.chargeRef);
+                        itemMatchedCharge = targetJob.charges.find(c => c._id?.toString() === targetId);
+                    }
+                    if (!itemMatchedCharge && itemHead) {
+                        const targetHead = itemHead.trim().toLowerCase();
+                        itemMatchedCharge = targetJob.charges.find(c => (c.name || c.chargeHead || c.chargeHeading)?.trim().toLowerCase() === targetHead);
+                    }
+                }
+                const itemCost = itemMatchedCharge?.cost || {};
+                const itemCostCurrency = itemCost.currency || itemMatchedCharge?.currency || "";
+                const itemCostExRate = itemCost.exchangeRate || itemCost.exRate || itemMatchedCharge?.exchangeRate || itemMatchedCharge?.exRate || 1;
+                const itemCostQty = itemCost.qty !== undefined ? itemCost.qty : (itemMatchedCharge?.qty !== undefined ? itemMatchedCharge.qty : undefined);
+                const itemCostRate = itemCost.rate !== undefined ? itemCost.rate : (itemMatchedCharge?.rate !== undefined ? itemMatchedCharge.rate : undefined);
+                const itemCostForeignAmt = itemCost.amount !== undefined ? itemCost.amount : (itemCost.currencyAmount || itemCost.foreignCurrencyAmount);
+
+                let itemCurrency = item.currency || item.costCurrency || item.chargeCurrency;
+                if (!itemCurrency || itemCurrency === "INR") {
+                    if (itemCostCurrency && itemCostCurrency !== "INR") {
+                        itemCurrency = itemCostCurrency;
+                    } else if (finalCurrency && finalCurrency !== "INR") {
+                        itemCurrency = finalCurrency;
+                    } else {
+                        itemCurrency = itemCurrency || finalCurrency || "INR";
+                    }
+                }
+
+                let itemCurrencyAmt = item.currencyAmount !== undefined && item.currencyAmount !== null && item.currencyAmount !== 0
                     ? Number(item.currencyAmount)
-                    : (item.foreignCurrencyAmount !== undefined ? Number(item.foreignCurrencyAmount) : (itemCurrency !== "INR" ? itemTaxable : ""));
-                const itemExRate = item.exchangeRate !== undefined && item.exchangeRate !== null && item.exchangeRate !== 0
+                    : (item.foreignCurrencyAmount !== undefined && item.foreignCurrencyAmount !== 0
+                        ? Number(item.foreignCurrencyAmount)
+                        : (itemCostForeignAmt !== undefined && itemCostForeignAmt !== null && itemCostForeignAmt !== 0
+                            ? Number(itemCostForeignAmt)
+                            : (itemCurrency !== "INR" ? itemTaxable : "")));
+
+                let itemExRate = item.exchangeRate !== undefined && item.exchangeRate !== null && item.exchangeRate !== 0
                     ? Number(item.exchangeRate)
-                    : (entry.exchangeRate || (itemCurrency !== "INR" ? 1 : ""));
+                    : (itemCostExRate !== 1 ? Number(itemCostExRate) : (finalExRate !== 1 ? finalExRate : (itemCurrency !== "INR" ? 1 : 1)));
+
+                let itemQty = item.qty !== undefined && item.qty !== null ? Number(item.qty) : (itemCostQty !== undefined ? Number(itemCostQty) : finalQty);
+                let itemRate = item.rate !== undefined && item.rate !== null ? Number(item.rate) : (itemCostRate !== undefined ? Number(itemCostRate) : finalRate);
 
                 return {
                     "Charge Heading": itemHead,
@@ -1326,6 +1400,8 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     "Revenue Amount": itemRevAmt.toFixed(2),
                     "Supplier Inv No": item.invoiceNumber || supplierInvNo || '',
                     "Supplier Inv Date": item.invoiceDate || supplierInvDate || '',
+                    "Qty": itemQty,
+                    "Rate": itemRate,
                     "Currency": itemCurrency,
                     "Currency Amount": itemCurrencyAmt,
                     "Exchange Rate": itemExRate
@@ -1379,9 +1455,11 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     "Revenue Amount": revenueAmount.toFixed(2),
                     "Supplier Inv No": supplierInvNo || '',
                     "Supplier Inv Date": supplierInvDate || '',
-                    "Currency": entry.currency || "INR",
-                    "Currency Amount": entry.currencyAmount !== undefined && entry.currencyAmount !== null ? entry.currencyAmount : (entry.currency && entry.currency !== "INR" ? entry.taxableValue : ""),
-                    "Exchange Rate": entry.exchangeRate !== undefined && entry.exchangeRate !== null ? entry.exchangeRate : (entry.currency && entry.currency !== "INR" ? 1 : "")
+                    "Qty": finalQty,
+                    "Rate": finalRate,
+                    "Currency": finalCurrency,
+                    "Currency Amount": finalCurrencyAmt,
+                    "Exchange Rate": finalExRate
                 }];
             })();
         formattedData["chargeRefs"] = entry.chargeRefs || (entry.chargeRef ? [entry.chargeRef] : []);
@@ -1492,6 +1570,13 @@ router.get("/payment-request", authApiKey, async (req, res) => {
                         // Party details
                         enriched.partyName = cost.partyName || request.paymentTo || "";
                         enriched.partyType = cost.partyType || "";
+
+                        // Qty, Rate, Currency, Exchange Rate details
+                        enriched.qty = cost.qty !== undefined && cost.qty !== null ? cost.qty : 1;
+                        enriched.rate = cost.rate !== undefined && cost.rate !== null ? cost.rate : (cost.basicAmount || cost.amount || 0);
+                        enriched.currency = cost.currency || charge.currency || "INR";
+                        enriched.currencyAmount = cost.amount !== undefined ? cost.amount : (cost.currencyAmount || "");
+                        enriched.exchangeRate = cost.exchangeRate || cost.exRate || charge.exchangeRate || 1;
                     }
 
                     // Enrich with supplier directory info (GSTIN, PAN, address)

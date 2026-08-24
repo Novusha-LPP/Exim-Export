@@ -52,6 +52,8 @@ const purchaseBookEntrySchema = new mongoose.Schema({
     currency: { type: String, default: 'INR' },
     currencyAmount: { type: Number },
     exchangeRate: { type: Number },
+    qty: { type: Number, default: 1 },
+    rate: { type: Number, default: 0 },
     etaDate: { type: String, default: '' },
     volumeCbm: { type: String, default: '' },
     igmNo: { type: String, default: '' },
