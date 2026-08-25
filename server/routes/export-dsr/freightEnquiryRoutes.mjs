@@ -4,6 +4,7 @@ import ExJobModel from "../../model/export/ExJobModel.mjs";
 import ForwarderModel from "../../model/export/ForwarderModel.mjs";
 import transporter from "../../utils/mailer.mjs";
 import ExcelJS from "exceljs";
+import { syncFreightEnquiryToCRM } from "../../services/crmSyncService.mjs";
 
 const getCurrentFinancialYear = (date = new Date()) => {
   const year = date.getFullYear();
@@ -523,7 +524,7 @@ router.post("/freight-enquiries", async (req, res) => {
       return `${prefix}/${typeCode}/${nextNo.toString().padStart(4, "0")}/${currentFY}`;
     };
 
-    const enquiry_no = await getNextNo("enquiry_no", "FF");
+    const enquiry_no = await getNextNo("enquiry_no", "FF-SUC");
 
     let sourceJob = null;
     if (source_job_no) {
@@ -603,6 +604,13 @@ Freight Forwarding Team
       }
     } catch (emailErr) {
       console.error("Failed to send emails to forwarders:", emailErr);
+    }
+
+    // ── CRM Sync: Create a CRM Lead for this new freight enquiry ──
+    try {
+      await syncFreightEnquiryToCRM(savedEnquiry.toObject ? savedEnquiry.toObject() : savedEnquiry, "create");
+    } catch (crmErr) {
+      console.error("[CRM Sync] Failed to create CRM Lead for freight enquiry:", crmErr);
     }
 
     res.status(201).json({ success: true, data: savedEnquiry });
@@ -775,6 +783,30 @@ router.put("/freight-enquiries/:id", async (req, res) => {
             await newJob.save();
           }
         }
+      }
+    }
+
+    // ── CRM Sync: Sync freight enquiry changes to CRM ──
+    if (updated) {
+      try {
+        if (req.body.status === "Converted") {
+          // Convert CRM Lead → Account + Contact + Opportunity
+          await syncFreightEnquiryToCRM(updated, "convert");
+        } else if (req.body.status === "Rejected") {
+          // Move CRM Opportunity to Lost
+          await syncFreightEnquiryToCRM(updated, "lost");
+        } else {
+          // Check if freight pipeline has reached Completed
+          const hasAllGates = !!(updated.draft_bl_approved && updated.sailing_date && updated.arrival_date && updated.final_delivery_date);
+          if (hasAllGates) {
+            await syncFreightEnquiryToCRM(updated, "won");
+          } else {
+            // General update — sync operational data
+            await syncFreightEnquiryToCRM(updated, "update");
+          }
+        }
+      } catch (crmErr) {
+        console.error("[CRM Sync] Failed to sync freight enquiry update to CRM:", crmErr);
       }
     }
 

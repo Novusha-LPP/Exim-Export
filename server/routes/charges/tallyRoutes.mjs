@@ -350,7 +350,8 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Destination Port": job.port_of_discharge || job.destination_port || job.pod || "",
         "Discharge Port": job.port_of_discharge || job.discharge_port || job.portOfDischarge || job.dischargePort || job.destination_port || job.pod || job.bl_details?.port_of_discharge || "",
         "Shipping Line": job.shipping_line_airline || job.shipping_line || job.shipping_line_name || job.shippingLine || job.carrier || job.carrier_name || job.line || job.bl_details?.shipping_line || job.bl_details?.carrier || "",
-        "Custom House": job.custom_house || job.custom_house_name || "",
+        "Custom House": job.place_of_receipt || job.custom_house || job.custom_house_name || "",
+        "Place of Receipt": job.place_of_receipt || "",
         "Gross Weight": job.gross_weight_kg ? String(Math.round(parseFloat(job.gross_weight_kg))) : (job.gross_weight ? String(Math.round(parseFloat(job.gross_weight))) : ""),
         "Net Wt": job.net_weight_kg ? String(Math.round(parseFloat(job.net_weight_kg))) : (job.net_weight ? String(Math.round(parseFloat(job.net_weight))) : ""),
         "Package Count": job.total_no_of_pkgs || job.no_of_pkgs || job.packages || "",
@@ -388,7 +389,7 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         })(),
         "Consignment Type": job.consignmentType || job.consignment_type || "",
         "Customer Ref No": job.exporter_ref_no || job.importer_ref_no || job.customer_ref_no || "",
-        "TOI": inv?.termsOfInvoice || "",
+        "TOI": inv?.termsOfInvoice || job.shipment_terms || job.bl_details?.shipment_terms || job.terms_of_invoice || job.toi || job.incoterms || "",
         "Invoice Value": (() => {
             if (!inv) return "";
             return `${inv.invoiceValue || 0}(${inv.currency || ""})`;
@@ -437,7 +438,8 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Destination Port": job.port_of_discharge || job.port_of_destination || job.destination_port || "",
         "Discharge Port": job.port_of_discharge || job.discharge_port || job.portOfDischarge || job.dischargePort || job.port_of_destination || job.destination_port || job.pod || job.bl_details?.port_of_discharge || job.bl_details?.pod || "",
         "Shipping Line": job.shipping_line_airline || job.shipping_line || job.shipping_line_name || job.shippingLine || job.carrier || job.carrier_name || job.line || job.bl_details?.shipping_line || job.bl_details?.carrier || job.bl_details?.line || "",
-        "Custom House": job.custom_house || "",
+        "Custom House": job.place_of_receipt || job.custom_house || "",
+        "Place of Receipt": job.place_of_receipt || "",
         "Gross Weight": grossVal ? String(Math.round(parseFloat(String(grossVal).replace(/KGS?/gi, "")))) : "",
         "Net Wt": netVal ? String(Math.round(parseFloat(String(netVal).replace(/KGS?/gi, "")))) : "",
         "Package Count": job.total_no_of_pkgs || job.no_packages || job.no_of_pkgs || "",
@@ -475,7 +477,7 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         })(),
         "Consignment Type": job.consignmentType || job.consignment_type || "",
         "Customer Ref No": job.exporter_ref_no || job.importer_ref_no || job.customer_ref_no || "",
-        "TOI": inv?.termsOfInvoice || "",
+        "TOI": inv?.termsOfInvoice || job.shipment_terms || job.bl_details?.shipment_terms || job.terms_of_invoice || job.toi || job.incoterms || "",
         "Invoice Value": (() => {
             if (!inv) return "";
             return `${inv.invoiceValue || 0}(${inv.currency || ""})`;
@@ -1311,15 +1313,17 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 if (isReimbursement && entry.supplierName && !itemDesc.startsWith('NEW - ')) {
                     itemDesc = `NEW - ${entry.supplierName}`;
                 }
-                if (isMargin && itemDesc && !itemDesc.endsWith(' - E')) {
-                    itemDesc = `${itemDesc} - E`;
+                if (isMargin && itemHead) {
+                    itemDesc = itemHead.endsWith(' - E') ? itemHead : `${itemHead} - E`;
+                    itemRevLedger = `${itemHead} - I`;
+                } else {
+                    let rawRevLedger = item.revenueLedger || item.revenue_ledger || item.revenueHead || item.revenueHeading || '';
+                    if (!rawRevLedger) {
+                        itemRevLedger = itemDesc || itemHead;
+                    } else {
+                        itemRevLedger = rawRevLedger;
+                    }
                 }
-
-                // Revenue Ledger: Fall back to revObj -> entry.revenueLedger -> itemHead -> chargeObj -> entry.supplierName
-                let rawRevLedger = item.revenueLedger || item.revenue_ledger || item.revenueHead || item.revenueHeading || (revObj && (revObj.chargeHead || revObj.chargeHeading || revObj.particulars || revObj.name)) || entry.revenueLedger || itemHead || (chargeObj && (chargeObj.name || chargeObj.chargeHead || chargeObj.chargeHeading || chargeObj.particulars)) || entry.chargeHeading || entry.supplierName || '';
-                let itemRevLedger = typeof rawRevLedger === 'string'
-                    ? rawRevLedger.replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim()
-                    : rawRevLedger;
 
                 const itemTaxable = Number(item.taxableValue || item.costAmount || item.basicAmount || item.total || 0);
                 const itemTds = Number(item.tdsAmount || item.tds || 0);
@@ -1427,14 +1431,14 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 if (chargeCategory === 'Reimbursement' && entry.supplierName && !fallbackDesc.startsWith('NEW - ')) {
                     fallbackDesc = `NEW - ${entry.supplierName}`;
                 }
-                if (fallbackIsMargin && fallbackDesc && !fallbackDesc.endsWith(' - E')) {
-                    fallbackDesc = `${fallbackDesc} - E`;
+                if (fallbackIsMargin && fallbackHead) {
+                    fallbackDesc = fallbackHead.endsWith(' - E') ? fallbackHead : `${fallbackHead} - E`;
+                    fallbackRevLedger = `${fallbackHead} - I`;
+                } else {
+                    if (!fallbackRevLedger) {
+                        fallbackRevLedger = fallbackDesc || fallbackHead;
+                    }
                 }
-
-                let rawFallbackRevLedger = entry.revenueLedger || (revObj && (revObj.chargeHead || revObj.chargeHeading || revObj.particulars || revObj.name)) || fallbackHead || (chargeObj && (chargeObj.name || chargeObj.chargeHead || chargeObj.chargeHeading || chargeObj.particulars)) || entry.chargeHeading || entry.supplierName || '';
-                let fallbackRevLedger = typeof rawFallbackRevLedger === 'string'
-                    ? rawFallbackRevLedger.replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim()
-                    : rawFallbackRevLedger;
 
                 return [{
                     "Charge Heading": fallbackHead,
