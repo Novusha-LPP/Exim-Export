@@ -748,6 +748,19 @@ router.get("/custom-house-list", async (req, res) => {
   }
 });
 
+function parseDetailedStatusParam(queryObj) {
+  if (!queryObj) return [];
+  const val = queryObj.detailedStatus || queryObj["detailedStatus[]"] || queryObj["detailedStatus"];
+  if (!val) return [];
+  let list = [];
+  if (Array.isArray(val)) {
+    list = val;
+  } else if (typeof val === "string") {
+    list = val.split(",");
+  }
+  return list.map(s => String(s).trim()).filter(s => s !== "" && s !== "null" && s !== "undefined");
+}
+
 // GET /api/global-search-jobs - Search for jobs across all statuses
 router.get("/global-search-jobs", async (req, res) => {
   try {
@@ -1025,8 +1038,9 @@ router.get("/global-search-jobs", async (req, res) => {
         filter.$and.push({ consignmentType: consignmentType });
       }
 
-      if (detailedStatus) {
-        let statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+      const statusArrayInput = parseDetailedStatusParam(req.query);
+      if (statusArrayInput.length > 0) {
+        let statusArray = [...statusArrayInput];
         if (statusArray.includes("Rail Out")) {
           statusArray = [...statusArray, "Road Out", "Road out", "road out", "RAIL OUT", "ROAD OUT"];
         }
@@ -1060,7 +1074,7 @@ router.get("/global-search-jobs", async (req, res) => {
           filter.$and.push({ $or: orConditions });
         }
 
-        if (!hasSendForBilling && filteredStatusArray.length > 0) {
+        if (!hasSendForBilling && filteredStatusArray.length > 0 && !filteredStatusArray.includes("Pending")) {
           filter.$and.push({
             $or: [
               { send_for_billing: { $ne: true } },
@@ -1717,10 +1731,11 @@ router.get("/exports/:status?", async (req, res) => {
       });
     }
 
-    if (detailedStatus) {
-      let statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+    const statusArrayInput = parseDetailedStatusParam(req.query);
+    if (statusArrayInput.length > 0) {
+      let statusArray = [...statusArrayInput];
       if (statusArray.includes("Rail Out")) {
-        statusArray = [...statusArray, "Road Out"];
+        statusArray = [...statusArray, "Road Out", "Road out", "road out", "RAIL OUT", "ROAD OUT"];
       }
 
       // Handle "Send for Billing" as a virtual status
@@ -1752,7 +1767,7 @@ router.get("/exports/:status?", async (req, res) => {
         filter.$and.push({ $or: orConditions });
       }
 
-      if (!hasSendForBilling && filteredStatusArray.length > 0) {
+      if (!hasSendForBilling && filteredStatusArray.length > 0 && !filteredStatusArray.includes("Pending")) {
         filter.$and.push({
           $or: [
             { send_for_billing: { $ne: true } },
@@ -2264,10 +2279,11 @@ router.get("/filtered-exporters", async (req, res) => {
     if (consignmentType) filter.$and.push({ consignmentType: consignmentType });
     if (branch) filter.$and.push({ branch_code: { $regex: `^${branch}$`, $options: "i" } });
     if (year && year !== "all") filter.$and.push({ year: year });
-    if (detailedStatus) {
-      let statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
+    const statusArrayInput = parseDetailedStatusParam(req.query);
+    if (statusArrayInput.length > 0) {
+      let statusArray = [...statusArrayInput];
       if (statusArray.includes("Rail Out")) {
-        statusArray = [...statusArray, "Road Out"];
+        statusArray = [...statusArray, "Road Out", "Road out", "road out", "RAIL OUT", "ROAD OUT"];
       }
 
       // Handle "Send for Billing" as a virtual status
@@ -2299,7 +2315,7 @@ router.get("/filtered-exporters", async (req, res) => {
         filter.$and.push({ $or: orConditions });
       }
 
-      if (!hasSendForBilling && filteredStatusArray.length > 0) {
+      if (!hasSendForBilling && filteredStatusArray.length > 0 && !filteredStatusArray.includes("Pending")) {
         filter.$and.push({
           $or: [
             { send_for_billing: { $ne: true } },

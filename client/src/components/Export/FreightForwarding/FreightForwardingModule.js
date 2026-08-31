@@ -12,11 +12,12 @@ import ReceiptIcon from "@mui/icons-material/Receipt";
 import { useNavigate } from "react-router-dom";
 import CreateFreightEnquiry from "./CreateFreightEnquiry";
 import ForwarderDirectory from "./ForwarderDirectory";
-import CaptureRates from "./CaptureRates";
+import CaptureRates, { getMatchingTemplateKey, buildRatesFromTemplate } from "./CaptureRates";
 import AddExJobs from "../Export-Dsr/AddExJobs";
 import FreightBillOfLadingGenerator from "./FreightBillOfLadingGenerator";
 import FreightTrackingMap from "./FreightTrackingMap";
 import FreightQuotation from "./FreightQuotation";
+import FreightForwardingDashboard from "./FreightForwardingDashboard";
 
 const THEME = {
   blue: "#16408f",
@@ -511,7 +512,8 @@ function DocsUploadCell({ row, onUpdate }) {
 
   const docs = row.documents || {};
   const docTypes = getDocTypes(row.shipment_type);
-  const uploadedCount = Object.keys(docs).filter(k => docTypes.some(dt => dt.field === k) && docs[k]).length;
+  const hasSavedQuote = !!row.saved_quotation;
+  const uploadedCount = Object.keys(docs).filter(k => docTypes.some(dt => dt.field === k) && docs[k]).length + (hasSavedQuote ? 1 : 0);
 
   return (
     <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', justifyContent: 'center' }}>
@@ -545,19 +547,52 @@ function DocsUploadCell({ row, onUpdate }) {
           SHIPPING / VGM DOCS
         </Typography>
 
-        {row.saved_quotation && (
+        {row.saved_quotation ? (
           <MenuItem
             sx={{ display: "flex", justifyContent: "space-between", py: 1, px: 2, backgroundColor: "#ecfdf5", "&:hover": { backgroundColor: "#d1fae5" } }}
             onClick={(e) => { e.stopPropagation(); setShowQuoteDialog(true); handleClose(e); }}
           >
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#047857' }}>QUOTATION</span>
-            <div style={{ display: "flex", alignItems: "center" }}>
-              <Tooltip title="View / Print Saved Quotation">
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#047857' }}>QUOTATION (SAVED)</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Tooltip title="View / Print / Download Quotation">
                 <IconButton
                   size="small"
                   sx={{ color: "#047857", p: 0.5 }}
+                  onClick={(e) => { e.stopPropagation(); setShowQuoteDialog(true); handleClose(e); }}
                 >
-                  <DownloadIcon sx={{ fontSize: 16 }} />
+                  <GetAppIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete Saved Quotation">
+                <IconButton
+                  size="small"
+                  sx={{ color: "#ef4444", p: 0.5 }}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!window.confirm("Are you sure you want to delete the saved quotation?")) return;
+                    try {
+                      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/freight-enquiries/${row._id}`, { saved_quotation: null });
+                      if (res.data.success && onUpdate) onUpdate(res.data.data);
+                    } catch (err) {
+                      alert("Failed to delete quotation");
+                    }
+                  }}
+                >
+                  <DeleteIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </div>
+          </MenuItem>
+        ) : (
+          <MenuItem
+            sx={{ display: "flex", justifyContent: "space-between", py: 1, px: 2, backgroundColor: "#f8fafc", "&:hover": { backgroundColor: "#f1f5f9" } }}
+            onClick={(e) => { e.stopPropagation(); setShowQuoteDialog(true); handleClose(e); }}
+          >
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#16408f' }}>QUOTATION</span>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <Tooltip title="View / Create / Download Quotation">
+                <IconButton size="small" sx={{ color: "#16408f", p: 0.5 }}>
+                  <GetAppIcon sx={{ fontSize: 16 }} />
                 </IconButton>
               </Tooltip>
             </div>
@@ -607,7 +642,7 @@ function DocsUploadCell({ row, onUpdate }) {
         ))}
       </Menu>
 
-      {showQuoteDialog && row.saved_quotation && (
+      {showQuoteDialog && (
         <Dialog
           open={showQuoteDialog}
           onClose={() => setShowQuoteDialog(false)}
@@ -616,7 +651,9 @@ function DocsUploadCell({ row, onUpdate }) {
           PaperProps={{ style: { borderRadius: 6, overflow: "hidden" } }}
         >
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#16408f', color: '#fff', py: 1.5, px: 3 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Saved Quotation - {row.enquiry_no}</Typography>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              {row.saved_quotation ? `Saved Quotation - ${row.enquiry_no}` : `Freight Quotation - ${row.enquiry_no}`}
+            </Typography>
             <IconButton onClick={() => setShowQuoteDialog(false)} sx={{ color: '#fff' }}>
               <CloseIcon />
             </IconButton>
@@ -624,9 +661,15 @@ function DocsUploadCell({ row, onUpdate }) {
           <DialogContent sx={{ p: 0, backgroundColor: "#f3f4f6" }}>
             <FreightQuotation
               enquiry={row}
-              selectedRate={row.saved_quotation}
+              selectedRate={
+                row.saved_quotation ||
+                (row.received_rates && row.received_rates.length > 0 ? row.received_rates[0] : buildRatesFromTemplate(getMatchingTemplateKey(row)))
+              }
               onBack={() => setShowQuoteDialog(false)}
-              onUpdate={onUpdate}
+              onUpdate={(updatedData) => {
+                if (onUpdate) onUpdate(updatedData);
+                setShowQuoteDialog(false);
+              }}
             />
           </DialogContent>
         </Dialog>
@@ -749,12 +792,20 @@ function FreightForwardingModule() {
       status: "",
     };
   });
+  const [mainTab, setMainTab] = useState(() => {
+    return localStorage.getItem("ff_main_tab") || "Dashboard";
+  });
+
   const [activeTab, setActiveTab] = useState(() => {
     const saved = localStorage.getItem("ff_active_tab");
     if (saved === "Forwarders") return "Enquiry";
     if (saved === "Success") return "Pending";
     return saved || "Enquiry";
   });
+
+  useEffect(() => {
+    localStorage.setItem("ff_main_tab", mainTab);
+  }, [mainTab]);
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [forwarders, setForwarders] = useState([]);
@@ -908,135 +959,197 @@ function FreightForwardingModule() {
 
   return (
     <div style={s.wrapper}>
-      <Box sx={s.titleCard}>
-        <div>
-          <Typography sx={{ fontWeight: "700", color: "#111", fontSize: "20px", fontFamily: '"Outfit", sans-serif' }}>
-            Freight Forwarding
-          </Typography>
+      {/* Title Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", paddingTop: "4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <h1 style={{ fontSize: "18px", fontWeight: "700", color: "#111", margin: 0 }}>
+            Freight Forwarding:
+          </h1>
+          <span
+            style={{
+              fontSize: "18px",
+              color: "#000000",
+              backgroundColor: "#f3f4f6",
+              padding: "2px 10px",
+              borderRadius: "12px",
+              fontWeight: 600,
+            }}
+          >
+            {filteredRows.length}
+          </span>
         </div>
-        <Box sx={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <button
+            style={{
+              padding: "6px 16px",
+              backgroundColor: "#fff",
+              color: "#2563eb",
+              border: "1px solid #2563eb",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "12.5px",
+              height: "32px",
+              boxSizing: "border-box",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
             onClick={() => {
               setDsrMode("Import");
               setDsrShipmentType("all");
               setOpenDSRDialog(true);
             }}
-            sx={{
-              borderColor: "#cbd5e1",
-              color: "#475569",
-              fontWeight: "700",
-              textTransform: "none",
-              borderRadius: "4px",
-              height: 32,
-              fontSize: "12px",
-              px: 2,
-              backgroundColor: "#ffffff",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-              "&:hover": { borderColor: "#16408f", color: "#16408f", backgroundColor: "#eff6ff" }
-            }}
           >
+            <DownloadIcon style={{ fontSize: 16 }} />
             Import DSR
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+          </button>
+          <button
+            style={{
+              padding: "6px 16px",
+              backgroundColor: "#fff",
+              color: "#2563eb",
+              border: "1px solid #2563eb",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "12.5px",
+              height: "32px",
+              boxSizing: "border-box",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
             onClick={() => {
               setDsrMode("Export");
               setDsrShipmentType("all");
               setOpenDSRDialog(true);
             }}
-            sx={{
-              borderColor: "#cbd5e1",
-              color: "#475569",
-              fontWeight: "700",
-              textTransform: "none",
-              borderRadius: "4px",
-              height: 32,
-              fontSize: "12px",
-              px: 2,
-              backgroundColor: "#ffffff",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-              "&:hover": { borderColor: "#16408f", color: "#16408f", backgroundColor: "#eff6ff" }
-            }}
           >
+            <DownloadIcon style={{ fontSize: 16 }} />
             Export DSR
-          </Button>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-            onClick={() => setOpenCreate(true)}
-            sx={{
-              backgroundColor: "#16408f",
-              color: "#ffffff",
-              fontWeight: "700",
-              textTransform: "none",
+          </button>
+          <button
+            style={{
+              padding: "6px 18px",
+              backgroundColor: "#2563eb",
+              color: "#fff",
+              border: "none",
               borderRadius: "4px",
-              height: 32,
-              fontSize: "12px",
-              px: 2.5,
-              boxShadow: "0 1px 2px rgba(22, 64, 143, 0.2)",
-              "&:hover": { backgroundColor: "#19448a" }
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "12.5px",
+              height: "32px",
+              boxSizing: "border-box",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
             }}
+            onClick={() => setOpenCreate(true)}
           >
-            Create Enquiry
-          </Button>
-        </Box>
-      </Box>
+            <AddIcon style={{ fontSize: 16 }} />
+            + Create Enquiry
+          </button>
+        </div>
+      </div>
 
-      {/* Tabs */}
-      <Box sx={s.tabsContainer}>
+      {/* Top Module Sub-Navigation Bar (Dashboard / Jobs) */}
+      <div style={{ display: "flex", gap: "24px", borderBottom: "2px solid #e2e8f0", marginBottom: "14px", paddingLeft: "4px" }}>
+        <button
+          onClick={() => setMainTab("Dashboard")}
+          style={{
+            padding: "8px 4px",
+            cursor: "pointer",
+            fontSize: "13px",
+            fontWeight: mainTab === "Dashboard" ? "700" : "600",
+            color: mainTab === "Dashboard" ? "#2563eb" : "#64748b",
+            borderBottom: mainTab === "Dashboard" ? "3px solid #2563eb" : "3px solid transparent",
+            backgroundColor: "transparent",
+            border: "none",
+            outline: "none",
+            marginBottom: "-2px",
+            letterSpacing: "0.5px",
+            transition: "all 0.15s ease",
+          }}
+        >
+          DASHBOARD
+        </button>
+        <button
+          onClick={() => setMainTab("Jobs")}
+          style={{
+            padding: "8px 4px",
+            cursor: "pointer",
+            fontSize: "13px",
+            fontWeight: mainTab === "Jobs" ? "700" : "600",
+            color: mainTab === "Jobs" ? "#2563eb" : "#64748b",
+            borderBottom: mainTab === "Jobs" ? "3px solid #2563eb" : "3px solid transparent",
+            backgroundColor: "transparent",
+            border: "none",
+            outline: "none",
+            marginBottom: "-2px",
+            letterSpacing: "0.5px",
+            transition: "all 0.15s ease",
+          }}
+        >
+          JOBS
+        </button>
+      </div>
+
+      {mainTab === "Dashboard" ? (
+        <FreightForwardingDashboard
+          onSelectTab={(tab) => {
+            setMainTab("Jobs");
+            setActiveTab(tab);
+          }}
+          onOpenCreate={() => setOpenCreate(true)}
+        />
+      ) : (
+        <>
+          {/* Tabs matching ExportJobsTable */}
+          <div style={{ display: "flex", borderBottom: "1px solid #e5e7eb", marginBottom: "10px", overflowX: "auto" }}>
         {["Enquiry", "Rejected", "Pending", "Draft BL", "SOB", "Billing", "ETA Pending", "Delivery", "Completed", "Historic Rates"].map((tab) => {
           const isActive = activeTab === tab;
+          const hasActiveFilter = !!(filters.search?.trim() || filters.shipment_type || filters.status);
+
           const getCount = () => {
-            if (tab === "Enquiry") return serverCounts.Enquiry;
-            if (tab === "Rejected") return serverCounts.Rejected;
-            if (tab === "Pending") return serverCounts.Pending;
-            if (tab === "Draft BL") return serverCounts["Draft BL"];
-            if (tab === "SOB") return serverCounts.SOB;
-            if (tab === "Billing") return serverCounts.Billing;
-            if (tab === "ETA Pending") return serverCounts["ETA Pending"];
-            if (tab === "Delivery") return serverCounts.Delivery;
-            if (tab === "Completed") return serverCounts.Completed;
-            return null;
+            if (tab === "Historic Rates") return null;
+            if (hasActiveFilter && tab === activeTab) {
+              return filteredRows.length;
+            }
+            return serverCounts[tab] !== undefined ? serverCounts[tab] : (tab === "Enquiry" ? enquiryCount : (tab === "Rejected" ? rejectedCount : 0));
           };
           return (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               style={{
-                padding: "8px 16px",
+                padding: "6px 15px",
                 cursor: "pointer",
-                fontSize: "12.5px",
+                fontSize: "12px",
                 fontWeight: isActive ? "700" : "600",
-                color: isActive ? "#16408f" : "#64748b",
-                borderBottom: isActive ? "3px solid #16408f" : "3px solid transparent",
+                color: isActive ? "#2563eb" : "#6b7280",
+                borderBottom: isActive ? "3px solid #2563eb" : "3px solid transparent",
                 backgroundColor: "transparent",
                 border: "none",
                 outline: "none",
                 marginBottom: "-1px",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "4px",
-                transition: "all 0.15s ease"
+                gap: "6px",
+                whiteSpace: "nowrap",
+                transition: "all 0.15s ease",
               }}
             >
               {tab}
               {tab !== "Historic Rates" && (
                 <span
                   style={{
-                    padding: "2px 8px",
-                    borderRadius: "12px",
-                    fontSize: "10.5px",
-                    fontWeight: "800",
-                    backgroundColor: isActive ? "#16408f" : "#f1f5f9",
-                    color: isActive ? "#ffffff" : "#64748b",
-                    marginLeft: "4px",
-                    transition: "all 0.15s ease"
+                    padding: "1px 6px",
+                    borderRadius: "10px",
+                    fontSize: "10px",
+                    fontWeight: "700",
+                    backgroundColor: isActive ? "#eff6ff" : "#f3f4f6",
+                    color: isActive ? "#2563eb" : "#4b5563",
                   }}
                 >
                   {getCount()}
@@ -1045,65 +1158,60 @@ function FreightForwardingModule() {
             </button>
           );
         })}
-      </Box>
+      </div>
 
       {activeTab === "Historic Rates" ? (
         <HistoricRatesLookup />
       ) : (
         <>
-          <Box sx={s.toolbar}>
+          {/* Filter Toolbar matching ExportJobsTable */}
+          <div style={{
+            display: "flex",
+            gap: "8px",
+            rowGap: "8px",
+            alignItems: "center",
+            marginBottom: "10px",
+            flexWrap: "wrap",
+            backgroundColor: "#fff",
+            padding: "6px 10px",
+            borderRadius: "6px",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          }}>
             <input
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              placeholder="Search by Enquiry No, Org, Port..."
+              placeholder="Search by Enquiry No, Job No, Org, Port..."
               style={{
                 height: "32px",
                 padding: "0 10px",
                 fontSize: "12px",
-                border: searchFocused
-                  ? "1px solid #16408f"
-                  : filters.search
-                    ? "1px solid #16408f"
-                    : "1px solid #cbd5e1",
+                border: filters.search ? "1px solid #2563eb" : "1px solid #cbd5e1",
                 borderRadius: "4px",
                 outline: "none",
-                color: filters.search ? "#16408f" : "#333",
+                color: filters.search ? "#1d4ed8" : "#333",
                 backgroundColor: filters.search ? "#eff6ff" : "#fff",
                 fontWeight: filters.search ? "600" : "normal",
                 flex: 1,
-                maxWidth: "350px",
-                boxShadow: searchFocused
-                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)"
-                  : "inset 0 1px 2px rgba(0,0,0,0.05)",
-                transition: "all 0.15s ease-in-out"
+                maxWidth: "320px",
+                boxSizing: "border-box",
               }}
             />
             <select
               value={filters.shipment_type}
               onChange={(e) => setFilters((prev) => ({ ...prev, shipment_type: e.target.value }))}
-              onFocus={() => setShipmentTypeFocused(true)}
-              onBlur={() => setShipmentTypeFocused(false)}
               style={{
                 height: "32px",
-                padding: "0 8px",
+                padding: "0 10px",
                 fontSize: "12px",
-                border: shipmentTypeFocused
-                  ? "1px solid #16408f"
-                  : filters.shipment_type
-                    ? "1px solid #16408f"
-                    : "1px solid #cbd5e1",
+                border: filters.shipment_type ? "1px solid #2563eb" : "1px solid #cbd5e1",
                 borderRadius: "4px",
                 backgroundColor: filters.shipment_type ? "#eff6ff" : "#fff",
-                color: filters.shipment_type ? "#16408f" : "#333",
+                color: filters.shipment_type ? "#1d4ed8" : "#333",
                 cursor: "pointer",
                 fontWeight: "600",
                 outline: "none",
-                boxShadow: shipmentTypeFocused
-                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)"
-                  : "none",
-                transition: "all 0.15s ease-in-out"
+                boxSizing: "border-box",
               }}
             >
               <option value="">All Shipment Types</option>
@@ -1115,57 +1223,68 @@ function FreightForwardingModule() {
             <select
               value={filters.status}
               onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
-              onFocus={() => setStatusFocused(true)}
-              onBlur={() => setStatusFocused(false)}
               style={{
                 height: "32px",
-                padding: "0 8px",
+                padding: "0 10px",
                 fontSize: "12px",
-                border: statusFocused
-                  ? "1px solid #16408f"
-                  : filters.status
-                    ? "1px solid #16408f"
-                    : "1px solid #cbd5e1",
+                border: filters.status ? "1px solid #2563eb" : "1px solid #cbd5e1",
                 borderRadius: "4px",
                 backgroundColor: filters.status ? "#eff6ff" : "#fff",
-                color: filters.status ? "#16408f" : "#333",
+                color: filters.status ? "#1d4ed8" : "#333",
                 cursor: "pointer",
                 fontWeight: "600",
                 outline: "none",
-                boxShadow: statusFocused
-                  ? "0 0 0 3px rgba(22, 64, 143, 0.15)"
-                  : "none",
-                transition: "all 0.15s ease-in-out"
+                boxSizing: "border-box",
               }}
             >
               <option value="">All Status</option>
               <option value="Open">Open</option>
               <option value="Closed">Closed</option>
             </select>
-          </Box>
 
-          <Box sx={{
+            {(filters.search || filters.shipment_type || filters.status) && (
+              <button
+                onClick={() => setFilters({ search: "", shipment_type: "", status: "" })}
+                style={{
+                  height: "32px",
+                  padding: "0 12px",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  backgroundColor: "#fef2f2",
+                  color: "#ef4444",
+                  border: "1px solid #fca5a5",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  boxSizing: "border-box",
+                }}
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
+
+          <div style={{
             background: "#fff",
-            border: "1px solid #ccccccff",
-            borderRadius: "3px",
+            border: "1px solid #e5e7eb",
+            borderRadius: "6px",
             overflow: "hidden",
             boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
             marginBottom: "20px"
           }}>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11.5px" }}>
                 <thead>
-                  <tr style={{ background: "linear-gradient(180deg, #1e3a8a 0%, #172554 100%)", color: "#fff", borderBottom: "2px solid #0f172a" }}>
+                  <tr style={{ backgroundColor: "#1e3a8a", color: "#fff", borderBottom: "2px solid #1e40af" }}>
                     {[
-                      isPipelineTab ? "Job No" : activeTab === "Rejected" ? "Rejected No" : "Enquiry No",
-                      "Shipper / Organization",
-                      "Document Info",
-                      "Port & Routing",
-                      "Container & Cargo",
-                      "Transit Dates & Terms",
-                      "Actions"
+                      isPipelineTab ? "JOB NO" : activeTab === "Rejected" ? "REJECTED NO" : "ENQUIRY NO",
+                      "SHIPPER / ORGANIZATION",
+                      "DOCUMENT INFO",
+                      "PORT & ROUTING",
+                      "CONTAINER & CARGO",
+                      "TRANSIT DATES & TERMS",
+                      "ACTIONS"
                     ].map((h) => (
-                      <th key={h} style={{ textAlign: h === "Actions" ? "center" : "left", padding: "10px 12px", fontWeight: "700", fontSize: "11px", letterSpacing: "0.5px", textTransform: "uppercase", borderRight: "1px solid rgba(255,255,255,0.12)", whiteSpace: "nowrap" }}>
+                      <th key={h} style={{ textAlign: h === "ACTIONS" ? "center" : "left", padding: "9px 12px", fontWeight: "700", fontSize: "11px", letterSpacing: "0.5px", textTransform: "uppercase", borderRight: "1px solid rgba(255,255,255,0.15)", whiteSpace: "nowrap" }}>
                         {h}
                       </th>
                     ))}
@@ -1633,9 +1752,11 @@ function FreightForwardingModule() {
                 </tbody>
               </table>
             </div>
-          </Box>
+          </div>
         </>
       )}
+    </>
+  )}
 
       <Dialog
         open={openCreate}

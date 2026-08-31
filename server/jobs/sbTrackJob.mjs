@@ -70,6 +70,35 @@ function isValidVal(val) {
     return u !== "" && u !== "N.A." && u !== "N/A" && u !== "NA";
 }
 
+/** 
+ * Returns true if job is missing any of: egm_no, egm_date, drawback_scroll_no, OR rosctl_scroll_no.
+ * If all 4 are present, the job does not need further polling.
+ */
+function isJobMissingSbDetails(job) {
+    if (!isValidVal(job.egm_no) || !isValidVal(job.egm_date)) {
+        return true;
+    }
+
+    let hasDbkScroll = false;
+    let hasRosctlScroll = false;
+
+    if (Array.isArray(job.invoices)) {
+        for (const inv of job.invoices) {
+            if (Array.isArray(inv.products)) {
+                for (const prod of inv.products) {
+                    if (Array.isArray(prod.drawbackDetails) && prod.drawbackDetails.length > 0) {
+                        const d = prod.drawbackDetails[0];
+                        if (isValidVal(d.drawback_scroll_no)) hasDbkScroll = true;
+                        if (isValidVal(d.rosctl_scroll_no)) hasRosctlScroll = true;
+                    }
+                }
+            }
+        }
+    }
+
+    return !hasDbkScroll || !hasRosctlScroll;
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── ICEGATE API caller ────────────────────────────────────────────────────────
@@ -105,20 +134,39 @@ export async function runSbTrackJob(force = false) {
     console.log(`${LOG_PREFIX} Started at ${new Date().toISOString()}`);
     if (force) console.log(`${LOG_PREFIX} ⚠️ FORCE MODE ENABLED — Ignoring 15-day polling gate.`);
 
-    // Compute current Indian financial year (Apr–Mar) as "YY-YY" e.g. "26-27"
+    // Compute current Indian financial year (Apr 1 – Mar 31) as "YY-YY" e.g. "26-27"
     const now = new Date();
     const calYear = now.getFullYear();
-    const month = now.getMonth() + 1; // 1-based
+    const month = now.getMonth() + 1; // 1-based (Jan=1, Apr=4, Dec=12)
     const fyStartYear = month >= 4 ? calYear : calYear - 1;
     const currentFY = `${String(fyStartYear).slice(-2)}-${String(fyStartYear + 1).slice(-2)}`;
-    console.log(`${LOG_PREFIX} Financial Year: ${currentFY}`);
+    
+    const fyStartDate = new Date(fyStartYear, 3, 1, 0, 0, 0); // 1st April of fyStartYear
+    const fyEndDate = new Date(fyStartYear + 1, 3, 1, 0, 0, 0); // 1st April of next year
+    console.log(`${LOG_PREFIX} Financial Year: ${currentFY} (From ${fyStartDate.toISOString().split("T")[0]} to ${new Date(fyEndDate.getTime() - 86400000).toISOString().split("T")[0]})`);
 
     const jobs = await ExJobModel.find({
         isJobCanceled: { $ne: true },
-        year: currentFY,
-        sb_no: { $exists: true, $ne: "" },
-        sb_date: { $exists: true, $ne: "" },
-        custom_house: { $exists: true, $ne: "" },
+        $or: [
+            { year: currentFY },
+            { createdAt: { $gte: fyStartDate, $lt: fyEndDate } }
+        ],
+        sb_no: { $exists: true, $nin: [null, ""] },
+        sb_date: { $exists: true, $nin: [null, ""] },
+        custom_house: { $exists: true, $nin: [null, ""] },
+        // Only include jobs missing egm_no, egm_date, drawback_scroll_no, OR rosctl_scroll_no
+        $and: [
+            {
+                $or: [
+                    { egm_no: { $in: [null, ""] } },
+                    { egm_date: { $in: [null, ""] } },
+                    { "invoices.products.drawbackDetails.drawback_scroll_no": { $in: [null, ""] } },
+                    { "invoices.products.drawbackDetails.rosctl_scroll_no": { $in: [null, ""] } },
+                    { "invoices.products.drawbackDetails": { $exists: false } },
+                    { "invoices.products.drawbackDetails": { $size: 0 } }
+                ]
+            }
+        ]
     })
         .select(
             "job_no sb_no sb_date custom_house egm_no egm_date " +
@@ -126,11 +174,11 @@ export async function runSbTrackJob(force = false) {
         )
         .lean();
 
-    let skippedNotDue = 0, skippedNoLocation = 0;
+    let skippedNotDue = 0, skippedNoLocation = 0, skippedAlreadyComplete = 0;
     const eligibleJobs = [];
 
     for (const job of jobs) {
-        // Add the force check here
+        if (!isJobMissingSbDetails(job)) { skippedAlreadyComplete++; continue; }
         if (!force && !isDue(job.sb_track_last_polled)) { skippedNotDue++; continue; }
 
         const loc = CUSTOM_HOUSE_CODE_MAP[job.custom_house?.toUpperCase()] || CUSTOM_HOUSE_CODE_MAP[job.custom_house];
@@ -140,6 +188,7 @@ export async function runSbTrackJob(force = false) {
 
     console.log(`${LOG_PREFIX} ───────────────────────────────────────────`);
     console.log(`${LOG_PREFIX} Total candidates (FY ${currentFY}) : ${jobs.length}`);
+    console.log(`${LOG_PREFIX} Already complete (skip)            : ${skippedAlreadyComplete}`);
     console.log(`${LOG_PREFIX} Polled recently / not due (skip)    : ${skippedNotDue}`);
     console.log(`${LOG_PREFIX} Unknown custom house (skip)         : ${skippedNoLocation}`);
     console.log(`${LOG_PREFIX} ► PENDING TO POLL                   : ${eligibleJobs.length}`);

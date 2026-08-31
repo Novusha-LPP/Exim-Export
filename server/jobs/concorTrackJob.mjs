@@ -16,42 +16,32 @@ const CONCOR_TIMEOUT_MS = 30000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Parses date from DETAILS string (e.g. "Departed from Gate <b>KHODIYAR</b> on 20/07/2026 23:52:00</b>")
- * Returns { railOutDate: "YYYY-MM-DD", railReachedDate: "YYYY-MM-DD" } or null
+ * Parses date from DETAILS string (e.g. "Departed from Gate <b>KHODIYAR</b> on 20/07/2026 23:52:00</b>" or "Arrived at <b>MUNDRA</b> on 21/07/2026 08:30:00")
+ * Returns { isDeparted: boolean, isArrived: boolean, dateStr: "DD-MM-YYYY" } or null
  */
-function parseDepartedGateDetails(details) {
+function parseConcorDetails(details) {
     if (!details || typeof details !== "string") return null;
-    if (!/Departed from Gate/i.test(details)) return null;
+
+    const isDeparted = /Departed/i.test(details);
+    const isArrived = /Arrived/i.test(details);
+
+    if (!isDeparted && !isArrived) return null;
 
     // Extract DD/MM/YYYY or YYYY-MM-DD or DD-MM-YYYY
     const dateMatch = details.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
     if (!dateMatch) return null;
 
-    const day = parseInt(dateMatch[1], 10);
-    const month = parseInt(dateMatch[2], 10);
-    const year = parseInt(dateMatch[3], 10);
+    const day = String(dateMatch[1]).padStart(2, "0");
+    const month = String(dateMatch[2]).padStart(2, "0");
+    const year = dateMatch[3];
 
-    const departedDate = new Date(year, month - 1, day);
-    if (isNaN(departedDate.getTime())) return null;
-
-    // Rail Out Date = departedDate (YYYY-MM-DD format)
-    const outYear = departedDate.getFullYear();
-    const outMonth = String(departedDate.getMonth() + 1).padStart(2, "0");
-    const outDay = String(departedDate.getDate()).padStart(2, "0");
-    const railOutDateStr = `${outYear}-${outMonth}-${outDay}`;
-
-    // Rail Reached Date = departedDate + 1 day
-    const reachedDate = new Date(departedDate);
-    reachedDate.setDate(reachedDate.getDate() + 1);
-    const rYear = reachedDate.getFullYear();
-    const rMonth = String(reachedDate.getMonth() + 1).padStart(2, "0");
-    const rDay = String(reachedDate.getDate()).padStart(2, "0");
-    const railReachedDateStr = `${rYear}-${rMonth}-${rDay}`;
+    // Standardize to DD-MM-YYYY format used across Export DSR modules
+    const formattedDate = `${day}-${month}-${year}`;
 
     return {
-        railOutDate: railOutDateStr,
-        railReachedDate: railReachedDateStr,
-        departedDateStr: `${outDay}-${outMonth}-${outYear}`
+        isDeparted,
+        isArrived,
+        dateStr: formattedDate
     };
 }
 
@@ -60,9 +50,10 @@ function parseDepartedGateDetails(details) {
  */
 export async function runConcorTrackJob(force = false) {
     try {
-        // Query active export jobs that are pending Rail Out or Rail Reached
+        // Query active export jobs for ICD SABARMATI that are pending Rail Out or Rail Reached
         const pendingJobs = await ExJobModel.find({
             isJobCanceled: { $ne: true },
+            custom_house: { $regex: /SABARMATI|INSBI6/i },
             "containers.0": { $exists: true },
             $or: [
                 { "operations.0.statusDetails.0.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
@@ -121,8 +112,8 @@ export async function runConcorTrackJob(force = false) {
                     const details = info?.containerTrack?.DETAILS;
                     if (!details) continue;
 
-                    const parsedDates = parseDepartedGateDetails(details);
-                    if (!parsedDates) continue;
+                    const parsed = parseConcorDetails(details);
+                    if (!parsed) continue;
                     matchedCount++;
 
                     const jobsToUpdate = containerToJobsMap.get(cNo.toUpperCase()) || [];
@@ -141,15 +132,17 @@ export async function runConcorTrackJob(force = false) {
                         const statusObj = dbJob.operations[0].statusDetails[0];
                         let modified = false;
 
-                        if (!statusObj.handoverConcorTharSanganaRailRoadDate) {
-                            statusObj.handoverConcorTharSanganaRailRoadDate = parsedDates.railOutDate;
+                        // Only set handoverConcorTharSanganaRailRoadDate (Rail Out) when CONCOR reports Departed
+                        if (parsed.isDeparted && !statusObj.handoverConcorTharSanganaRailRoadDate) {
+                            statusObj.handoverConcorTharSanganaRailRoadDate = parsed.dateStr;
                             modified = true;
                         }
-                        if (!statusObj.railOutReachedDate) {
-                            statusObj.railOutReachedDate = parsedDates.railReachedDate;
+                        // Only set railOutReachedDate when CONCOR explicitly reports Arrived
+                        if (parsed.isArrived && !statusObj.railOutReachedDate) {
+                            statusObj.railOutReachedDate = parsed.dateStr;
                             modified = true;
                         }
-                        if (statusObj.railRoad !== "rail") {
+                        if ((parsed.isDeparted || parsed.isArrived) && statusObj.railRoad !== "rail") {
                             statusObj.railRoad = "rail";
                             modified = true;
                         }
@@ -161,16 +154,18 @@ export async function runConcorTrackJob(force = false) {
 
                             // If parent club job, also update clubbed child jobs
                             if (dbJob.is_club_job_parent && Array.isArray(dbJob.clubbed_jobs) && dbJob.clubbed_jobs.length > 0) {
+                                const updatePayload = { "operations.0.statusDetails.0.railRoad": "rail" };
+                                if (parsed.isDeparted) {
+                                    updatePayload["operations.0.statusDetails.0.handoverConcorTharSanganaRailRoadDate"] = parsed.dateStr;
+                                }
+                                if (parsed.isArrived) {
+                                    updatePayload["operations.0.statusDetails.0.railOutReachedDate"] = parsed.dateStr;
+                                }
+
                                 for (const cJobNo of dbJob.clubbed_jobs) {
                                     await ExJobModel.updateOne(
                                         { job_no: cJobNo },
-                                        {
-                                            $set: {
-                                                "operations.0.statusDetails.0.handoverConcorTharSanganaRailRoadDate": parsedDates.railOutDate,
-                                                "operations.0.statusDetails.0.railOutReachedDate": parsedDates.railReachedDate,
-                                                "operations.0.statusDetails.0.railRoad": "rail"
-                                            }
-                                        }
+                                        { $set: updatePayload }
                                     );
                                 }
                             }

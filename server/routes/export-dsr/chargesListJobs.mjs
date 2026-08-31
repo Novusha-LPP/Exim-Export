@@ -265,18 +265,25 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
         if (branch) filter.$and.push({ branch_code: branch });
         if (customHouse) filter.$and.push({ custom_house: { $regex: escapeRegex(customHouse), $options: "i" } });
         if (jobOwner) filter.$and.push({ job_owner: jobOwner });
-        if (detailedStatus) {
-            const statusArray = Array.isArray(detailedStatus) ? detailedStatus : [detailedStatus];
-            if (statusArray.includes("Pending")) {
-                filter.$and.push({
-                    $or: [
-                        { detailedStatus: { $in: statusArray } },
-                        { detailedStatus: { $in: [null, "", "Pending"] } },
-                        { detailedStatus: { $exists: false } }
-                    ]
-                });
-            } else {
-                filter.$and.push({ detailedStatus: { $in: statusArray } });
+        const rawDetailedStatus = req.query.detailedStatus || req.query["detailedStatus[]"];
+        if (rawDetailedStatus) {
+            let statusArray = Array.isArray(rawDetailedStatus) ? rawDetailedStatus : [rawDetailedStatus];
+            if (typeof rawDetailedStatus === "string" && rawDetailedStatus.includes(",")) {
+                statusArray = rawDetailedStatus.split(",");
+            }
+            statusArray = statusArray.map(s => String(s).trim()).filter(Boolean);
+            if (statusArray.length > 0) {
+                if (statusArray.includes("Pending")) {
+                    filter.$and.push({
+                        $or: [
+                            { detailedStatus: { $in: statusArray } },
+                            { detailedStatus: { $in: [null, "", "Pending"] } },
+                            { detailedStatus: { $exists: false } }
+                        ]
+                    });
+                } else {
+                    filter.$and.push({ detailedStatus: { $in: statusArray } });
+                }
             }
         }
         

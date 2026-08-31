@@ -1,9 +1,130 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Dialog, DialogTitle, DialogContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CreateFreightEnquiry from "./CreateFreightEnquiry";
 import FreightQuotation from "./FreightQuotation";
+
+export const FREIGHT_CHARGE_TEMPLATES = {
+  EXPORT_SEA_LCL: {
+    label: "EXPORT SEA LCL",
+    clearance: [
+      "DOCUMENTATION CHARGES",
+      "EXAMINATION CHARGES",
+      "EXPORT AGENCY CHARGES",
+      "CERTIFICATE OF ORIGIN CHARGES"
+    ],
+    freight_forwarding: [
+      "SEA FREIGHT",
+      "TERMINAL HANDLING CHARGES",
+      "BILL OF LADING",
+      "BROKERAGE",
+      "COMMISSION"
+    ]
+  },
+  IMPORT_SEA_LCL: {
+    label: "IMPORT SEA LCL",
+    clearance: [
+      "DOCUMENTATION CHARGES",
+      "EXAMINATION CHARGES",
+      "IMPORT AGENCY CHARGES"
+    ],
+    freight_forwarding: [
+      "SEA FREIGHT",
+      "TERMINAL HANDLING CHARGES",
+      "DO CHARGES",
+      "INLAND HAULAGE CHARGES"
+    ]
+  },
+  EXPORT_SEA_FCL: {
+    label: "EXPORT SEA FCL",
+    clearance: [
+      "DOCUMENTATION CHARGES",
+      "EXAMINATION CHARGES",
+      "EXPORT AGENCY CHARGES",
+      "CERTIFICATE OF ORIGIN CHARGES",
+      "ODEX CHARGES"
+    ],
+    freight_forwarding: [
+      "SEA FREIGHT",
+      "TERMINAL HANDLING CHARGES",
+      "BILL OF LADING",
+      "MANDATORY USER CHARGES",
+      "SEAL CHARGES-T"
+    ]
+  },
+  IMPORT_SEA_FCL: {
+    label: "IMPORT SEA FCL",
+    clearance: [
+      "DOCUMENTATION CHARGES",
+      "EXAMINATION CHARGES",
+      "IMPORT AGENCY CHARGES",
+      "S/L CHARGES"
+    ],
+    freight_forwarding: [
+      "SEA FREIGHT",
+      "BL ENDORSEMENT CHARGES"
+    ]
+  },
+  EXPORT_AIR: {
+    label: "EXPORT AIR",
+    clearance: [
+      "DOCUMENTATION CHARGES",
+      "EXPORT AGENCY CHARGES",
+      "ADANI CHARGES",
+      "GSEC CHARGES"
+    ],
+    freight_forwarding: [
+      "AIR FREIGHT",
+      "AIR WAYBILL",
+      "AMS CHARGES",
+      "CGC CHARGES",
+      "GMAX CHARGES"
+    ]
+  },
+  IMPORT_AIR: {
+    label: "IMPORT AIR",
+    clearance: [
+      "DOCUMENTATION CHARGES",
+      "EXAMINATION CHARGES",
+      "IMPORT AGENCY CHARGES",
+      "ADANI CHARGES",
+      "GSEC CHARGES"
+    ],
+    freight_forwarding: [
+      "AIR FREIGHT",
+      "AIR LINE DO CHARGES",
+      "HOUSE DO CHARGES"
+    ]
+  }
+};
+
+export function getMatchingTemplateKey(enquiry) {
+  const st = String(enquiry?.shipment_type || "").toUpperCase();
+  const ct = String(enquiry?.consignment_type || "").toUpperCase();
+
+  if (st.includes("EXPORT") && st.includes("AIR")) return "EXPORT_AIR";
+  if (st.includes("IMPORT") && st.includes("AIR")) return "IMPORT_AIR";
+
+  if (st.includes("EXPORT")) {
+    return ct.includes("LCL") ? "EXPORT_SEA_LCL" : "EXPORT_SEA_FCL";
+  }
+  if (st.includes("IMPORT")) {
+    return ct.includes("LCL") ? "IMPORT_SEA_LCL" : "IMPORT_SEA_FCL";
+  }
+
+  return "EXPORT_SEA_FCL";
+}
+
+export function buildRatesFromTemplate(templateKey, currentForwarder = "") {
+  const tpl = FREIGHT_CHARGE_TEMPLATES[templateKey] || FREIGHT_CHARGE_TEMPLATES.EXPORT_SEA_FCL;
+  return {
+    template_key: templateKey,
+    forwarder_name: currentForwarder,
+    base_rates: tpl.clearance.map(name => ({ charge_name: name, amount: 0 })),
+    shipping_line_rates: tpl.freight_forwarding.map(name => ({ charge_name: name, amount: 0 })),
+  };
+}
 
 const THEME = {
   blue: "#16408f",
@@ -73,6 +194,22 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
   const [showHistoricalDialog, setShowHistoricalDialog] = useState(false);
   const [historicalLoading, setHistoricalLoading] = useState(false);
 
+  const matchedKey = getMatchingTemplateKey(enquiry);
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState(matchedKey);
+  const [newRate, setNewRate] = useState(() => buildRatesFromTemplate(matchedKey));
+
+  useEffect(() => {
+    const key = getMatchingTemplateKey(enquiry);
+    setSelectedTemplateKey(key);
+    setNewRate(buildRatesFromTemplate(key, newRate.forwarder_name));
+  }, [enquiry._id]);
+
+  const handleTemplateSelect = (key) => {
+    setSelectedTemplateKey(key);
+    const updated = buildRatesFromTemplate(key, newRate.forwarder_name);
+    setNewRate(updated);
+  };
+
   const handleHistoricalFreight = async () => {
     const pol = enquiry.port_of_loading;
     const pod = enquiry.port_of_destination;
@@ -105,7 +242,7 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
 
   const handleUseHistoricalRate = (rate) => {
     const next = [...newRate.shipping_line_rates];
-    const idx = next.findIndex(r => r.charge_name === "Ocean Freight");
+    const idx = next.findIndex(r => r.charge_name === "Ocean Freight" || r.charge_name === "AIR FREIGHT" || r.charge_name === "SEA FREIGHT");
     if (idx !== -1) {
       next[idx].amount = rate.amountINR;
       setNewRate({ ...newRate, shipping_line_rates: next });
@@ -115,36 +252,20 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
 
   const handleAddCharge = (category) => {
     const next = { ...newRate };
-    next[category].push({ charge_name: "", amount: 0 });
+    next[category] = [...next[category], { charge_name: "", amount: 0 }];
     setNewRate(next);
   };
 
   const handleRemoveCharge = (category, index) => {
     const next = { ...newRate };
-    next[category].splice(index, 1);
+    const list = [...next[category]];
+    list.splice(index, 1);
+    next[category] = list;
     setNewRate(next);
   };
 
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [selectedRateForQuote, setSelectedRateForQuote] = useState(null);
-  const [newRate, setNewRate] = useState({
-    forwarder_name: "",
-    base_rates: [
-      { charge_name: "Agency Charges", amount: 2750 },
-      { charge_name: "VGM / ESB / FORM-13 filing", amount: 500 },
-      { charge_name: "Certificate of Origin", amount: 500 },
-      { charge_name: "Concor Charges", amount: 25000 },
-      { charge_name: "Transportation Charges", amount: 10000 },
-      { charge_name: "Lift on Lift off", amount: 2500 },
-    ],
-    shipping_line_rates: [
-      { charge_name: "Ocean Freight", amount: 300 },
-      { charge_name: "Terminal Handling Charges", amount: 15000 },
-      { charge_name: "BL Charges", amount: 5500 },
-      { charge_name: "Seal Charges", amount: 1000 },
-      { charge_name: "MUC Charges", amount: 175 },
-    ],
-  });
 
   const handleUpdateEnquiryDetails = async (updatedData) => {
     try {
@@ -372,28 +493,43 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
         </div>
 
         {showAdd && (
-          <div style={{ background: "#f9fafb", padding: "15px", borderRadius: "3px", marginBottom: "20px" }}>
-            <div style={{ marginBottom: "15px" }}>
-              <label style={s.label}>Forwarder</label>
-              <select
-                style={s.input}
-                onChange={(e) => setNewRate({ ...newRate, forwarder_name: e.target.value })}
-              >
-                <option value="">Select Forwarder</option>
-                {forwarders.map(f => <option key={f._id} value={f.name}>{f.name}</option>)}
-              </select>
+          <div style={{ background: "#f9fafb", padding: "15px", borderRadius: "3px", marginBottom: "20px", border: "1px solid #cbd5e1" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "15px" }}>
+              <div>
+                <label style={s.label}>Forwarder</label>
+                <select
+                  style={s.input}
+                  value={newRate.forwarder_name}
+                  onChange={(e) => setNewRate({ ...newRate, forwarder_name: e.target.value })}
+                >
+                  <option value="">Select Forwarder</option>
+                  {forwarders.map(f => <option key={f._id} value={f.name}>{f.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={s.label}>Quotation Template (Category)</label>
+                <select
+                  style={{ ...s.input, backgroundColor: "#eff6ff", borderColor: "#93c5fd", fontWeight: 700, color: "#1e40af" }}
+                  value={selectedTemplateKey}
+                  onChange={(e) => handleTemplateSelect(e.target.value)}
+                >
+                  {Object.entries(FREIGHT_CHARGE_TEMPLATES).map(([k, tpl]) => (
+                    <option key={k} value={k}>{tpl.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
               <div>
                 <div style={{ ...s.label, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Local/Agency Charges</span>
+                  <span>CLEARANCE CHARGES</span>
                   <button 
                     type="button" 
                     onClick={() => handleAddCharge('base_rates')}
-                    style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: '#16408f', color: '#fff', border: 'none', borderRadius: 3 }}
+                    style={{ fontSize: 10, padding: '2px 8px', cursor: 'pointer', background: '#16408f', color: '#fff', border: 'none', borderRadius: 3, fontWeight: 700 }}
                   >
-                    + Add
+                    + Add Extra Charge
                   </button>
                 </div>
                 {newRate.base_rates.map((item, idx) => (
@@ -430,13 +566,13 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
               </div>
               <div>
                 <div style={{ ...s.label, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Shipping Line Charges</span>
+                  <span>FREIGHT FORWARDING CHARGES</span>
                   <button 
                     type="button" 
                     onClick={() => handleAddCharge('shipping_line_rates')}
-                    style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: '#16408f', color: '#fff', border: 'none', borderRadius: 3 }}
+                    style={{ fontSize: 10, padding: '2px 8px', cursor: 'pointer', background: '#16408f', color: '#fff', border: 'none', borderRadius: 3, fontWeight: 700 }}
                   >
-                    + Add
+                    + Add Extra Charge
                   </button>
                 </div>
                 {newRate.shipping_line_rates.map((item, idx) => (

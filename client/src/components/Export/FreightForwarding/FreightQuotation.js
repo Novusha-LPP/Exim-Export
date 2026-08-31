@@ -43,6 +43,20 @@ function FreightQuotation({ enquiry, selectedRate, onBack, onUpdate }) {
   const totalA = calculateTotal(quoteData.base_rates);
   const totalB = calculateTotal(quoteData.shipping_line_rates);
 
+  const handleAddChargeRow = (category) => {
+    const next = { ...quoteData };
+    next[category] = [...next[category], { charge_name: "", amount: 0, margin: 0 }];
+    setQuoteData(next);
+  };
+
+  const handleRemoveChargeRow = (category, index) => {
+    const next = { ...quoteData };
+    const list = [...next[category]];
+    list.splice(index, 1);
+    next[category] = list;
+    setQuoteData(next);
+  };
+
   const handleSaveQuotation = async () => {
     try {
       const res = await axios.put(`${import.meta.env.VITE_API_STRING}/freight-enquiries/${enquiry._id}`, {
@@ -163,17 +177,54 @@ function FreightQuotation({ enquiry, selectedRate, onBack, onUpdate }) {
           FREIGHT QUOTATION ({enquiry.container_size || "LCL"})
         </div>
 
+        {/* CLEARANCE CHARGES (A) */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+          <div style={{ fontSize: "12px", fontWeight: 700, color: "#16408f", textTransform: "uppercase" }}>
+            Clearance Charges
+          </div>
+          <button
+            type="button"
+            className="no-print"
+            onClick={() => handleAddChargeRow('base_rates')}
+            style={{
+              fontSize: "10px",
+              padding: "3px 8px",
+              backgroundColor: "#16408f",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "3px",
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            + Add Extra Charge
+          </button>
+        </div>
+
         <table style={s.table}>
           <thead>
             <tr>
-              <th style={s.th}>Charges</th>
-              <th style={{ ...s.th, textAlign: "right" }}>Amount (Rs)</th>
+              <th style={s.th}>Clearance Charges</th>
+              <th style={{ ...s.th, textAlign: "right", width: "160px" }}>Amount (Rs)</th>
+              <th style={{ ...s.th, width: "30px", textAlign: "center" }} className="no-print"></th>
             </tr>
           </thead>
           <tbody>
             {quoteData.base_rates.map((item, i) => (
               <tr key={i}>
-                <td style={s.td}>{item.charge_name}</td>
+                <td style={s.td}>
+                  <input
+                    type="text"
+                    style={{ border: "none", backgroundColor: "transparent", width: "100%", fontSize: "12.5px", outline: "none", color: "#334155" }}
+                    value={item.charge_name}
+                    placeholder="Charge Name"
+                    onChange={(e) => {
+                      const next = [...quoteData.base_rates];
+                      next[i].charge_name = e.target.value;
+                      setQuoteData({ ...quoteData, base_rates: next });
+                    }}
+                  />
+                </td>
                 <td style={{ ...s.td, textAlign: "right" }}>
                   <input 
                     type="number" 
@@ -188,26 +239,73 @@ function FreightQuotation({ enquiry, selectedRate, onBack, onUpdate }) {
                     }}
                   />
                 </td>
+                <td style={{ ...s.td, textAlign: "center", padding: "4px" }} className="no-print">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveChargeRow('base_rates', i)}
+                    style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "14px", fontWeight: 700 }}
+                  >
+                    ×
+                  </button>
+                </td>
               </tr>
             ))}
             <tr style={{ fontWeight: "bold", backgroundColor: "#f8fafc" }}>
-              <td style={{ ...s.td, textAlign: "right" }}>TOTAL (A)</td>
+              <td style={{ ...s.td, textAlign: "right" }}>TOTAL CLEARANCE (A)</td>
               <td style={{ ...s.td, textAlign: "right" }}>{totalA.toLocaleString()}</td>
+              <td className="no-print" style={s.td}></td>
             </tr>
           </tbody>
         </table>
 
+        {/* FREIGHT FORWARDING CHARGES (B) */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+          <div style={{ fontSize: "12px", fontWeight: 700, color: "#16408f", textTransform: "uppercase" }}>
+            Freight Forwarding Charges
+          </div>
+          <button
+            type="button"
+            className="no-print"
+            onClick={() => handleAddChargeRow('shipping_line_rates')}
+            style={{
+              fontSize: "10px",
+              padding: "3px 8px",
+              backgroundColor: "#16408f",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "3px",
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            + Add Extra Charge
+          </button>
+        </div>
+
         <table style={s.table}>
           <thead>
             <tr>
-              <th style={s.th}>Shipping Line Cost</th>
-              <th style={{ ...s.th, textAlign: "right" }}>Amount (Rs)</th>
+              <th style={s.th}>Freight Forwarding Charges</th>
+              <th style={{ ...s.th, textAlign: "right", width: "160px" }}>Amount (Rs)</th>
+              <th style={{ ...s.th, width: "30px", textAlign: "center" }} className="no-print"></th>
             </tr>
           </thead>
           <tbody>
             {quoteData.shipping_line_rates.map((item, i) => (
               <tr key={i}>
-                <td style={s.td}>{item.charge_name}</td>
+                <td style={s.td}>
+                  <input
+                    type="text"
+                    style={{ border: "none", backgroundColor: "transparent", width: "100%", fontSize: "12.5px", outline: "none", color: "#334155" }}
+                    value={item.charge_name}
+                    placeholder="Charge Name"
+                    onChange={(e) => {
+                      const next = [...quoteData.shipping_line_rates];
+                      next[i].charge_name = e.target.value;
+                      setQuoteData({ ...quoteData, shipping_line_rates: next });
+                    }}
+                  />
+                </td>
                 <td style={{ ...s.td, textAlign: "right" }}>
                   <input 
                     type="number" 
@@ -222,11 +320,21 @@ function FreightQuotation({ enquiry, selectedRate, onBack, onUpdate }) {
                     }}
                   />
                 </td>
+                <td style={{ ...s.td, textAlign: "center", padding: "4px" }} className="no-print">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveChargeRow('shipping_line_rates', i)}
+                    style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "14px", fontWeight: 700 }}
+                  >
+                    ×
+                  </button>
+                </td>
               </tr>
             ))}
             <tr style={{ fontWeight: "bold", backgroundColor: "#f8fafc" }}>
-              <td style={{ ...s.td, textAlign: "right" }}>TOTAL (B)</td>
+              <td style={{ ...s.td, textAlign: "right" }}>TOTAL FREIGHT FORWARDING (B)</td>
               <td style={{ ...s.td, textAlign: "right" }}>{totalB.toLocaleString()}</td>
+              <td className="no-print" style={s.td}></td>
             </tr>
           </tbody>
         </table>
