@@ -4947,7 +4947,20 @@ const ExportJobsTable = () => {
                                         onClick={(e) => e.stopPropagation()}
                                         style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
                                       />
-                                      F-13
+                                      <span
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          if (job.job_no) {
+                                            const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/form13/${encodeURIComponent(job.job_no)}`;
+                                            window.open(url, "_blank");
+                                          }
+                                        }}
+                                        style={{ textDecoration: "underline", color: "#1976d2" }}
+                                        title="Open Form 13 ODEX Tracker"
+                                      >
+                                        F-13
+                                      </span>
                                     </label>
 
                                     <label style={{ display: "flex", alignItems: "center", gap: "1px", fontSize: "9px", fontWeight: "700", color: "#1976d2", cursor: "pointer", userSelect: "none" }}>
@@ -4958,7 +4971,20 @@ const ExportJobsTable = () => {
                                         onClick={(e) => e.stopPropagation()}
                                         style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
                                       />
-                                      E-SB
+                                      <span
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          if (job.job_no) {
+                                            const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/esb/${encodeURIComponent(job.job_no)}`;
+                                            window.open(url, "_blank");
+                                          }
+                                        }}
+                                        style={{ textDecoration: "underline", color: "#1976d2" }}
+                                        title="Open ESB ODEX Tracker"
+                                      >
+                                        E-SB
+                                      </span>
                                     </label>
 
                                     <label style={{ display: "flex", alignItems: "center", gap: "1px", fontSize: "9px", fontWeight: "700", color: "#2563eb", cursor: "pointer", userSelect: "none" }}>
@@ -5087,41 +5113,14 @@ const ExportJobsTable = () => {
                             </td>
 
                             <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#ecfdf5" : "inherit", minWidth: '130px' }}>
-                              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                <button
-                                  onClick={(e) => handleSignDSC(job, e)}
-                                  disabled={(signingLoading || checkingDsc) && selectedSignJob?._id === job._id}
-                                  style={{
-                                    padding: "6px 12px",
-                                    backgroundColor: ((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? "#cbd5e1" : "#9333ea",
-                                    color: "white",
-                                    border: "none",
-                                    borderRadius: "3px",
-                                    fontSize: "11px",
-                                    fontWeight: "600",
-                                    cursor: ((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? "not-allowed" : "pointer",
-                                    width: "100%",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    gap: "4px"
-                                  }}
-                                  title="Sign with DSC"
-                                >
-                                  {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (
-                                    <CircularProgress size={12} color="inherit" />
-                                  ) : (
-                                    <GavelIcon style={{ fontSize: 12 }} />
-                                  )}
-                                  {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (checkingDsc ? "Checking..." : "Signing...") : "Sign"}
-                                </button>
-
-                                <div style={{ display: "flex", gap: "2px", width: "100%" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                {/* Row 1: Copy and Sign side by side */}
+                                <div style={{ display: "flex", gap: "3px", width: "100%" }}>
                                   <button
                                     type="button"
                                     onClick={(e) => handleCopyRow(e, job)}
                                     style={{
-                                      padding: "3px 4px",
+                                      padding: "4px 6px",
                                       backgroundColor: "#059669",
                                       color: "white",
                                       border: "none",
@@ -5141,9 +5140,53 @@ const ExportJobsTable = () => {
                                     onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#047857")}
                                     onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#059669")}
                                   >
-                                    <ContentCopyIcon style={{ fontSize: 9, color: "white" }} />
+                                    <ContentCopyIcon style={{ fontSize: 10, color: "white" }} />
                                     Copy
                                   </button>
+                                  <button
+                                    onClick={(e) => handleSignDSC(job, e)}
+                                    disabled={(signingLoading || checkingDsc) && selectedSignJob?._id === job._id}
+                                    style={{
+                                      padding: "4px 6px",
+                                      backgroundColor: ((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? "#cbd5e1" : "#9333ea",
+                                      color: "white",
+                                      border: "none",
+                                      borderRadius: "3px",
+                                      fontSize: "10px",
+                                      fontWeight: "600",
+                                      cursor: ((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? "not-allowed" : "pointer",
+                                      flex: 1,
+                                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: "2px",
+                                      whiteSpace: "nowrap",
+                                      transition: "background-color 0.2s ease"
+                                    }}
+                                    onMouseOver={(e) => {
+                                      if (!((signingLoading || checkingDsc) && selectedSignJob?._id === job._id)) {
+                                        e.currentTarget.style.backgroundColor = "#7e22ce";
+                                      }
+                                    }}
+                                    onMouseOut={(e) => {
+                                      if (!((signingLoading || checkingDsc) && selectedSignJob?._id === job._id)) {
+                                        e.currentTarget.style.backgroundColor = "#9333ea";
+                                      }
+                                    }}
+                                    title="Sign with DSC"
+                                  >
+                                    {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (
+                                      <CircularProgress size={10} color="inherit" />
+                                    ) : (
+                                      <GavelIcon style={{ fontSize: 10 }} />
+                                    )}
+                                    {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (checkingDsc ? "..." : "Signing...") : "Sign"}
+                                  </button>
+                                </div>
+
+                                {/* Row 2: VGM, F-13, and ESB side by side in one row */}
+                                <div style={{ display: "flex", gap: "2px", width: "100%" }}>
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -5154,12 +5197,12 @@ const ExportJobsTable = () => {
                                       }
                                     }}
                                     style={{
-                                      padding: "3px 4px",
+                                      padding: "3px 2px",
                                       backgroundColor: "#2563eb",
                                       color: "white",
                                       border: "none",
                                       borderRadius: "3px",
-                                      fontSize: "10px",
+                                      fontSize: "9px",
                                       fontWeight: "600",
                                       cursor: "pointer",
                                       flex: 1,
@@ -5167,14 +5210,15 @@ const ExportJobsTable = () => {
                                       display: "inline-flex",
                                       alignItems: "center",
                                       justifyContent: "center",
-                                      gap: "2px",
+                                      gap: "1px",
                                       whiteSpace: "nowrap",
                                       transition: "background-color 0.2s ease"
                                     }}
                                     onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#1d4ed8")}
                                     onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
+                                    title="Open ODEX VGM Tracker"
                                   >
-                                    <LaunchIcon style={{ fontSize: 9, color: "white" }} />
+                                    <LaunchIcon style={{ fontSize: 8, color: "white" }} />
                                     VGM
                                   </button>
                                   <button
@@ -5187,12 +5231,12 @@ const ExportJobsTable = () => {
                                       }
                                     }}
                                     style={{
-                                      padding: "3px 4px",
+                                      padding: "3px 2px",
                                       backgroundColor: "#0284c7",
                                       color: "white",
                                       border: "none",
                                       borderRadius: "3px",
-                                      fontSize: "10px",
+                                      fontSize: "9px",
                                       fontWeight: "600",
                                       cursor: "pointer",
                                       flex: 1,
@@ -5200,7 +5244,7 @@ const ExportJobsTable = () => {
                                       display: "inline-flex",
                                       alignItems: "center",
                                       justifyContent: "center",
-                                      gap: "2px",
+                                      gap: "1px",
                                       whiteSpace: "nowrap",
                                       transition: "background-color 0.2s ease"
                                     }}
@@ -5208,8 +5252,42 @@ const ExportJobsTable = () => {
                                     onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#0369a1")}
                                     onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#0284c7")}
                                   >
-                                    <LaunchIcon style={{ fontSize: 9, color: "white" }} />
+                                    <LaunchIcon style={{ fontSize: 8, color: "white" }} />
                                     F-13
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (job.job_no) {
+                                        const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/esb/${encodeURIComponent(job.job_no)}`;
+                                        window.open(url, "_blank");
+                                      }
+                                    }}
+                                    style={{
+                                      padding: "3px 2px",
+                                      backgroundColor: "#0d9488",
+                                      color: "white",
+                                      border: "none",
+                                      borderRadius: "3px",
+                                      fontSize: "9px",
+                                      fontWeight: "600",
+                                      cursor: "pointer",
+                                      flex: 1,
+                                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: "1px",
+                                      whiteSpace: "nowrap",
+                                      transition: "background-color 0.2s ease"
+                                    }}
+                                    title="Open ESB ODEX Tracker"
+                                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#0f766e")}
+                                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#0d9488")}
+                                  >
+                                    <LaunchIcon style={{ fontSize: 8, color: "white" }} />
+                                    ESB
                                   </button>
                                 </div>
                                 <Button

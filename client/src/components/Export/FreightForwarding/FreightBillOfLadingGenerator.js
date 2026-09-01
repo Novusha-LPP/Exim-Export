@@ -234,7 +234,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
                          <tr>
                            <td style="width: 60px; font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'}; vertical-align: middle;">MTD. No.</td>
                            <td style="padding-left: 6px; vertical-align: middle;">
-                             <div style="${b18} height: 20px; line-height: 14px; text-align: center; font-weight: 700; font-size: 11.5px; box-sizing: border-box; overflow: hidden; position: relative; top: ${isOriginal ? '-10px' : '-3px'};">${enquiry?.hbl_no || ""}</div>
+                             <div style="${b18} padding: 2px 4px; line-height: 1.2; text-align: center; font-weight: 700; font-size: 11.5px; box-sizing: border-box; white-space: nowrap;">${enquiry?.hbl_no || ""}</div>
                            </td>
                          </tr>
                        </table>
@@ -246,7 +246,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
                          <tr>
                            <td style="width: 105px; font-weight: 900; font-size: 10px; white-space: nowrap; color: ${isOriginal ? 'transparent' : '#000'}; vertical-align: middle;">Shipment Ref. No.</td>
                            <td style="padding-left: 6px; vertical-align: middle;">
-                             <div style="${b18} height: 20px; line-height: 14px; text-align: center; font-weight: 700; font-size: 11.5px; box-sizing: border-box; overflow: hidden; position: relative; top: ${isOriginal ? '0px' : '-3px'};">${""}</div>
+                             <div style="${b18} padding: 2px 4px; line-height: 1.2; text-align: center; font-weight: 700; font-size: 11.5px; box-sizing: border-box; white-space: nowrap;">${""}</div>
                            </td>
                          </tr>
                        </table>

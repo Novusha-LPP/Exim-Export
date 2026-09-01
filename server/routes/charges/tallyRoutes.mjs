@@ -1064,6 +1064,21 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 job = await ExJobModel.findOne({
                     $or: resolveJobNumberQuery(firstJob)
                 }).sort({ is_club_job_parent: -1 }).lean();
+
+                if (!job) {
+                    job = await FreightEnquiryModel.findOne({
+                        $or: resolveJobNumberQuery(firstJob)
+                    }).lean();
+                }
+
+                if (!job && importDbConnection && importDbConnection.readyState === 1) {
+                    try {
+                        const clientJobsColl = importDbConnection.db.collection("jobs");
+                        job = await clientJobsColl.findOne({
+                            $or: resolveJobNumberQuery(firstJob)
+                        });
+                    } catch (err) {}
+                }
             }
             if (job) {
                 if (entry.chargeRef) {
@@ -1110,6 +1125,20 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             rawJobDB = await ExJobModel.findOne({
                 $or: resolveJobNumberQuery(firstJobRaw)
             }).sort({ is_club_job_parent: -1 }).lean();
+
+            if (!rawJobDB) {
+                rawJobDB = await FreightEnquiryModel.findOne({
+                    $or: resolveJobNumberQuery(firstJobRaw)
+                }).lean();
+            }
+
+            if (!rawJobDB && importDbConnection && importDbConnection.readyState === 1) {
+                try {
+                    rawJobDB = await importDbConnection.db.collection("jobs").findOne({
+                        $or: resolveJobNumberQuery(firstJobRaw)
+                    });
+                } catch (e) {}
+            }
         } catch (e) { }
 
         const isFreightForwardingJob = isFreightJob(rawJobDB) || String(firstJobRaw).toUpperCase().includes("FF-") || String(firstJobRaw).toUpperCase().startsWith("FF");
@@ -1313,6 +1342,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 if (isReimbursement && entry.supplierName && !itemDesc.startsWith('NEW - ')) {
                     itemDesc = `NEW - ${entry.supplierName}`;
                 }
+                let itemRevLedger = '';
                 if (isMargin && itemHead) {
                     itemDesc = itemHead.endsWith(' - E') ? itemHead : `${itemHead} - E`;
                     itemRevLedger = `${itemHead} - I`;
@@ -1431,6 +1461,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 if (chargeCategory === 'Reimbursement' && entry.supplierName && !fallbackDesc.startsWith('NEW - ')) {
                     fallbackDesc = `NEW - ${entry.supplierName}`;
                 }
+                let fallbackRevLedger = '';
                 if (fallbackIsMargin && fallbackHead) {
                     fallbackDesc = fallbackHead.endsWith(' - E') ? fallbackHead : `${fallbackHead} - E`;
                     fallbackRevLedger = `${fallbackHead} - I`;

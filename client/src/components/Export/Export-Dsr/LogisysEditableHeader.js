@@ -1648,6 +1648,32 @@ const LogisysEditableHeader = ({
             </button>
           )}
 
+          {formik.values.job_no && (
+            <button
+              style={{
+                backgroundColor: "#0d9488",
+                border: "none",
+                color: "#fff",
+                padding: "3px 12px",
+                borderRadius: 3,
+                fontWeight: 600,
+                fontSize: 11,
+                cursor: "pointer",
+                height: 24,
+                whiteSpace: "nowrap",
+              }}
+              type="button"
+              onClick={() => {
+                const jn = formik.values.job_no;
+                if (!jn) return;
+                const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/esb/${encodeURIComponent(jn)}`;
+                window.open(url, "_blank");
+              }}
+            >
+              ESB
+            </button>
+          )}
+
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: isEditable ? "pointer" : "default", fontSize: 11, fontWeight: 500, color: "#1976d2", opacity: isEditable ? 1 : 0.6 }}>
               <input

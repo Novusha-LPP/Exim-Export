@@ -405,17 +405,17 @@ export function generateSBFlatFile(job) {
                 const year = match[3];
                 dateStr = `${year}-${month}-${day}`;
                 no = no.replace(match[0], "")
-                       .replace(/\b(DT|DATE)\b/gi, "")
-                       .replace(/[\s\-/,.:]+$/, "")
-                       .trim();
+                    .replace(/\b(DT|DATE)\b/gi, "")
+                    .replace(/[\s\-/,.:]+$/, "")
+                    .trim();
             }
         }
-        
+
         if (isNFEI) {
             if (!no) no = job.gr_no || "GR WAIVED";
             if (!dateStr) dateStr = job.job_date || new Date();
         }
-        
+
         return { no, date: dateStr };
     })();
 
@@ -545,10 +545,10 @@ export function generateSBFlatFile(job) {
         clean(waiverInfo.no),                                               // [27] RBI Waiver No
         fmtDate(waiverInfo.date),                                           // [28] RBI Waiver Date
         loc,                                                                // [29] Port of Loading — FIX 15
-        podisc,
+        podest,
         cntry(job.discharge_country || ""),                                // [32] Discharge country                                                             // [30] Port of destination
         cntry(job.destination_country || ""),                              // [31] Dest country
-        podest,                                                             // [33] Port of discharge
+        podisc,                                                             // [33] Port of discharge
         mappedSealType,                                                     // [34] Seal type — FIX 57
         nc,                                                                 // [35] Nature of cargo
         parseFloat(job.gross_weight_kg || 0).toFixed(3),                  // [36] Gross weight
