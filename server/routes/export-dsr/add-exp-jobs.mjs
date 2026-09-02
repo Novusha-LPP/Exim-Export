@@ -177,6 +177,7 @@ router.post(
       const {
         sourceJobNo,
         branch_code,
+        custom_house,
         transportMode,
         year,
         manualSequence = "",
@@ -274,6 +275,12 @@ router.post(
       delete sourceData.sb_date;
       delete sourceData.sb_submitted_date;
       delete sourceData.sb_status;
+      delete sourceData.drawback_scroll_no;
+      delete sourceData.drawback_scroll_date;
+      delete sourceData.rosctl_scroll_no;
+      delete sourceData.rosctl_scroll_date;
+      delete sourceData.egm_no;
+      delete sourceData.egm_date;
       delete sourceData.jobNumber;
       delete sourceData.eSanchitDocuments;
       delete sourceData.operations;
@@ -286,6 +293,24 @@ router.post(
       delete sourceData.lockedBy;
       delete sourceData.lockedAt;
       delete sourceData.operational_lock;
+
+      // Do not copy scroll info inside invoices products
+      if (Array.isArray(sourceData.invoices)) {
+        sourceData.invoices.forEach((inv) => {
+          if (Array.isArray(inv.products)) {
+            inv.products.forEach((prod) => {
+              if (Array.isArray(prod.drawbackDetails)) {
+                prod.drawbackDetails.forEach((dbk) => {
+                  delete dbk.drawback_scroll_no;
+                  delete dbk.drawback_scroll_date;
+                  delete dbk.rosctl_scroll_no;
+                  delete dbk.rosctl_scroll_date;
+                });
+              }
+            });
+          }
+        });
+      }
 
       // Do not copy club job details
       delete sourceData.is_club_job_parent;
@@ -302,6 +327,26 @@ router.post(
       delete sourceData.branch_index;
       delete sourceData.branchIndex;
 
+      // Validate custom_house against target branch_code
+      let targetCustomHouse = custom_house || sourceData.custom_house || "";
+      delete sourceData.custom_house;
+
+      const BRANCH_PORT_MAP = {
+        AMD: ["AHMEDABAD AIR CARGO", "ICD SABARMATI", "ICD SACHANA", "ICD VIROCHAN NAGAR", "THAR DRY PORT"],
+        BRD: ["ANKLESHWAR ICD", "ICD VARNAMA"],
+        GIM: ["MUNDRA SEA", "MUNDRA", "KANDLA SEA"],
+        COK: ["COCHIN AIR CARGO", "COCHIN SEA"],
+        HAZ: ["HAZIRA"],
+      };
+
+      const validPorts = BRANCH_PORT_MAP[branch_code?.toUpperCase()] || [];
+      if (validPorts.length > 0) {
+        const isMatch = validPorts.some((p) => p.toUpperCase() === targetCustomHouse.toUpperCase());
+        if (!isMatch) {
+          targetCustomHouse = validPorts[0];
+        }
+      }
+
       // Set new values
       const newExportJob = new ExportJobModel({
         ...sourceData,
@@ -309,6 +354,7 @@ router.post(
         jobNumber: newJobNo, 
         branch_code,
         cha_branch_code: branch_code, // Explicitly sync with target branch
+        custom_house: targetCustomHouse,
         year,
         transportMode,
         status: "Pending",

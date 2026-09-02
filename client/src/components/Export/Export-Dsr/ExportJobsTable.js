@@ -2187,13 +2187,28 @@ const ExportJobsTable = () => {
       }
     }
 
-    // Extract branch from job number if available
-    let extractedBranch = "";
-    if (job.job_no) {
+    // Extract branch from job or job number
+    let extractedBranch = job.branch_code || "";
+    if (!extractedBranch && job.job_no) {
       const parts = job.job_no.split("/");
       if (parts.length > 0) {
-        extractedBranch = parts[0]; // First part is branch (e.g., "AMD")
+        extractedBranch = parts[0];
       }
+    }
+
+    // Determine valid custom house for branch
+    const branchOpts = getOptionsForBranch(extractedBranch);
+    const validHouses = branchOpts.flatMap((g) => g.items.map((i) => i.value));
+    let initialCustomHouse = (job.custom_house || "").toUpperCase();
+    if (initialCustomHouse) {
+      const found = validHouses.find((vh) => vh.toUpperCase() === initialCustomHouse);
+      if (found) {
+        initialCustomHouse = found;
+      } else if (validHouses.length > 0) {
+        initialCustomHouse = validHouses[0];
+      }
+    } else if (validHouses.length > 0) {
+      initialCustomHouse = validHouses[0];
     }
 
     // Get suggested next sequence
@@ -2220,7 +2235,8 @@ const ExportJobsTable = () => {
 
     // Set form with extracted values or defaults
     setCopyForm({
-      branch_code: extractedBranch || job.branch_code || "",
+      branch_code: extractedBranch || "",
+      custom_house: initialCustomHouse || "",
       transportMode: job.transportMode || "SEA",
       year: extractedYear || "",
       manualSequence: "",
@@ -2277,6 +2293,7 @@ const ExportJobsTable = () => {
         {
           sourceJobNo: copySourceJob.job_no,
           branch_code: copyForm.branch_code,
+          custom_house: copyForm.custom_house,
           transportMode: copyForm.transportMode,
           year: copyForm.year,
           manualSequence: copyForm.manualSequence || "",
@@ -3969,59 +3986,9 @@ const ExportJobsTable = () => {
                                 {formatDate(job.job_date)}
                               </div>
                               {(() => {
-                                const { dbkScrolls, rosctlScrolls, egmNo, egmDate } = getJobScrollAndEgmInfo(job);
+                                const { egmNo, egmDate } = getJobScrollAndEgmInfo(job);
                                 return (
                                   <>
-                                    {dbkScrolls.map((dbk, dIdx) => (
-                                      <div
-                                        key={`dbk-${dIdx}`}
-                                        style={{
-                                          marginTop: "4px",
-                                          padding: "2px 6px",
-                                          borderRadius: "4px",
-                                          fontSize: "9px",
-                                          fontWeight: "700",
-                                          color: "#0f766e",
-                                          backgroundColor: "#f0fdfa",
-                                          border: "1px solid #ccfbf1",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          width: "fit-content",
-                                          gap: "3px",
-                                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
-                                          whiteSpace: "nowrap"
-                                        }}
-                                        title="Drawback Scroll No & Date"
-                                      >
-                                        <span style={{ fontSize: "10px" }}>💰</span>
-                                        <span>DBK: {dbk.no} {dbk.date ? `(${formatDate(dbk.date)})` : ""}</span>
-                                      </div>
-                                    ))}
-                                    {rosctlScrolls.map((ros, rIdx) => (
-                                      <div
-                                        key={`ros-${rIdx}`}
-                                        style={{
-                                          marginTop: "4px",
-                                          padding: "2px 6px",
-                                          borderRadius: "4px",
-                                          fontSize: "9px",
-                                          fontWeight: "700",
-                                          color: "#6d28d9",
-                                          backgroundColor: "#f5f3ff",
-                                          border: "1px solid #ede9fe",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          width: "fit-content",
-                                          gap: "3px",
-                                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
-                                          whiteSpace: "nowrap"
-                                        }}
-                                        title="RoSCTL Scroll No & Date"
-                                      >
-                                        <span style={{ fontSize: "10px" }}>🏷️</span>
-                                        <span>RoSCTL: {ros.no} {ros.date ? `(${formatDate(ros.date)})` : ""}</span>
-                                      </div>
-                                    ))}
                                     {(egmNo || egmDate) && (
                                       <div
                                         style={{
@@ -5567,9 +5534,20 @@ const ExportJobsTable = () => {
                 <select
                   style={s.select}
                   value={copyForm.branch_code}
-                  onChange={(e) =>
-                    setCopyForm({ ...copyForm, branch_code: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const newBranch = e.target.value;
+                    const branchOpts = getOptionsForBranch(newBranch);
+                    const validHouses = branchOpts.flatMap((g) => g.items.map((i) => i.value));
+                    let updatedCustomHouse = copyForm.custom_house || "";
+                    if (!validHouses.includes(updatedCustomHouse)) {
+                      updatedCustomHouse = validHouses.length > 0 ? validHouses[0] : "";
+                    }
+                    setCopyForm({
+                      ...copyForm,
+                      branch_code: newBranch,
+                      custom_house: updatedCustomHouse,
+                    });
+                  }}
                   required
                 >
                   <option value="">Select Branch</option>
@@ -5578,6 +5556,27 @@ const ExportJobsTable = () => {
                     .map((branch) => (
                       <option key={branch.code} value={branch.code}>
                         {branch.label}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label}>Custom House *</label>
+                <select
+                  style={s.select}
+                  value={copyForm.custom_house || ""}
+                  onChange={(e) =>
+                    setCopyForm({ ...copyForm, custom_house: e.target.value })
+                  }
+                  required
+                >
+                  <option value="">Select Custom House</option>
+                  {getOptionsForBranch(copyForm.branch_code)
+                    .flatMap((g) => g.items)
+                    .map((ch) => (
+                      <option key={ch.value} value={ch.value}>
+                        {ch.label} ({ch.code})
                       </option>
                     ))}
                 </select>
