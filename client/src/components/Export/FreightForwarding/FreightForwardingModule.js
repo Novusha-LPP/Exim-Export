@@ -1380,6 +1380,11 @@ function FreightForwardingModule() {
                                 <span style={{ fontWeight: "600" }}>Party:</span> {row.organization_name}
                               </div>
                             )}
+                            {row.contact_person && (
+                              <div style={{ color: "#64748b", fontSize: "10px" }}>
+                                <span style={{ fontWeight: "600" }}>Contact Person:</span> {row.contact_person}
+                              </div>
+                            )}
                             {row.email && (
                               <div style={{ color: "#64748b", fontSize: "10px" }}>
                                 <span style={{ fontWeight: "600" }}>Email:</span> {row.email}

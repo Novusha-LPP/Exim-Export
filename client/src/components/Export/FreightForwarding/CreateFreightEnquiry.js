@@ -241,6 +241,7 @@ const toUpper = (value) => (typeof value === "string" ? value.toUpperCase() : va
 
 const emptyForm = {
   organization_name: "",
+  contact_person: "",
   container_size: "",
   consignment_type: "",
   goods_stuffed: "",
@@ -836,7 +837,7 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
   }, [formData.organization_name, formData.shipment_type, formData.port_of_loading, formData.is_manual_cbm, formData.volume_cbm]);
 
   const handleChange = (field, value) => {
-    const upperFields = ["organization_name", "consignment_type", "goods_stuffed", "port_of_loading", "port_of_destination", "dimension", "remarks"];
+    const upperFields = ["organization_name", "contact_person", "consignment_type", "goods_stuffed", "port_of_loading", "port_of_destination", "dimension", "remarks"];
     setFormData((prev) => ({
       ...prev,
       [field]: upperFields.includes(field) ? toUpper(value) : value,
@@ -1077,6 +1078,15 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                     </div>
                   )}
                 </div>
+              </div>
+              <div style={s.col}>
+                <label style={s.label}>Contact Person</label>
+                <input
+                  style={s.input}
+                  value={formData.contact_person || ""}
+                  onChange={(e) => handleChange("contact_person", e.target.value)}
+                  placeholder="Enter contact person name"
+                />
               </div>
               <div style={s.col}>
                 <label style={s.label}>Contact No</label>

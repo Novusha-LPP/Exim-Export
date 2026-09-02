@@ -509,22 +509,28 @@ router.post("/freight-enquiries", async (req, res) => {
 
     // Helper to generate sequential numbers for different series
     const getNextNo = async (field, prefix) => {
-      const lastEntry = await FreightEnquiryModel.findOne({
+      const entries = await FreightEnquiryModel.find({
         shipment_type,
-        [field]: { $exists: true, $ne: null }
-      }).sort({ [field]: -1 });
+        [field]: { $exists: true, $ne: null, $ne: "" }
+      }).select(field).lean();
 
-      let nextNo = 1;
-      if (lastEntry && lastEntry[field]) {
-        const parts = lastEntry[field].split("/");
-        const seqPart = parts.find(p => p.length === 4 && /^\d+$/.test(p));
-        const lastNo = seqPart ? parseInt(seqPart) : 0;
-        if (!isNaN(lastNo)) nextNo = lastNo + 1;
-      }
+      let maxNo = 0;
+      entries.forEach((e) => {
+        const val = e[field];
+        if (val) {
+          const parts = val.split("/");
+          const seqPart = parts.find((p) => p.length === 4 && /^\d+$/.test(p));
+          const lastNo = seqPart ? parseInt(seqPart, 10) : 0;
+          if (!isNaN(lastNo) && lastNo > maxNo) {
+            maxNo = lastNo;
+          }
+        }
+      });
+      const nextNo = maxNo + 1;
       return `${prefix}/${typeCode}/${nextNo.toString().padStart(4, "0")}/${currentFY}`;
     };
 
-    const enquiry_no = await getNextNo("enquiry_no", "FF-SUC");
+    const enquiry_no = await getNextNo("enquiry_no", "FF-ENQ");
 
     let sourceJob = null;
     if (source_job_no) {
@@ -566,6 +572,7 @@ We have a new freight enquiry. Please provide your best rates for the following:
 
 Enquiry No: ${savedEnquiry.enquiry_no}
 Organization: ${savedEnquiry.organization_name}
+Contact Person: ${savedEnquiry.contact_person || "-"}
 Shipment Type: ${savedEnquiry.shipment_type}
 Consignment Type: ${savedEnquiry.consignment_type}
 Booking Info: ${savedEnquiry.container_size || "-"} / ${savedEnquiry.goods_stuffed || "-"}
@@ -651,18 +658,24 @@ router.put("/freight-enquiries/:id", async (req, res) => {
       else if (shipment_type === "Import-Air") typeCode = "IMP/AIR";
       else if (shipment_type === "Export-Air") typeCode = "EXP/AIR";
 
-      const lastEntry = await FreightEnquiryModel.findOne({
+      const entries = await FreightEnquiryModel.find({
         shipment_type,
-        [field]: { $exists: true, $ne: null }
-      }).sort({ [field]: -1 });
+        [field]: { $exists: true, $ne: null, $ne: "" }
+      }).select(field).lean();
 
-      let nextNo = 1;
-      if (lastEntry && lastEntry[field]) {
-        const parts = lastEntry[field].split("/");
-        const seqPart = parts.find(p => p.length === 4 && /^\d+$/.test(p));
-        const lastNo = seqPart ? parseInt(seqPart) : 0;
-        if (!isNaN(lastNo)) nextNo = lastNo + 1;
-      }
+      let maxNo = 0;
+      entries.forEach((e) => {
+        const val = e[field];
+        if (val) {
+          const parts = val.split("/");
+          const seqPart = parts.find((p) => p.length === 4 && /^\d+$/.test(p));
+          const lastNo = seqPart ? parseInt(seqPart, 10) : 0;
+          if (!isNaN(lastNo) && lastNo > maxNo) {
+            maxNo = lastNo;
+          }
+        }
+      });
+      const nextNo = maxNo + 1;
       return `${prefix}/${typeCode}/${nextNo.toString().padStart(4, "0")}/${currentFY}`;
     };
 

@@ -7,6 +7,7 @@ const freightEnquirySchema = new mongoose.Schema(
     rejected_no: { type: String, unique: true, sparse: true },
     enquiry_date: { type: String, required: true },
     organization_name: { type: String, required: true },
+    contact_person: { type: String },
     shipment_type: { type: String, enum: ["Import-Sea", "Export-Sea", "Import-Air", "Export-Air"], required: true },
     container_size: { type: String },
     consignment_type: { type: String, enum: ["LCL", "FCL", "AIR", ""] },

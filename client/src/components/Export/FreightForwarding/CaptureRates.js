@@ -437,6 +437,7 @@ function CaptureRates({ enquiry, onUpdate, forwarders }) {
               {Object.entries({
                 "No": enquiry.enquiry_no,
                 "Shipper/Org": enquiry.organization_name,
+                "Contact Person": enquiry.contact_person,
                 "POL": enquiry.port_of_loading,
                 "POD": enquiry.port_of_destination,
                 "Type": enquiry.consignment_type,
