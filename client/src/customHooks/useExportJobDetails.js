@@ -804,8 +804,17 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
                     (values.consignmentType || "").toUpperCase() === "AIR";
       const isLCL = (values.consignmentType || "").toUpperCase() === "LCL";
       const isGen = (values.job_no || "").toUpperCase().startsWith("GEN");
+      const isFF = (values.job_no || "").toUpperCase().startsWith("FF") ||
+                   (values.job_no || "").toUpperCase().includes("FF-") ||
+                   (values.job_no || "").toUpperCase().includes("/FF/") ||
+                   (values.job_type || "").toLowerCase().includes("freight") ||
+                   (values.detailedStatus || "").toLowerCase().includes("freight") ||
+                   (values.jobCategory || "").toLowerCase().includes("freight") ||
+                   values.freight === true ||
+                   values.is_freight === true ||
+                   values.isFreightForwarding === true;
 
-      if (values.send_for_billing === true && !isAir && !isLCL && !isGen) {
+      if (values.send_for_billing === true && !isAir && !isLCL && !isGen && !isFF) {
         const firstOp = values.operations?.[0] || {};
         const status = firstOp.statusDetails?.[0] || {};
         const railRoadOutDate = status.handoverConcorTharSanganaRailRoadDate;

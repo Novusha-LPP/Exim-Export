@@ -344,43 +344,60 @@ const EditableBillingPair = ({
     setReimbursementDate(initialReimbursementDate ? handleDateInput(initialReimbursementDate) : "");
   }, [initialAgencyNo, initialAgencyDate, initialReimbursementNo, initialReimbursementDate]);
 
+  const isFreightForwarding =
+    Boolean(row?.isFreightForwarding) ||
+    String(row?.job_no || "").toUpperCase().startsWith("FF") ||
+    String(row?.job_no || "").toUpperCase().includes("FF-") ||
+    String(row?.job_no || "").toUpperCase().includes("/FF/") ||
+    String(row?.job_type || "").toLowerCase().includes("freight") ||
+    String(row?.detailedStatus || "").toLowerCase().includes("freight");
+
   const hasChanges =
     agencyNo !== (initialAgencyNo || "") ||
     agencyDate !== (initialAgencyDate || "") ||
-    reimbursementNo !== (initialReimbursementNo || "") ||
-    reimbursementDate !== (initialReimbursementDate || "");
+    (!isFreightForwarding && (
+      reimbursementNo !== (initialReimbursementNo || "") ||
+      reimbursementDate !== (initialReimbursementDate || "")
+    ));
 
   const handleSave = async () => {
     if (!hasChanges) return;
 
-    // Validation: Agency Pair
+    // Validation: Agency / Single Bill Pair
     const isAgencyEmpty = !agencyNo.trim() && !agencyDate.trim();
     const isAgencyFilled = agencyNo.trim() && agencyDate.trim();
     if (!isAgencyEmpty && !isAgencyFilled) {
-      alert("Please enter both Bill No and Bill Date for the Agency Bill!");
+      alert(`Please enter both Bill No and Bill Date for the ${isFreightForwarding ? "Bill" : "Agency Bill"}!`);
       return;
     }
 
-    // Validation: Reimbursement Pair
-    const isReimbursementEmpty = !reimbursementNo.trim() && !reimbursementDate.trim();
-    const isReimbursementFilled = reimbursementNo.trim() && reimbursementDate.trim();
-    if (!isReimbursementEmpty && !isReimbursementFilled) {
-      alert("Please enter both Bill No and Bill Date for the Reimbursement Bill!");
-      return;
+    // Validation: Reimbursement Pair (non-freight-forwarding only)
+    if (!isFreightForwarding) {
+      const isReimbursementEmpty = !reimbursementNo.trim() && !reimbursementDate.trim();
+      const isReimbursementFilled = reimbursementNo.trim() && reimbursementDate.trim();
+      if (!isReimbursementEmpty && !isReimbursementFilled) {
+        alert("Please enter both Bill No and Bill Date for the Reimbursement Bill!");
+        return;
+      }
     }
 
     setLoading(true);
     try {
       const localUser = JSON.parse(localStorage.getItem("exim_user") || "{}");
+      const fieldUpdates = [
+        { field: noPathAgency, value: agencyNo.trim() },
+        { field: datePathAgency, value: agencyDate.trim() }
+      ];
+      if (!isFreightForwarding) {
+        fieldUpdates.push(
+          { field: noPathReimbursement, value: reimbursementNo.trim() },
+          { field: datePathReimbursement, value: reimbursementDate.trim() }
+        );
+      }
       await axios.patch(
         `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(row.job_no)}/fields`,
         {
-          fieldUpdates: [
-            { field: noPathAgency, value: agencyNo.trim() },
-            { field: datePathAgency, value: agencyDate.trim() },
-            { field: noPathReimbursement, value: reimbursementNo.trim() },
-            { field: datePathReimbursement, value: reimbursementDate.trim() }
-          ]
+          fieldUpdates
         },
         { headers: { username: localUser.username || "" } }
       );
@@ -492,7 +509,7 @@ const EditableBillingPair = ({
         gap: '6px',
       }}
     >
-      {/* Agency Row */}
+      {/* Agency Row / Single Bill Row */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <Typography sx={{
           fontSize: '9px',
@@ -503,7 +520,7 @@ const EditableBillingPair = ({
           flexShrink: 0,
           textTransform: 'uppercase',
         }}>
-          AGN
+          {isFreightForwarding ? 'BILL' : 'AGN'}
         </Typography>
         <input
           type="text"
@@ -528,39 +545,41 @@ const EditableBillingPair = ({
         {renderActionButtons()}
       </Box>
 
-      {/* Reimbursement Row */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <Typography sx={{
-          fontSize: '9px',
-          fontWeight: 700,
-          color: '#64748b',
-          letterSpacing: '0.5px',
-          width: '38px',
-          flexShrink: 0,
-          textTransform: 'uppercase',
-        }}>
-          RMB
-        </Typography>
-        <input
-          type="text"
-          value={reimbursementNo}
-          onChange={(e) => setReimbursementNo(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={loading}
-          placeholder="Bill No"
-          style={fieldStyle}
-          {...fieldFocusHandlers}
-        />
-        <DateInput
-          value={reimbursementDate}
-          onChange={(e) => setReimbursementDate(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={loading}
-          placeholder="dd-mm-yyyy"
-          style={fieldStyle}
-          {...fieldFocusHandlers}
-        />
-      </Box>
+      {/* Reimbursement Row - only for non-freight-forwarding */}
+      {!isFreightForwarding && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Typography sx={{
+            fontSize: '9px',
+            fontWeight: 700,
+            color: '#64748b',
+            letterSpacing: '0.5px',
+            width: '38px',
+            flexShrink: 0,
+            textTransform: 'uppercase',
+          }}>
+            RMB
+          </Typography>
+          <input
+            type="text"
+            value={reimbursementNo}
+            onChange={(e) => setReimbursementNo(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={loading}
+            placeholder="Bill No"
+            style={fieldStyle}
+            {...fieldFocusHandlers}
+          />
+          <DateInput
+            value={reimbursementDate}
+            onChange={(e) => setReimbursementDate(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={loading}
+            placeholder="dd-mm-yyyy"
+            style={fieldStyle}
+            {...fieldFocusHandlers}
+          />
+        </Box>
+      )}
     </Box>
   );
 };
@@ -2051,44 +2070,55 @@ function ExportBillingPage() {
         {
           header: "Billing Details",
           size: 200,
-          Cell: ({ row }) => (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 0.8,
-                p: 0.8,
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                backgroundColor: '#f8fafc',
-                width: '240px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-                <Typography sx={{ width: '45px', fontSize: '9px', fontWeight: 800, color: '#475569', letterSpacing: '0.4px' }}>
-                  AGENCY
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '11px', color: '#1e293b' }}>
-                  {row.original.agency_bill_no || "-"}
-                </Typography>
-                <Typography variant="caption" color="textSecondary" sx={{ fontSize: '10px', ml: 'auto' }}>
-                  {row.original.agency_bill_date ? formatDate(row.original.agency_bill_date).split(",")[0] : "-"}
-                </Typography>
+          Cell: ({ row }) => {
+            const isFF = Boolean(row.original?.isFreightForwarding) ||
+              String(row.original?.job_no || "").toUpperCase().startsWith("FF") ||
+              String(row.original?.job_no || "").toUpperCase().includes("FF-") ||
+              String(row.original?.job_no || "").toUpperCase().includes("/FF/") ||
+              String(row.original?.job_type || "").toLowerCase().includes("freight") ||
+              String(row.original?.detailedStatus || "").toLowerCase().includes("freight");
+
+            return (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.8,
+                  p: 0.8,
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  backgroundColor: '#f8fafc',
+                  width: '240px',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                  <Typography sx={{ width: '45px', fontSize: '9px', fontWeight: 800, color: '#475569', letterSpacing: '0.4px' }}>
+                    {isFF ? 'BILL' : 'AGENCY'}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '11px', color: '#1e293b' }}>
+                    {row.original.agency_bill_no || "-"}
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary" sx={{ fontSize: '10px', ml: 'auto' }}>
+                    {row.original.agency_bill_date ? formatDate(row.original.agency_bill_date).split(",")[0] : "-"}
+                  </Typography>
+                </Box>
+                {!isFF && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                    <Typography sx={{ width: '45px', fontSize: '9px', fontWeight: 800, color: '#475569', letterSpacing: '0.4px' }}>
+                      REIMB.
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '11px', color: '#1e293b' }}>
+                      {row.original.reimbursement_bill_no || "-"}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary" sx={{ fontSize: '10px', ml: 'auto' }}>
+                      {row.original.reimbursement_bill_date ? formatDate(row.original.reimbursement_bill_date).split(",")[0] : "-"}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-                <Typography sx={{ width: '45px', fontSize: '9px', fontWeight: 800, color: '#475569', letterSpacing: '0.4px' }}>
-                  REIMB.
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '11px', color: '#1e293b' }}>
-                  {row.original.reimbursement_bill_no || "-"}
-                </Typography>
-                <Typography variant="caption" color="textSecondary" sx={{ fontSize: '10px', ml: 'auto' }}>
-                  {row.original.reimbursement_bill_date ? formatDate(row.original.reimbursement_bill_date).split(",")[0] : "-"}
-                </Typography>
-              </Box>
-            </Box>
-          ),
+            );
+          },
         },
         {
           accessorKey: "send_for_billing_date",

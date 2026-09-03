@@ -2527,12 +2527,13 @@ const ExportJobsTable = () => {
             source_job_no: job.job_no,
             remarks: "",
             enquiry_date: new Date().toISOString().split("T")[0],
-            status: "Open"
+            status: "Converted",
+            is_success: true
           };
 
           const res = await axios.post(`${import.meta.env.VITE_API_STRING}/freight-enquiries`, payload);
           if (res.data.success) {
-            const enquiryNo = res.data.data.enquiry_no;
+            const enquiryNo = res.data.data.success_no || res.data.data.enquiry_no;
 
             const patchRes = await axios.patch(
               `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}/fields`,
@@ -2552,7 +2553,7 @@ const ExportJobsTable = () => {
                 return j;
               }));
             }
-            alert(`Freight Enquiry ${enquiryNo} created successfully!`);
+            alert(`Freight Job ${enquiryNo} created successfully!`);
           }
         }
       } else {

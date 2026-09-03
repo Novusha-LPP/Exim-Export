@@ -433,9 +433,8 @@ const ChargesGrid = ({
         pdfOptions={{
           orientation: "landscape",
           format: "a4",
-          width: 790,
-          windowWidth: 1100,
-          margin: [20, 20, 20, 20],
+          windowWidth: 1020,
+          margin: [10, 10, 10, 10],
         }}
       />
     </div>

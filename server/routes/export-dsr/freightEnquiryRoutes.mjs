@@ -530,7 +530,13 @@ router.post("/freight-enquiries", async (req, res) => {
       return `${prefix}/${typeCode}/${nextNo.toString().padStart(4, "0")}/${currentFY}`;
     };
 
+    const isConverted = req.body.status === "Converted" || req.body.is_success || !!source_job_no;
     const enquiry_no = await getNextNo("enquiry_no", "FF-ENQ");
+    let success_no = null;
+
+    if (isConverted) {
+      success_no = await getNextNo("success_no", "FF-SUC");
+    }
 
     let sourceJob = null;
     if (source_job_no) {
@@ -546,6 +552,8 @@ router.post("/freight-enquiries", async (req, res) => {
     const newEnquiry = new FreightEnquiryModel({
       ...req.body,
       enquiry_no,
+      success_no,
+      status: isConverted ? "Converted" : (req.body.status || "Open"),
       organization_name: req.body.organization_name || sourceJob?.exporter || sourceJob?.organization_name || "",
       gross_weight: req.body.gross_weight || sourceJob?.gross_weight_kg || sourceJob?.gross_weight || "",
       net_weight: req.body.net_weight || sourceJob?.net_weight_kg || sourceJob?.net_weight || "",
@@ -559,9 +567,47 @@ router.post("/freight-enquiries", async (req, res) => {
 
     const savedEnquiry = await newEnquiry.save();
 
-    // Send emails to forwarders
-    try {
-      const forwarders = await ForwarderModel.find();
+    // AUTO-CONVERSION: Create a Job entry if status is Converted
+    if (isConverted && (savedEnquiry.success_no || savedEnquiry.enquiry_no)) {
+      const jobNo = savedEnquiry.success_no || savedEnquiry.enquiry_no;
+      const existingJob = await ExJobModel.findOne({ job_no: jobNo });
+      if (!existingJob) {
+        const isImport = String(savedEnquiry.shipment_type).startsWith("Import");
+        const newJob = new ExJobModel({
+          job_no: jobNo,
+          jobNumber: jobNo,
+          year: String(new Date().getFullYear()).slice(-2) + "-" + String(new Date().getFullYear() + 1).slice(-2),
+          job_date: savedEnquiry.enquiry_date || new Date().toISOString().split("T")[0],
+          exporter: isImport ? "" : savedEnquiry.organization_name,
+          shipper: isImport ? "" : savedEnquiry.organization_name,
+          consignees: isImport ? [{
+            consignee_name: savedEnquiry.organization_name,
+            consignee_address: "",
+            consignee_country: ""
+          }] : [{
+            consignee_name: "",
+            consignee_address: "",
+            consignee_country: ""
+          }],
+          port_of_loading: savedEnquiry.port_of_loading || "",
+          port_of_discharge: savedEnquiry.port_of_destination || "",
+          gross_weight_kg: savedEnquiry.gross_weight || "",
+          net_weight_kg: savedEnquiry.net_weight || "",
+          total_no_of_pkgs: savedEnquiry.no_packages || "",
+          consignmentType: savedEnquiry.consignment_type || "",
+          goods_stuffed_at: savedEnquiry.goods_stuffed?.includes("DOCK") ? "DOCK" : (savedEnquiry.goods_stuffed?.includes("FACTORY") ? "FACTORY" : ""),
+          containers: savedEnquiry.containers || [],
+          freight_enquiry_id: savedEnquiry.success_no || savedEnquiry.enquiry_no,
+          source_job_no: savedEnquiry.source_job_no || ""
+        });
+        await newJob.save();
+      }
+    }
+
+    // Send emails to forwarders only for preliminary rate enquiries
+    if (!isConverted) {
+      try {
+        const forwarders = await ForwarderModel.find();
       if (forwarders.length > 0) {
         const emailList = forwarders.map(f => f.email).filter(Boolean);
         if (emailList.length > 0) {
@@ -611,6 +657,7 @@ Freight Forwarding Team
       }
     } catch (emailErr) {
       console.error("Failed to send emails to forwarders:", emailErr);
+    }
     }
 
     // ── CRM Sync: Create a CRM Lead for this new freight enquiry ──

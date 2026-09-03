@@ -1740,14 +1740,16 @@ const LogisysEditableHeader = ({
                           source_job_no: formik.values.job_no,
                           remarks: "",
                           enquiry_date: new Date().toISOString().split("T")[0],
-                          status: "Open"
+                          status: "Converted",
+                          is_success: true
                         };
 
                         const res = await axios.post(`${import.meta.env.VITE_API_STRING}/freight-enquiries`, payload);
                         if (res.data.success) {
+                          const freightNo = res.data.data.success_no || res.data.data.enquiry_no;
                           formik.setFieldValue("freight_done", true);
-                          formik.setFieldValue("freight_enquiry_id", res.data.data.enquiry_no);
-                          alert(`Freight Enquiry ${res.data.data.enquiry_no} created successfully!`);
+                          formik.setFieldValue("freight_enquiry_id", freightNo);
+                          alert(`Freight Job ${freightNo} created successfully!`);
                         }
                       } catch (error) {
                         console.error("Error creating freight enquiry:", error);

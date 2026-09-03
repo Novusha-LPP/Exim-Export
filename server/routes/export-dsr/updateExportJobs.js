@@ -198,12 +198,22 @@ async function findJobByJobNoOrEnquiry(job_no) {
 function validateSendForBilling(job, updates) {
   if (updates.send_for_billing === true || updates.send_for_billing === "true") {
     const isAir = String(updates.transportMode || job.transportMode || "").toUpperCase() === "AIR" ||
-      String(job.job_no).toUpperCase().includes("/AIR/") ||
+      String(job.job_no || "").toUpperCase().includes("/AIR/") ||
       String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "AIR";
     const isLCL = String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "LCL";
     const isGen = String(job.job_no || "").toUpperCase().startsWith("GEN");
+    const jobNoStr = String(updates.job_no || job.job_no || "").toUpperCase();
+    const isFF = jobNoStr.startsWith("FF") ||
+      jobNoStr.includes("FF-") ||
+      jobNoStr.includes("/FF/") ||
+      String(updates.job_type || job.job_type || "").toLowerCase().includes("freight") ||
+      String(updates.detailedStatus || job.detailedStatus || "").toLowerCase().includes("freight") ||
+      String(updates.jobCategory || job.jobCategory || "").toLowerCase().includes("freight") ||
+      job.freight === true || updates.freight === true ||
+      job.is_freight === true || updates.is_freight === true ||
+      job.isFreightForwarding === true || updates.isFreightForwarding === true;
 
-    if (!isAir && !isLCL && !isGen) {
+    if (!isAir && !isLCL && !isGen && !isFF) {
       const ops = updates.operations || job.operations || [];
       const firstOp = ops[0] || {};
       const status = firstOp.statusDetails?.[0] || {};

@@ -169,7 +169,7 @@ The application is structured into four core functional modules, each governed b
 ### 💳 C. Charges & Billing Module (`/export-charges`, `/export-billing`)
 
 #### 1. Mandatory Conditions to Send Job for Billing (`send_for_billing`)
-* **CRITICAL VALIDATION RULE**: For all regular containerized sea export jobs (Non-Air, Non-LCL, Non-General):
+* **CRITICAL VALIDATION RULE**: For all regular containerized sea export jobs (Non-Air, Non-LCL, Non-General, Non-Freight-Forwarding):
   * A job **CANNOT** be sent for billing unless BOTH of the following dates are filled:
     1. **Rail Out / Road Out Date**
     2. **Reached Date**
