@@ -53,7 +53,7 @@ function EximOperationModule() {
   useEffect(() => {
     if (data && !loading && !hasSetInitialTab.current) {
       const tabFromUrl = searchParams.get("tab");
-      const showContainer = formik.values.custom_house === "ICD SABARMATI" || (formik.values.goods_stuffed_at || "").toUpperCase() === "DOCK";
+      const showContainer = true;
       let initialTab = "operation";
       if (tabFromUrl === "0" || tabFromUrl === "operation") {
         initialTab = "operation";
@@ -232,9 +232,7 @@ function EximOperationModule() {
     }
   };
 
-  const showContainerTab =
-    formik?.values?.custom_house === "ICD SABARMATI" ||
-    (formik?.values?.goods_stuffed_at || "").toUpperCase() === "DOCK";
+  const showContainerTab = true;
 
   // Redirect from container tab if it gets hidden dynamically
   useEffect(() => {

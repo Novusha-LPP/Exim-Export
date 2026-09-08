@@ -15,17 +15,32 @@ const router = express.Router();
 const normalizeDate = (dateVal) => {
     if (!dateVal) return "";
     const str = String(dateVal).trim();
-    // Already yyyy-MM-dd
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-    // dd-MM-yyyy or dd/MM/yyyy
-    const dmyMatch = str.match(/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})/);
-    if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
-    // ISO string like 2026-05-04T05:38:55.109Z
-    const isoMatch = str.match(/^(\d{4}-\d{2}-\d{2})T/);
-    if (isoMatch) return isoMatch[1];
-    // Try Date parse as last resort
-    const d = new Date(str);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    // Already dd-MM-yyyy
+    if (/^\d{2}-\d{2}-\d{4}$/.test(str)) return str;
+
+    // ISO string or yyyy-MM-dd like 2026-05-25 or 2026-05-25T05:38:55.109Z
+    const ymdMatch = str.match(/^(\d{4})[\-\/\.](\d{1,2})[\-\/\.](\d{1,2})/);
+    if (ymdMatch) {
+        const year = ymdMatch[1];
+        const month = ymdMatch[2].padStart(2, '0');
+        const day = ymdMatch[3].padStart(2, '0');
+        return `${day}-${month}-${year}`;
+    }
+
+    // dd-MM-yyyy or dd/MM/yyyy or dd.MM.yyyy (1 or 2 digits)
+    const dmyMatch = str.match(/^(\d{1,2})[\-\/\.](\d{1,2})[\-\/\.](\d{4})/);
+    if (dmyMatch) {
+        const day = dmyMatch[1].padStart(2, '0');
+        const month = dmyMatch[2].padStart(2, '0');
+        const year = dmyMatch[3];
+        return `${day}-${month}-${year}`;
+    }
+
+    // YYYYMMDD string like 20260525
+    if (/^\d{8}$/.test(str)) {
+        return `${str.substring(6, 8)}-${str.substring(4, 6)}-${str.substring(0, 4)}`;
+    }
+
     return str;
 };
 
@@ -1864,7 +1879,18 @@ const updateBillingDetailsHandler = async (req, res) => {
             reimbAmt = (rawReimbAmt !== undefined && rawReimbAmt !== null && rawReimbAmt !== "") ? Number(rawReimbAmt) : undefined;
             reimbDoc = rawReimbDoc;
 
-            const existingBDetails = exJob.billing_details || exJob.operations?.[0]?.statusDetails?.[0]?.billing_details || {};
+            const opBDetails = exJob.operations?.[0]?.statusDetails?.[0]?.billing_details || {};
+            const topBDetails = exJob.billing_details || {};
+            const existingBDetails = {
+                agency_bill_no: topBDetails.agency_bill_no || opBDetails.agency_bill_no || exJob.agency_bill_no || "",
+                agency_bill_date: topBDetails.agency_bill_date || opBDetails.agency_bill_date || exJob.agency_bill_date || "",
+                agency_bill_amount: topBDetails.agency_bill_amount ?? opBDetails.agency_bill_amount ?? exJob.agency_bill_amount,
+                agency_bill_doc: topBDetails.agency_bill_doc || opBDetails.agency_bill_doc || exJob.agency_bill_doc || "",
+                reimbursement_bill_no: topBDetails.reimbursement_bill_no || opBDetails.reimbursement_bill_no || exJob.reimbursement_bill_no || "",
+                reimbursement_bill_date: topBDetails.reimbursement_bill_date || opBDetails.reimbursement_bill_date || exJob.reimbursement_bill_date || "",
+                reimbursement_bill_amount: topBDetails.reimbursement_bill_amount ?? opBDetails.reimbursement_bill_amount ?? exJob.reimbursement_bill_amount,
+                reimbursement_bill_doc: topBDetails.reimbursement_bill_doc || opBDetails.reimbursement_bill_doc || exJob.reimbursement_bill_doc || ""
+            };
             if (!agencyNo && existingBDetails.agency_bill_no) agencyNo = existingBDetails.agency_bill_no;
             if (!agencyDate && existingBDetails.agency_bill_date) agencyDate = existingBDetails.agency_bill_date;
             if (agencyAmt === undefined && existingBDetails.agency_bill_amount !== undefined) agencyAmt = existingBDetails.agency_bill_amount;
@@ -1874,6 +1900,9 @@ const updateBillingDetailsHandler = async (req, res) => {
             if (!reimbDate && existingBDetails.reimbursement_bill_date) reimbDate = existingBDetails.reimbursement_bill_date;
             if (reimbAmt === undefined && existingBDetails.reimbursement_bill_amount !== undefined) reimbAmt = existingBDetails.reimbursement_bill_amount;
             if (!reimbDoc && existingBDetails.reimbursement_bill_doc) reimbDoc = existingBDetails.reimbursement_bill_doc;
+
+            agencyDate = normalizeDate(agencyDate);
+            reimbDate = normalizeDate(reimbDate);
 
             if (!exJob.operations || exJob.operations.length === 0) {
                 exJob.operations = [{ statusDetails: [{ billing_details: {} }] }];
@@ -1977,7 +2006,19 @@ const updateBillingDetailsHandler = async (req, res) => {
                     reimbAmt = (rawReimbAmt !== undefined && rawReimbAmt !== null && rawReimbAmt !== "") ? Number(rawReimbAmt) : undefined;
                     reimbDoc = rawReimbDoc;
 
-                    const existingBDetails = doc.billing_details || {};
+                    const impOpBDetails = doc.operations?.[0]?.statusDetails?.[0]?.billing_details || {};
+                    const impTopBDetails = doc.billing_details || {};
+                    const existingBDetails = {
+                        agency_bill_no: impTopBDetails.agency_bill_no || impOpBDetails.agency_bill_no || doc.agency_bill_no || "",
+                        agency_bill_date: impTopBDetails.agency_bill_date || impOpBDetails.agency_bill_date || doc.agency_bill_date || "",
+                        agency_bill_amount: impTopBDetails.agency_bill_amount ?? impOpBDetails.agency_bill_amount ?? doc.agency_bill_amount,
+                        agency_bill_doc: impTopBDetails.agency_bill_doc || impOpBDetails.agency_bill_doc || doc.agency_bill_doc || "",
+                        reimbursement_bill_no: impTopBDetails.reimbursement_bill_no || impOpBDetails.reimbursement_bill_no || doc.reimbursement_bill_no || "",
+                        reimbursement_bill_date: impTopBDetails.reimbursement_bill_date || impOpBDetails.reimbursement_bill_date || doc.reimbursement_bill_date || "",
+                        reimbursement_bill_amount: impTopBDetails.reimbursement_bill_amount ?? impOpBDetails.reimbursement_bill_amount ?? doc.reimbursement_bill_amount,
+                        reimbursement_bill_doc: impTopBDetails.reimbursement_bill_doc || impOpBDetails.reimbursement_bill_doc || doc.reimbursement_bill_doc || ""
+                    };
+
                     if (!agencyNo && existingBDetails.agency_bill_no) agencyNo = existingBDetails.agency_bill_no;
                     if (!agencyDate && existingBDetails.agency_bill_date) agencyDate = existingBDetails.agency_bill_date;
                     if (agencyAmt === undefined && existingBDetails.agency_bill_amount !== undefined) agencyAmt = existingBDetails.agency_bill_amount;
@@ -1988,39 +2029,50 @@ const updateBillingDetailsHandler = async (req, res) => {
                     if (reimbAmt === undefined && existingBDetails.reimbursement_bill_amount !== undefined) reimbAmt = existingBDetails.reimbursement_bill_amount;
                     if (!reimbDoc && existingBDetails.reimbursement_bill_doc) reimbDoc = existingBDetails.reimbursement_bill_doc;
 
+                    agencyDate = normalizeDate(agencyDate);
+                    reimbDate = normalizeDate(reimbDate);
+
                     const setObj = {};
                     if (agencyNo) {
                         setObj["billing_details.agency_bill_no"] = agencyNo;
                         setObj["agency_bill_no"] = agencyNo;
+                        setObj["operations.0.statusDetails.0.billing_details.agency_bill_no"] = agencyNo;
                     }
                     if (agencyDate) {
                         setObj["billing_details.agency_bill_date"] = agencyDate;
                         setObj["agency_bill_date"] = agencyDate;
+                        setObj["operations.0.statusDetails.0.billing_details.agency_bill_date"] = agencyDate;
                     }
                     if (agencyAmt !== undefined) {
                         setObj["billing_details.agency_bill_amount"] = agencyAmt;
                         setObj["agency_bill_amount"] = agencyAmt;
+                        setObj["operations.0.statusDetails.0.billing_details.agency_bill_amount"] = agencyAmt;
                     }
                     if (agencyDoc) {
                         setObj["billing_details.agency_bill_doc"] = agencyDoc;
                         setObj["agency_bill_doc"] = agencyDoc;
+                        setObj["operations.0.statusDetails.0.billing_details.agency_bill_doc"] = agencyDoc;
                     }
 
                     if (reimbNo) {
                         setObj["billing_details.reimbursement_bill_no"] = reimbNo;
                         setObj["reimbursement_bill_no"] = reimbNo;
+                        setObj["operations.0.statusDetails.0.billing_details.reimbursement_bill_no"] = reimbNo;
                     }
                     if (reimbDate) {
                         setObj["billing_details.reimbursement_bill_date"] = reimbDate;
                         setObj["reimbursement_bill_date"] = reimbDate;
+                        setObj["operations.0.statusDetails.0.billing_details.reimbursement_bill_date"] = reimbDate;
                     }
                     if (reimbAmt !== undefined) {
                         setObj["billing_details.reimbursement_bill_amount"] = reimbAmt;
                         setObj["reimbursement_bill_amount"] = reimbAmt;
+                        setObj["operations.0.statusDetails.0.billing_details.reimbursement_bill_amount"] = reimbAmt;
                     }
                     if (reimbDoc) {
                         setObj["billing_details.reimbursement_bill_doc"] = reimbDoc;
                         setObj["reimbursement_bill_doc"] = reimbDoc;
+                        setObj["operations.0.statusDetails.0.billing_details.reimbursement_bill_doc"] = reimbDoc;
                     }
                     setObj["updatedAt"] = new Date();
 

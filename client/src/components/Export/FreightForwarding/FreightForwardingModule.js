@@ -9,6 +9,8 @@ import AddIcon from "@mui/icons-material/Add";
 import DownloadIcon from "@mui/icons-material/Download";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import ReceiptIcon from "@mui/icons-material/Receipt";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import CheckIcon from "@mui/icons-material/Check";
 import { useNavigate } from "react-router-dom";
 import CreateFreightEnquiry from "./CreateFreightEnquiry";
 import ForwarderDirectory from "./ForwarderDirectory";
@@ -18,6 +20,44 @@ import FreightBillOfLadingGenerator from "./FreightBillOfLadingGenerator";
 import FreightTrackingMap from "./FreightTrackingMap";
 import FreightQuotation from "./FreightQuotation";
 import FreightForwardingDashboard from "./FreightForwardingDashboard";
+
+const CopyButton = ({ text, title = "Copy", style = {}, iconSize = 11 }) => {
+  const [copied, setCopied] = useState(false);
+  if (!text || String(text).trim() === "" || String(text).trim() === "-" || String(text).trim() === "NA") return null;
+
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(String(text).trim());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <Tooltip title={copied ? "Copied!" : title} arrow placement="top">
+      <span
+        onClick={handleCopy}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          cursor: "pointer",
+          color: copied ? "#16a34a" : "#94a3b8",
+          marginLeft: "4px",
+          transition: "color 0.2s",
+          verticalAlign: "middle",
+          ...style
+        }}
+        onMouseEnter={(e) => !copied && (e.currentTarget.style.color = "#2563eb")}
+        onMouseLeave={(e) => !copied && (e.currentTarget.style.color = "#94a3b8")}
+      >
+        {copied ? (
+          <CheckIcon style={{ fontSize: `${iconSize}px` }} />
+        ) : (
+          <ContentCopyIcon style={{ fontSize: `${iconSize}px` }} />
+        )}
+      </span>
+    </Tooltip>
+  );
+};
 
 const THEME = {
   blue: "#16408f",
@@ -1309,20 +1349,27 @@ function FreightForwardingModule() {
                         {/* Col 1: Job No / Identifiers / Badges */}
                         <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "160px" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                            {isPipelineTab ? (
-                              <span
-                                onClick={(e) => handleSuccessJobClick(e, row)}
-                                style={{ cursor: "pointer", fontWeight: "800", color: "#1d4ed8", fontSize: "13px" }}
-                              >
-                                {row.success_no || row.enquiry_no}
-                              </span>
-                            ) : (
-                              <span
-                                style={{ fontWeight: "800", color: "#1d4ed8", fontSize: "13px" }}
-                              >
-                                {activeTab === "Rejected" ? (row.rejected_no || row.enquiry_no) : row.enquiry_no}
-                              </span>
-                            )}
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                              {isPipelineTab ? (
+                                <span
+                                  onClick={(e) => handleSuccessJobClick(e, row)}
+                                  style={{ cursor: "pointer", fontWeight: "800", color: "#1d4ed8", fontSize: "13px" }}
+                                >
+                                  {row.success_no || row.enquiry_no}
+                                </span>
+                              ) : (
+                                <span
+                                  style={{ fontWeight: "800", color: "#1d4ed8", fontSize: "13px" }}
+                                >
+                                  {activeTab === "Rejected" ? (row.rejected_no || row.enquiry_no) : row.enquiry_no}
+                                </span>
+                              )}
+                              <CopyButton
+                                text={isPipelineTab ? (row.success_no || row.enquiry_no) : (activeTab === "Rejected" ? (row.rejected_no || row.enquiry_no) : row.enquiry_no)}
+                                title="Copy Job No"
+                                iconSize={12}
+                              />
+                            </div>
 
                             <div style={{ fontSize: "10px", color: "#64748b", fontWeight: "600" }}>
                               Date: {row.enquiry_date}
@@ -1332,11 +1379,13 @@ function FreightForwardingModule() {
                               {row.source_job_no && (
                                 <span style={{ color: "#334155", fontSize: "9px", fontWeight: "700", backgroundColor: "#f1f5f9", padding: "1px 5px", borderRadius: "3px", border: "1px solid #cbd5e1" }}>
                                   Ref: {row.source_job_no}
+                                  <CopyButton text={row.source_job_no} title="Copy Ref No" iconSize={9} />
                                 </span>
                               )}
                               {(row.shipment_ref_no || row.bl_details?.shipment_ref_no) && (
                                 <span style={{ color: "#0f766e", fontSize: "9px", fontWeight: "700", backgroundColor: "#f0fdfa", padding: "1px 5px", borderRadius: "3px", border: "1px solid #99f6e4" }}>
                                   HBL: {row.shipment_ref_no || row.bl_details?.shipment_ref_no}
+                                  <CopyButton text={row.shipment_ref_no || row.bl_details?.shipment_ref_no} title="Copy HBL Ref" iconSize={9} />
                                 </span>
                               )}
                             </div>
@@ -1374,10 +1423,18 @@ function FreightForwardingModule() {
                               {String(row.shipment_type || "").startsWith("Import")
                                 ? (row.consignee_name || row.bl_details?.consignee || row.organization_name || "-")
                                 : (row.shipper_name || row.bl_details?.consignor || row.organization_name || "-")}
+                              <CopyButton
+                                text={String(row.shipment_type || "").startsWith("Import")
+                                  ? (row.consignee_name || row.bl_details?.consignee || row.organization_name)
+                                  : (row.shipper_name || row.bl_details?.consignor || row.organization_name)}
+                                title="Copy Party Name"
+                                iconSize={10}
+                              />
                             </div>
                             {String(row.shipment_type || "").startsWith("Import") && row.organization_name && row.organization_name !== (row.consignee_name || row.bl_details?.consignee) && (
                               <div style={{ color: "#64748b", fontSize: "10px" }}>
                                 <span style={{ fontWeight: "600" }}>Party:</span> {row.organization_name}
+                                <CopyButton text={row.organization_name} title="Copy Organization Name" iconSize={9} />
                               </div>
                             )}
                             {row.contact_person && (
@@ -1422,6 +1479,7 @@ function FreightForwardingModule() {
                                 <span style={{ fontWeight: "700", color: "#0f172a" }}>
                                   {row.sb_no || row.bl_details?.sb_no} {row.sb_date ? `(${formatDateDisplay(row.sb_date)})` : ""}
                                 </span>
+                                <CopyButton text={row.sb_no || row.bl_details?.sb_no} title="Copy SB No" iconSize={10} />
                               </div>
                             ) : null}
                             {row.egm_no ? (
@@ -1430,25 +1488,34 @@ function FreightForwardingModule() {
                                 <span style={{ fontWeight: "700", color: "#0f172a" }}>
                                   {row.egm_no} {row.egm_date ? `(${formatDateDisplay(row.egm_date)})` : ""}
                                 </span>
+                                <CopyButton text={row.egm_no} title="Copy EGM No" iconSize={10} />
                               </div>
                             ) : null}
-                            {row.mbl_no ? (
+                            {row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no ? (
                               <div>
                                 <span style={{ color: "#64748b", fontWeight: "600" }}>MBL No: </span>
                                 <span style={{ fontWeight: "700", color: "#0f172a" }}>
-                                  {row.mbl_no} {row.mbl_date ? `(${formatDateDisplay(row.mbl_date)})` : ""}
+                                  {row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no}{" "}
+                                  {row.mbl_date || row.bl_date || row.bl_details?.mbl_date || row.bl_details?.bl_date
+                                    ? `(${formatDateDisplay(row.mbl_date || row.bl_date || row.bl_details?.mbl_date || row.bl_details?.bl_date)})`
+                                    : ""}
                                 </span>
+                                <CopyButton text={row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no} title="Copy MBL No" iconSize={10} />
                               </div>
                             ) : null}
-                            {row.hbl_no ? (
+                            {row.hbl_no || row.bl_details?.hbl_no ? (
                               <div>
                                 <span style={{ color: "#64748b", fontWeight: "600" }}>HBL No: </span>
                                 <span style={{ fontWeight: "700", color: "#0f172a" }}>
-                                  {row.hbl_no} {row.hbl_date ? `(${formatDateDisplay(row.hbl_date)})` : ""}
+                                  {row.hbl_no || row.bl_details?.hbl_no}{" "}
+                                  {row.hbl_date || row.bl_details?.hbl_date
+                                    ? `(${formatDateDisplay(row.hbl_date || row.bl_details?.hbl_date)})`
+                                    : ""}
                                 </span>
+                                <CopyButton text={row.hbl_no || row.bl_details?.hbl_no} title="Copy HBL No" iconSize={10} />
                               </div>
                             ) : null}
-                            {!row.sb_no && !row.bl_details?.sb_no && !row.egm_no && !row.mbl_no && !row.hbl_no && (
+                            {!row.sb_no && !row.bl_details?.sb_no && !row.egm_no && !(row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no) && !(row.hbl_no || row.bl_details?.hbl_no) && (
                               <span style={{ color: "#94a3b8", fontStyle: "italic" }}>-</span>
                             )}
                           </div>
@@ -1461,31 +1528,37 @@ function FreightForwardingModule() {
                               <div>
                                 <span style={{ color: "#64748b", fontWeight: "600" }}>Receipt: </span>
                                 <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.place_of_receipt || row.bl_details?.place_of_acceptance}</span>
+                                <CopyButton text={row.place_of_receipt || row.bl_details?.place_of_acceptance} title="Copy Receipt" iconSize={10} />
                               </div>
                             )}
                             <div>
                               <span style={{ color: "#64748b", fontWeight: "600" }}>POL: </span>
                               <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.port_of_loading || "-"}</span>
+                              <CopyButton text={row.port_of_loading} title="Copy POL" iconSize={10} />
                             </div>
                             <div>
                               <span style={{ color: "#64748b", fontWeight: "600" }}>POD: </span>
                               <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.port_of_destination || "-"}</span>
+                              <CopyButton text={row.port_of_destination} title="Copy POD" iconSize={10} />
                             </div>
                             {(row.vessel_name || row.bl_details?.vessel_name) && (
                               <div style={{ color: "#1e40af", fontWeight: "700", marginTop: "2px" }}>
                                 Vessel: {row.vessel_name || row.bl_details?.vessel_name} {(row.voyage_no || row.bl_details?.voyage_no) ? `(Voy: ${row.voyage_no || row.bl_details?.voyage_no})` : ""}
+                                <CopyButton text={row.vessel_name || row.bl_details?.vessel_name} title="Copy Vessel" iconSize={10} />
                               </div>
                             )}
                             {row.flight_no && (
                               <div>
                                 <span style={{ color: "#64748b", fontWeight: "600" }}>Flight: </span>
                                 <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.flight_no} {row.flight_date ? `(${formatDateDisplay(row.flight_date)})` : ""}</span>
+                                <CopyButton text={row.flight_no} title="Copy Flight No" iconSize={10} />
                               </div>
                             )}
                             {row.shipping_line_airline && (
                               <div>
                                 <span style={{ color: "#64748b", fontWeight: "600" }}>Carrier: </span>
                                 <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.shipping_line_airline}</span>
+                                <CopyButton text={row.shipping_line_airline} title="Copy Carrier" iconSize={10} />
                               </div>
                             )}
                             {row.bl_details?.place_of_issue && (
@@ -1518,15 +1591,18 @@ function FreightForwardingModule() {
                                   <div key={cIdx} style={{ fontSize: "9.5px", display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
                                     <span style={{ fontWeight: "800", color: "#1e40af", fontFamily: "monospace", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", padding: "1px 5px", borderRadius: "3px" }}>
                                       {c.container_number || "CNTR"}
+                                      <CopyButton text={c.container_number} title="Copy Container No" iconSize={9} />
                                     </span>
                                     {c.custom_seal && (
                                       <span style={{ color: "#64748b", fontSize: "9px" }}>
                                         Seal: <strong style={{ color: "#334155" }}>{c.custom_seal}</strong>
+                                        <CopyButton text={c.custom_seal} title="Copy Custom Seal" iconSize={9} />
                                       </span>
                                     )}
                                     {c.line_seal && (
                                       <span style={{ color: "#64748b", fontSize: "9px" }}>
                                         L.Seal: <strong style={{ color: "#334155" }}>{c.line_seal}</strong>
+                                        <CopyButton text={c.line_seal} title="Copy Line Seal" iconSize={9} />
                                       </span>
                                     )}
                                   </div>
@@ -1613,6 +1689,7 @@ function FreightForwardingModule() {
                                 <span style={{ fontWeight: "700", color: "#0f172a" }}>
                                   {(row.booking_no || row.bl_details?.booking_no) ? `${row.booking_no || row.bl_details?.booking_no} (${formatDateDisplay(row.booking_date || row.bl_details?.booking_date)})` : formatDateDisplay(row.booking_date || row.bl_details?.booking_date)}
                                 </span>
+                                <CopyButton text={row.booking_no || row.bl_details?.booking_no} title="Copy Booking No" iconSize={10} />
                               </div>
                             )}
                             {(row.cut_off_date || row.bl_details?.cut_off_date) && (

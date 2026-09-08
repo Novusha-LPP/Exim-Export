@@ -269,6 +269,11 @@ const emptyForm = {
   eta_date: "",
   arrival_date: "",
   delay_reason: "",
+  sales_person: "",
+  amount: "",
+  place_of_receipt: "",
+  no_of_containers: "",
+  interested_services: [],
 };
 
 const seaPortOptions = [
@@ -979,6 +984,93 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                 </select>
               </div>
 
+              <div style={s.col}>
+                <label style={s.label}>Sales Person</label>
+                <input
+                  style={s.input}
+                  value={formData.sales_person || ""}
+                  onChange={(e) => handleChange("sales_person", e.target.value)}
+                  placeholder="Enter sales person name"
+                />
+              </div>
+              <div style={s.col}>
+                <label style={s.label}>Amount (₹)</label>
+                <input
+                  style={s.input}
+                  type="number"
+                  value={formData.amount || ""}
+                  onChange={(e) => handleChange("amount", e.target.value)}
+                  placeholder="Enter amount"
+                  min="0"
+                  step="any"
+                />
+              </div>
+              <div style={s.col}>
+                <label style={s.label}>Place of Receipt</label>
+                <input
+                  style={s.input}
+                  value={formData.place_of_receipt || ""}
+                  onChange={(e) => handleChange("place_of_receipt", e.target.value)}
+                  placeholder="Enter place of receipt"
+                />
+              </div>
+              <div style={s.col}>
+                <label style={s.label}>No of Containers</label>
+                <input
+                  style={s.input}
+                  value={formData.no_of_containers || ""}
+                  onChange={(e) => handleChange("no_of_containers", e.target.value)}
+                  placeholder="Ex. 2 x 40FT"
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed #e2e8f0" }}>
+              <label style={{ ...s.label, fontSize: "11px", marginBottom: "6px", display: "block" }}>
+                Interested Services (CRM Sync)
+              </label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {[
+                  "Freight Forwarding",
+                  "Dgft",
+                  "E-lock",
+                  "Client",
+                  "Transportation",
+                  "Paramount",
+                  "Rabs",
+                  "Auto Rack",
+                ].map((service) => {
+                  const isSelected = (formData.interested_services || []).includes(service);
+                  return (
+                    <button
+                      key={service}
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => {
+                          const current = prev.interested_services || [];
+                          const updated = current.includes(service)
+                            ? current.filter((item) => item !== service)
+                            : [...current, service];
+                          return { ...prev, interested_services: updated };
+                        });
+                      }}
+                      style={{
+                        padding: "4px 12px",
+                        borderRadius: "16px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        border: isSelected ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                        backgroundColor: isSelected ? "#eff6ff" : "#ffffff",
+                        color: isSelected ? "#1d4ed8" : "#475569",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      {isSelected ? "✓ " : ""}{service}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

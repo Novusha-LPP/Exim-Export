@@ -99,11 +99,20 @@ function buildFreightData(enquiry) {
     vesselName: enquiry.vessel_name || "",
     bookingNo: enquiry.booking_no || "",
     blNo: enquiry.hbl_no || enquiry.mbl_no || "",
+    salesPerson: enquiry.sales_person || "",
+    amount: Number(enquiry.amount) || 0,
+    placeOfReceipt: enquiry.place_of_receipt || "",
+    noOfContainers: enquiry.no_of_containers || "",
+    interestedServices: enquiry.interested_services || [],
     lastSyncedAt: new Date(),
   };
 }
 
 async function computeDealValue(enquiry) {
+  if (enquiry.amount && Number(enquiry.amount) > 0) {
+    return Number(enquiry.amount);
+  }
+
   let dealValue = 0;
   let charges = enquiry.charges || [];
 
@@ -197,7 +206,9 @@ async function handleSync(enquiry) {
       primaryContactId: contact._id,
       name: `${orgName} - ${enquiry.shipment_type || "Freight"} [${enquiry.success_no || enquiryNo}]`,
       stage: newCrmStage,
-      services: ["freight forwarding"],
+      services: (enquiry.interested_services && enquiry.interested_services.length > 0)
+        ? enquiry.interested_services.map(s => String(s).toLowerCase())
+        : ["freight forwarding"],
       probability: STAGE_PROBABILITY[newCrmStage] || 60,
       value: dealValue,
       source: "Export Freight Forwarding System",
@@ -239,6 +250,9 @@ async function handleSync(enquiry) {
     opportunity.shipper = enquiry.organization_name || opportunity.shipper;
     opportunity.shippingLine = enquiry.shipping_line_airline || opportunity.shippingLine;
     opportunity.period = period;
+    if (enquiry.interested_services && enquiry.interested_services.length > 0) {
+      opportunity.services = enquiry.interested_services.map(s => String(s).toLowerCase());
+    }
     
     // Explicitly update createdAt if it's missing or newer than original
     if (!opportunity.createdAt || opportunity.createdAt > originalDate) {

@@ -227,22 +227,26 @@ function summarizeJob(job) {
         String(job.job_no || "").toUpperCase().startsWith("FF") ||
         String(job.job_no || "").toUpperCase().includes("FF-") ||
         String(job.job_no || "").toUpperCase().includes("/FF/");
-      const hasCompleteAgency = Boolean(opStatus.billing_details?.agency_bill_date && opStatus.billing_details?.agency_bill_no);
-      const hasCompleteReimb = Boolean(opStatus.billing_details?.reimbursement_bill_date && opStatus.billing_details?.reimbursement_bill_no);
+      const agencyNo = opStatus.billing_details?.agency_bill_no || job.billing_details?.agency_bill_no || job.agency_bill_no || job.tally_bill_no || job.bill_no || "";
+      const agencyDate = opStatus.billing_details?.agency_bill_date || job.billing_details?.agency_bill_date || job.agency_bill_date || job.tally_bill_date || job.bill_date || "";
+      const reimbNo = opStatus.billing_details?.reimbursement_bill_no || job.billing_details?.reimbursement_bill_no || job.reimbursement_bill_no || "";
+      const reimbDate = opStatus.billing_details?.reimbursement_bill_date || job.billing_details?.reimbursement_bill_date || job.reimbursement_bill_date || "";
+      const hasCompleteAgency = Boolean(agencyDate && agencyNo);
+      const hasCompleteReimb = Boolean(reimbDate && reimbNo);
       if (isFFJob) {
-        return hasCompleteAgency ? (opStatus.billing_details?.agency_bill_date || "") : "";
+        return hasCompleteAgency ? agencyDate : "";
       }
       return (hasCompleteAgency && hasCompleteReimb)
-        ? (opStatus.billing_details?.agency_bill_date || opStatus.billing_details?.reimbursement_bill_date || "")
+        ? (agencyDate || reimbDate)
         : "";
     })(),
     billing_docs_count: Array.isArray(opStatus.billingDocsSentUpload)
       ? opStatus.billingDocsSentUpload.length
       : 0,
-    agency_bill_date: opStatus.billing_details?.agency_bill_date || "",
-    agency_bill_no: opStatus.billing_details?.agency_bill_no || "",
-    reimbursement_bill_date: opStatus.billing_details?.reimbursement_bill_date || "",
-    reimbursement_bill_no: opStatus.billing_details?.reimbursement_bill_no || "",
+    agency_bill_date: opStatus.billing_details?.agency_bill_date || job.billing_details?.agency_bill_date || job.agency_bill_date || job.tally_bill_date || job.bill_date || "",
+    agency_bill_no: opStatus.billing_details?.agency_bill_no || job.billing_details?.agency_bill_no || job.agency_bill_no || job.tally_bill_no || job.bill_no || "",
+    reimbursement_bill_date: opStatus.billing_details?.reimbursement_bill_date || job.billing_details?.reimbursement_bill_date || job.reimbursement_bill_date || "",
+    reimbursement_bill_no: opStatus.billing_details?.reimbursement_bill_no || job.billing_details?.reimbursement_bill_no || job.reimbursement_bill_no || "",
     booking_no: job.booking_no || "",
     sb_no: job.sb_no || "",
     payment_request_nos: paymentRequestNos,

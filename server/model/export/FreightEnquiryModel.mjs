@@ -56,6 +56,11 @@ const freightEnquirySchema = new mongoose.Schema(
     sailing_date: { type: String },
     shipped_on_board_date: { type: String },
     delay_reason: { type: String },
+    sales_person: { type: String, default: "" },
+    amount: { type: Number, default: 0 },
+    place_of_receipt: { type: String, default: "" },
+    no_of_containers: { type: String, default: "" },
+    interested_services: [{ type: String }],
     status: { type: String, default: "Open" },
     draft_bl_approved: { type: Boolean, default: false },
     received_rates: [
