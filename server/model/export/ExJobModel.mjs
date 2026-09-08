@@ -2210,12 +2210,19 @@ exportJobSchema.pre("save", async function (next) {
     const handoverDate = op0Status ? op0Status.handoverForwardingNoteDate : null;
     const railOutDate = op0Status ? op0Status.railOutReachedDate : null;
 
-    const hasCompleteAgencyBill = op0Status?.billing_details?.agency_bill_date && op0Status?.billing_details?.agency_bill_no;
-    const hasCompleteReimbursementBill = op0Status?.billing_details?.reimbursement_bill_date && op0Status?.billing_details?.reimbursement_bill_no;
+    const isFFJob = Boolean(this.isFreightForwarding) ||
+        String(this.job_no || "").toUpperCase().startsWith("FF") ||
+        String(this.job_no || "").toUpperCase().includes("FF-") ||
+        String(this.job_no || "").toUpperCase().includes("/FF/");
 
-    const billingDateVal = (hasCompleteAgencyBill ? op0Status.billing_details.agency_bill_date : null) ||
-        (hasCompleteReimbursementBill ? op0Status.billing_details.reimbursement_bill_date : null) ||
-        null;
+    const hasCompleteAgencyBill = Boolean(op0Status?.billing_details?.agency_bill_date && op0Status?.billing_details?.agency_bill_no);
+    const hasCompleteReimbursementBill = Boolean(op0Status?.billing_details?.reimbursement_bill_date && op0Status?.billing_details?.reimbursement_bill_no);
+
+    const billingDateVal = isFFJob
+        ? (hasCompleteAgencyBill ? op0Status.billing_details.agency_bill_date : null)
+        : (hasCompleteAgencyBill && hasCompleteReimbursementBill
+            ? (op0Status.billing_details.agency_bill_date || op0Status.billing_details.reimbursement_bill_date)
+            : null);
 
     const syncMap = [
         { date: this.sb_date, name: "SB Filed" },

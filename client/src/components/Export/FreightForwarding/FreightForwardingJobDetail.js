@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
   Typography,
   Button,
@@ -154,9 +154,13 @@ function FreightForwardingJobDetail() {
     }
   }, [lockError]);
 
+  const location = useLocation();
+
   const handleClose = async () => {
     await unlockJob();
-    if (window.history.state && window.history.state.idx > 0) {
+    if (location.state?.from) {
+      navigate(location.state.from);
+    } else if (window.history.state && window.history.state.idx > 0) {
       navigate(-1);
     } else {
       navigate("/freight-forwarding");
@@ -170,7 +174,11 @@ function FreightForwardingJobDetail() {
 
   const handleLockDialogClose = () => {
     setLockDialogOpen(false);
-    navigate("/freight-forwarding");
+    if (location.state?.from) {
+      navigate(location.state.from);
+    } else {
+      navigate("/freight-forwarding");
+    }
   };
 
   // Helper function to render a standard text input cell

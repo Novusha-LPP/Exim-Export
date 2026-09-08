@@ -676,7 +676,7 @@ function JobNoCell({ row, navigate, activeTab, onSuccess }) {
             const path = row.job_no?.startsWith("FF")
               ? `/freight-forwarding/job/${encodeURIComponent(row.job_no)}`
               : `/export-charges/job/${encodeURIComponent(row.job_no)}`;
-            navigate(path);
+            navigate(path, { state: { from: "/export-billing" } });
           }}
         >
           {displayNo}

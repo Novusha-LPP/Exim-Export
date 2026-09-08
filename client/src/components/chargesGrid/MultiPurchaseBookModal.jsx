@@ -91,13 +91,13 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                 const costTot = Number(c.amountINR || c.totalAmount || c.amount || 0);
                 const netPay = Number(c.netPayable || 0);
 
-                const revAmt = Number(c.revenueAmount || c.revenueTotal || 0);
-                const revBasic = Number(c.revenueBasicAmount || c.revenueAmount || 0);
+                const revAmt = Number(c.revenueTotal || c.revenueAmountINR || c.revenueAmount || 0);
+                const revBasic = Number(c.revenueBasicAmount || c.revenueTotal || c.revenueAmountINR || c.revenueAmount || 0);
                 const revGst = Number(c.revenueGstAmount || 0);
                 const revCgst = Number(c.revenueCgst || 0);
                 const revSgst = Number(c.revenueSgst || 0);
                 const revIgst = Number(c.revenueIgst || 0);
-                const revTot = Number(c.revenueTotal || c.revenueAmount || 0);
+                const revTot = Number(c.revenueTotal || c.revenueAmountINR || revAmt || 0);
 
                 return {
                     chargeHead: c.chargeHead || c.name || '',
@@ -223,7 +223,7 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                 "CIN": party?.cin || party?.CIN || '',
                 "Place of Supply": branch.state || branch.State || '',
                 "Credit Terms": party?.credit_terms || party?.CreditTerms || '',
-                "Description of Services": `COMBINED PB - ${chargeHeadList}`,
+                "Description of Services": items.length === 1 ? (items[0].chargeHead || '') : `COMBINED PB - ${chargeHeadList}`,
                 "SAC": items[0]?.sac || '',
                 "Taxable Value": totalTaxable.toFixed(2),
                 "GST%": '',
@@ -317,7 +317,7 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
             );
 
             if (response.data.success) {
-                alert("Combined Purchase Book Entry Submitted Successfully!");
+                alert(chargeItems.length === 1 ? "Purchase Book Entry Submitted Successfully!" : "Combined Purchase Book Entry Submitted Successfully!");
                 if (onSuccess) onSuccess(formData["Entry No"]);
                 onClose();
             } else {
@@ -325,7 +325,7 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
             }
         } catch (error) {
             console.error("Submission Error:", error);
-            alert("Error submitting Combined Purchase Book. Please check the logs.");
+            alert("Error submitting Purchase Book. Please check the logs.");
         } finally {
             setLoading(false);
         }
@@ -335,8 +335,10 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
         <div className="charge-modal-overlay active" style={{ zIndex: 1100 }}>
             <div className="edit-charge-modal" style={{ width: '1100px', maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }}>
                 <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ background: '#e8f5e9', color: '#2e7d32', padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}>COMBINED</span>
-                    Purchase Book Entry — {chargeItems.length} Charges
+                    <span style={{ background: '#e8f5e9', color: '#2e7d32', padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}>
+                        {chargeItems.length > 1 ? 'COMBINED' : 'PURCHASE BOOK'}
+                    </span>
+                    Purchase Book Entry {chargeItems.length > 1 ? `— ${chargeItems.length} Charges` : `— ${chargeItems[0]?.chargeHead || ''}`}
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">

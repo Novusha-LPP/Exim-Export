@@ -10,7 +10,8 @@ router.post("/api/currency-rates/scrape", async (req, res) => {
   try {
 
 
-    const result = await scrapeAndSaveCurrencyRates();
+    const limit = req.body?.limit ? parseInt(req.body.limit, 10) : 5;
+    const result = await scrapeAndSaveCurrencyRates({ limit });
 
     res.status(200).json({
       success: true,

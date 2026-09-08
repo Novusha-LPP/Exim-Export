@@ -960,7 +960,7 @@ function FreightForwardingModule() {
   return (
     <div style={s.wrapper}>
       {/* Title Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", paddingTop: "4px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", paddingTop: "4px", flexWrap: "wrap", gap: "10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <h1 style={{ fontSize: "18px", fontWeight: "700", color: "#111", margin: 0 }}>
             Freight Forwarding:
@@ -978,7 +978,7 @@ function FreightForwardingModule() {
             {filteredRows.length}
           </span>
         </div>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
           <button
             style={{
               padding: "6px 16px",
@@ -1054,7 +1054,7 @@ function FreightForwardingModule() {
       </div>
 
       {/* Top Module Sub-Navigation Bar (Dashboard / Jobs) */}
-      <div style={{ display: "flex", gap: "24px", borderBottom: "2px solid #e2e8f0", marginBottom: "14px", paddingLeft: "4px" }}>
+      <div style={{ display: "flex", gap: "24px", borderBottom: "2px solid #e2e8f0", marginBottom: "14px", paddingLeft: "4px", overflowX: "auto", whiteSpace: "nowrap", scrollbarWidth: "thin" }}>
         <button
           onClick={() => setMainTab("Dashboard")}
           style={{
@@ -1373,7 +1373,7 @@ function FreightForwardingModule() {
                             <div style={{ color: "#0f172a", fontWeight: "700", fontSize: "11.5px", lineHeight: "1.3", textTransform: "uppercase" }}>
                               {String(row.shipment_type || "").startsWith("Import")
                                 ? (row.consignee_name || row.bl_details?.consignee || row.organization_name || "-")
-                                : (row.shipper_name || row.organization_name || "-")}
+                                : (row.shipper_name || row.bl_details?.consignor || row.organization_name || "-")}
                             </div>
                             {String(row.shipment_type || "").startsWith("Import") && row.organization_name && row.organization_name !== (row.consignee_name || row.bl_details?.consignee) && (
                               <div style={{ color: "#64748b", fontSize: "10px" }}>

@@ -5,7 +5,7 @@ import FileUpload from "../../../gallery/FileUpload.js";
 import ImagePreview from "../../../gallery/ImagePreview.js";
 import DateInput from "../../../common/DateInput.js";
 
-const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable = true }) => {
+const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable = true, isFreightForwarding: isFreightForwardingProp }) => {
   const [chargesCount, setChargesCount] = React.useState(0);
   // Try every known location where the job _id could live
   const parentId =
@@ -16,6 +16,17 @@ const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable =
     null;
 
   const jobData = formik?.values || job || {};
+  const isFreightForwarding = isFreightForwardingProp !== undefined
+    ? Boolean(isFreightForwardingProp)
+    : Boolean(
+        jobData?.isFreightForwarding ||
+        jobData?.is_freight_forwarding ||
+        jobData?.is_freight ||
+        jobData?.freight ||
+        (jobData?.job_no || jobData?.jobNumber || "").toUpperCase().startsWith("FF") ||
+        (jobData?.job_no || jobData?.jobNumber || "").toUpperCase().includes("FF-") ||
+        (jobData?.job_no || jobData?.jobNumber || "").toUpperCase().includes("/FF/")
+      );
   const jobNo = jobData.job_no || jobData.jobNumber || "";
   const jobYear = jobData.year || "";
   const shippingLine = jobData.shipping_line_airline || "";

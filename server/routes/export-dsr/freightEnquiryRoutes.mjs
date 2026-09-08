@@ -141,6 +141,7 @@ router.get("/freight-enquiries", async (req, res) => {
           bl_details: 1,
           consignees: 1,
           shipper: 1,
+          exporter: 1,
           shipped_on_board_date: 1,
           sailing_date: 1,
           "operations.statusDetails.billing_details": 1,
@@ -185,7 +186,7 @@ router.get("/freight-enquiries", async (req, res) => {
       exJobs.forEach(j => { jobMap[j.job_no] = j; });
       for (const e of dataList) {
         if (isConverted(e)) {
-          const job = jobMap[e.enquiry_no] || jobMap[e.success_no] || jobMap[e.source_job_no];
+          const job = (e.success_no && jobMap[e.success_no]) || (e.source_job_no && jobMap[e.source_job_no]) || (e.enquiry_no && jobMap[e.enquiry_no]);
           if (job) {
             if (job.place_of_receipt) e.place_of_receipt = job.place_of_receipt;
             if (job.hbl_no) {
@@ -198,7 +199,8 @@ router.get("/freight-enquiries", async (req, res) => {
               e.consignee_name = job.consignees[0].consignee_name;
             }
             // Merge shipper from ExJob for export shipments
-            if (job.shipper) e.shipper_name = job.shipper;
+            const shipperVal = job.shipper || job.exporter;
+            if (shipperVal) e.shipper_name = shipperVal;
 
             // Merge SOB and arrival dates
             if (job.shipped_on_board_date) e.shipped_on_board_date = job.shipped_on_board_date;
@@ -980,7 +982,7 @@ router.get("/freight-forwarding/generate-dsr", async (req, res) => {
       for (const enq of enquiries) {
         let job = null;
         if (enq.status === "Converted" || enq.source_job_no || enq.success_no) {
-          const jobNo = enq.success_no || enq.enquiry_no;
+          const jobNo = enq.success_no || enq.source_job_no || enq.enquiry_no;
           job = await ExJobModel.findOne({ job_no: jobNo }).lean();
         }
 
@@ -1095,11 +1097,11 @@ router.get("/freight-forwarding/generate-dsr", async (req, res) => {
       for (const enq of enquiries) {
         let job = null;
         if (enq.status === "Converted" || enq.source_job_no || enq.success_no) {
-          const jobNo = enq.success_no || enq.enquiry_no;
+          const jobNo = enq.success_no || enq.source_job_no || enq.enquiry_no;
           job = await ExJobModel.findOne({ job_no: jobNo }).lean();
         }
 
-        const shipperName = job?.shipper || enq.bl_details?.consignor || enq.organization_name || "";
+        const shipperName = job?.shipper || job?.exporter || enq.bl_details?.consignor || enq.organization_name || "";
         const consigneeName = job?.consignees?.[0]?.consignee_name || enq.bl_details?.consignee || "";
         const invoicesStr = job?.invoices?.map(inv => inv.invoiceNumber).join(", ") || "";
         const pol = enq.port_of_loading || job?.port_of_loading || "";

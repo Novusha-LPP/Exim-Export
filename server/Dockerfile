@@ -11,10 +11,6 @@ COPY package*.json ./
 # Install production dependencies and clean npm cache
 RUN npm ci --only=production && npm cache clean --force
 
-# Install only Chromium and its system dependencies, then clean all apt, tmp, and npm/playwright cache to save space
-RUN npx playwright install --with-deps chromium && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.cache /root/.npm
-
 # Copy rest of the code
 COPY . .
 COPY .env .env

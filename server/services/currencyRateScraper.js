@@ -1,44 +1,32 @@
 // services/currencyRateScraper.js
-import { chromium } from "playwright";
+import axios from "axios";
+import https from "https";
 import CurrencyRate from "../model/CurrencyRate.mjs";
-import path from "path";
-import { existsSync, mkdirSync } from "fs";
-import fs from "fs/promises";
 
 // ====== Config ======
-const URL = "https://foservices.icegate.gov.in/#/services/notifyPublishScreen";
-const TEMP_DIR = "temp_pdfs";
-const PAGE_TIMEOUT = 60000;
-const CLICK_TIMEOUT = 30000;
-const SLEEP_BETWEEN = 800;
+const ICEGATE_BASE_URL = "https://foservices.icegate.gov.in/cbu/icegateapi";
+const NOTIFICATION_LIST_URL = `${ICEGATE_BASE_URL}/getnotdetails`;
+const NOTIFICATION_RATES_URL = `${ICEGATE_BASE_URL}/igexratepublishnot`;
 
-// ====== Helpers ======
-const ensureDir = (dirPath) => {
-  if (!existsSync(dirPath)) {
-    mkdirSync(dirPath, { recursive: true });
-  }
+// HTTPS Agent with rejectUnauthorized: false to prevent SSL certificate verification issues with Indian gov sites
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false,
+});
+
+// Common headers matching browser requests to ICEGATE
+const ICEGATE_HEADERS = {
+  "Content-Type": "application/json",
+  "Accept": "application/json, text/plain, */*",
+  "channel": "browser",
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "Origin": "https://foservices.icegate.gov.in",
+  "Referer": "https://foservices.icegate.gov.in/",
 };
 
-const removeDirIfExists = async (dirPath) => {
-  try {
-    if (existsSync(dirPath)) {
-      await fs.rm(dirPath, { recursive: true, force: true });
-    }
-  } catch (e) {
-    console.warn(`⚠️ Could not remove temp dir ${dirPath}:`, e.message);
-  }
-};
-
-const sanitizeFilename = (s) => {
-  if (!s) return "unknown";
-  return s.trim().replace(/[\/\\:\*\?\"<>\|]+/g, "_").replace(/\s+/g, "_");
-};
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
+// Parse date string like dd-mm-yyyy or dd/mm/yyyy to Date object
 const parseDate = (dateStr) => {
   if (!dateStr) return new Date(0);
-  // Handle dd-mm-yyyy or DD/MM/YYYY
   const parts = dateStr.split(/[-/]/);
   if (parts.length === 3) {
     const d = parseInt(parts[0], 10);
@@ -52,275 +40,47 @@ const parseDate = (dateStr) => {
   return isNaN(d.getTime()) ? new Date(0) : d;
 };
 
-const findHeaderIndices = async (page) => {
-  try {
-    let headerCells = await page.$$("table thead th");
-    if (!headerCells || headerCells.length === 0) {
-      headerCells = await page.$$("thead th");
+/**
+ * Fetch the list of published exchange rate notifications from ICEGATE
+ */
+export const fetchNotificationList = async () => {
+  const response = await axios.post(
+    NOTIFICATION_LIST_URL,
+    {},
+    {
+      headers: ICEGATE_HEADERS,
+      httpsAgent,
+      timeout: 15000,
     }
-
-    const headers = await Promise.all(headerCells.map((h) => h.innerText()));
-    const headersLower = headers.map((h) => h.trim().toLowerCase());
-
-    let notifIdx = null;
-    let dateIdx = null;
-
-    for (let i = 0; i < headersLower.length; i++) {
-      const h = headersLower[i];
-      if (h.includes("notification") && notifIdx === null) notifIdx = i;
-      if (h.includes("publish") && dateIdx === null) dateIdx = i;
-      if (h === "date" && dateIdx === null) dateIdx = i;
-    }
-
-    return { notifIdx: notifIdx ?? 1, dateIdx: dateIdx ?? 2 };
-  } catch (e) {
-    console.warn("Could not find headers, falling back...", e.message);
-    return { notifIdx: 1, dateIdx: 2 };
-  }
+  );
+  return Array.isArray(response.data) ? response.data : [];
 };
 
-// ====== PDF Parsing ======
-const parseExchangePdf = async (pdfPath) => {
-  try {
-    const pdfBuffer = await fs.readFile(pdfPath);
-    const pdfBase64 = pdfBuffer.toString("base64");
-
-    const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
-    let extractedText = "";
-
-    try {
-      await page.addScriptTag({
-        url: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
-      });
-
-      await page.waitForFunction(() => typeof pdfjsLib !== "undefined");
-
-      extractedText = await page.evaluate(async (base64Data) => {
-        try {
-          pdfjsLib.GlobalWorkerOptions.workerSrc =
-            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-          const loadingTask = pdfjsLib.getDocument({ data: atob(base64Data) });
-          const pdf = await loadingTask.promise;
-
-          let fullText = "";
-
-          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const textContent = await page.getTextContent();
-
-            let lastY = null;
-            let lineText = "";
-
-            for (const item of textContent.items) {
-              if (lastY !== null && Math.abs(lastY - item.transform[5]) > 5) {
-                fullText += lineText.trim() + "\n";
-                lineText = "";
-              }
-              lineText += item.str + " ";
-              lastY = item.transform[5];
-            }
-
-            if (lineText.trim()) {
-              fullText += lineText.trim() + "\n";
-            }
-          }
-
-          return fullText;
-        } catch (error) {
-          console.error("PDF.js parsing error:", error);
-          return "";
-        }
-      }, pdfBase64);
-
-      await browser.close();
-    } catch (error) {
-      await browser.close();
-      throw error;
+/**
+ * Fetch currency rate details for a specific notification number
+ */
+export const fetchNotificationRates = async (notificationNumber) => {
+  const response = await axios.post(
+    NOTIFICATION_RATES_URL,
+    { notNum: notificationNumber },
+    {
+      headers: ICEGATE_HEADERS,
+      httpsAgent,
+      timeout: 15000,
     }
-
-    if (!extractedText) {
-      throw new Error("No text extracted from PDF");
-    }
-
-    return parsePdfText(extractedText, pdfPath);
-  } catch (e) {
-    console.error(`❌ Failed to parse PDF ${pdfPath}:`, e.message);
-    return {
-      error: `Failed to parse PDF: ${e.message}`,
-      file: pdfPath,
-      exchange_rates: [],
-    };
-  }
+  );
+  return response.data;
 };
 
-const parsePdfText = (text, pdfPath) => {
-  const lines = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line);
-
-  // Extract notification number
-  let notifMatch = null;
-  for (const line of lines) {
-    notifMatch = line.match(
-      /Notification\s*(No\.?|Number)?\s*[:\-]?\s*([0-9]+\/?[0-9]*)/i
-    );
-    if (notifMatch) break;
-    notifMatch = line.match(/([0-9]+\/[0-9]{4})\s*\/?Customs?/i);
-    if (notifMatch) break;
-  }
-
-  const notificationNumber = notifMatch
-    ? notifMatch[notifMatch.length - 1].trim()
-    : "unknown";
-
-  // Extract effective date
-  let effMatch = null;
-  const datePatterns = [
-    /w\.e\.f\.?\s*[:\s]*(\d{2}-\d{2}-\d{4})/i,
-    /effective\s*date[:\s]*(\d{2}-\d{2}-\d{4})/i,
-    /Date\s*[:\s]*(\d{2}-\d{2}-\d{4})/i,
-    /(\d{2}-\d{2}-\d{4})/,
-  ];
-
-  for (const line of lines) {
-    for (const pattern of datePatterns) {
-      effMatch = line.match(pattern);
-      if (effMatch && !line.toLowerCase().includes("notification")) break;
-    }
-    if (effMatch) break;
-  }
-
-  const effectiveDate = effMatch ? effMatch[1] : "unknown";
-
-  // Parse currency rates
-  const exchangeRates = parseCurrencyRates(lines);
-
-  return {
-    notification_number: notificationNumber,
-    effective_date: effectiveDate,
-    exchange_rates: exchangeRates,
-    meta: {
-      parsed_currency_count: exchangeRates.length,
-      raw_lines_detected: exchangeRates.length,
-      total_lines: lines.length,
-    },
-    pdf_filename: path.basename(pdfPath),
-  };
-};
-
-const parseCurrencyRates = (lines) => {
-  const parsed = [];
-  const seenCurrencies = new Set(); // Track already parsed currencies
-
-  const currencies = [
-    { code: "AED", name: "UAE Dirham" },
-    { code: "AUD", name: "Australian Dollar" },
-    { code: "BHD", name: "Bahraini Dinar" },
-    { code: "CAD", name: "Canadian Dollar" },
-    { code: "CHF", name: "Swiss Franc" },
-    { code: "CNY", name: "Chinese Yuan" },
-    { code: "DKK", name: "Danish Kroner" },
-    { code: "EUR", name: "EURO" },
-    { code: "GBP", name: "Pound Sterling" },
-    { code: "HKD", name: "Hong Kong Dollar" },
-    { code: "JPY", name: "Japanese Yen", unit: 100 },
-    { code: "KRW", name: "Korean won", unit: 100 },
-    { code: "KWD", name: "Kuwaiti Dinar" },
-    { code: "NOK", name: "Norwegian Kroner" },
-    { code: "NZD", name: "New Zealand Dollar" },
-    { code: "QAR", name: "Qatari Riyal" },
-    { code: "SAR", name: "Saudi Arabian Riyal" },
-    { code: "SEK", name: "Swedish Kroner" },
-    { code: "SGD", name: "Singapore Dollar" },
-    { code: "TRY", name: "Turkish Lira" },
-    { code: "USD", name: "US Dollar" },
-    { code: "ZAR", name: "South African Rand" },
-  ];
-
-  // Find where the table starts
-  let tableStartIndex = -1;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].toLowerCase();
-    if (
-      line.includes("currency code") ||
-      line.includes("currency name") ||
-      (line.includes("rate") && line.includes("import"))
-    ) {
-      tableStartIndex = i;
-      break;
-    }
-  }
-
-  if (tableStartIndex === -1) {
-    // Fallback: look for first currency
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].match(/^[A-Z]{3}\s/)) {
-        tableStartIndex = i;
-        break;
-      }
-    }
-  }
-
-  // Parse each line starting from table
-  for (let i = Math.max(0, tableStartIndex); i < lines.length; i++) {
-    const line = lines[i];
-
-    // Check if this line contains a currency code
-    for (const currency of currencies) {
-      // Skip if already parsed
-      if (seenCurrencies.has(currency.code)) continue;
-
-      // Match pattern: CODE Name Unit ImportRate ExportRate
-      // Example: "AED UAE Dirham 1.0 25.4 23.9"
-      const pattern = new RegExp(
-        `^${currency.code}\\s+${currency.name.replace(/\s+/g, "\\s+")}\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)`,
-        "i"
-      );
-
-      const match = line.match(pattern);
-
-      if (match) {
-        const unit = parseFloat(match[1]);
-        const importRate = parseFloat(match[2]);
-        const exportRate = parseFloat(match[3]);
-
-        // Validate rates
-        if (
-          !isNaN(unit) &&
-          !isNaN(importRate) &&
-          !isNaN(exportRate) &&
-          importRate > 0 &&
-          exportRate > 0 &&
-          importRate < 10000 &&
-          exportRate < 10000
-        ) {
-          parsed.push({
-            currency_code: currency.code,
-            currency_name: currency.name,
-            unit: currency.unit || unit,
-            import_rate: importRate,
-            export_rate: exportRate,
-          });
-
-          seenCurrencies.add(currency.code);
-          break;
-        }
-      }
-    }
-  }
-
-  // Sort by currency code
-  return parsed.sort((a, b) => a.currency_code.localeCompare(b.currency_code));
-};
-
-// ====== Main Scraper Function ======
-export const scrapeAndSaveCurrencyRates = async () => {
-  ensureDir(TEMP_DIR);
+/**
+ * Main scraper function:
+ * Directly fetches structured currency rate data from ICEGATE REST APIs.
+ * Uses parallel fetching for missing notifications so it completes in 1-2 seconds.
+ *
+ * @param {Object} options
+ * @param {number} [options.limit=5] Number of latest notifications to inspect (default: 5)
+ */
+export const scrapeAndSaveCurrencyRates = async ({ limit = 5 } = {}) => {
   const results = {
     success: true,
     total_scraped: 0,
@@ -329,177 +89,127 @@ export const scrapeAndSaveCurrencyRates = async () => {
     errors: [],
   };
 
-  const browser = await chromium.launch({ headless: true, timeout: 60000 });
-  const context = await browser.newContext({
-    acceptDownloads: true,
-    viewport: { width: 1280, height: 720 },
-  });
-  const page = await context.newPage();
-
   try {
-    await page.goto(URL, { waitUntil: "domcontentloaded", timeout: PAGE_TIMEOUT });
-    await page.waitForTimeout(5000);
+    console.log("🔄 Fetching notification list from ICEGATE API...");
+    const notifications = await fetchNotificationList();
 
-    try {
-      await page.waitForSelector("text=Download PDF", { timeout: 30000 });
-    } catch (e) {
-      console.warn("⚠️ 'Download PDF' did not appear within timeout");
-    }
-
-    const { notifIdx, dateIdx } = await findHeaderIndices(page);
-    let rows = await page.$$("table tbody tr");
-    if (!rows || rows.length === 0) rows = await page.$$("tbody tr");
-    if (!rows || rows.length === 0) rows = await page.$$("tr");
-
-    const candidates = [];
-    for (const [row_i, row] of rows.entries()) {
-      const cells = await row.$$("td");
-      if (cells.length === 0) continue;
-
-      let notifText = "";
-      let dateText = "";
-
-      try {
-        if (notifIdx < cells.length) {
-          notifText = (await cells[notifIdx].innerText()).trim();
-        }
-        if (dateIdx < cells.length) {
-          dateText = (await cells[dateIdx].innerText()).trim();
-        }
-      } catch (e) { }
-
-      if (!notifText && !dateText) continue;
-
-      candidates.push({
-        row,
-        notifText,
-        dateText,
-        rowNum: row_i + 1,
-        parsedDate: parseDate(dateText),
-      });
-    }
-
-    if (candidates.length === 0) {
-      console.warn("⚠️ No notifications found in the table.");
+    if (!notifications || notifications.length === 0) {
+      console.warn("⚠️ No notifications returned by ICEGATE API.");
       return results;
     }
 
-    // Sort by date descending
-    candidates.sort((a, b) => b.parsedDate - a.parsedDate);
+    console.log(`📋 Found ${notifications.length} notifications on ICEGATE.`);
 
-    console.log(`Found ${candidates.length} notifications. Processing all...`);
+    // Sort notifications descending by publish date (latest first)
+    notifications.sort((a, b) => {
+      const dateA = parseDate(a.notPublishDate);
+      const dateB = parseDate(b.notPublishDate);
+      return dateB - dateA;
+    });
 
-    for (const candidate of candidates) {
-      const rowNum = candidate.rowNum;
-      const row = candidate.row;
+    // Inspect the top N latest notifications (default: 5)
+    const candidatesToProcess = notifications.slice(0, Math.max(1, limit));
 
-      try {
-        let downloadEl = await row.$("text=Download PDF");
-        if (!downloadEl) {
-          downloadEl = await row.$(
-            "a:has-text('Download PDF'), button:has-text('Download PDF')"
-          );
-        }
+    // Check which ones already exist in Mongo
+    const missingNotifs = [];
+    for (const notif of candidatesToProcess) {
+      const notifNum = notif.notificationNumber;
+      if (!notifNum) continue;
 
-        if (!downloadEl) {
-          console.warn(`⚠️ Download button not found in row ${rowNum}`);
-          continue;
-        }
+      const existing = await CurrencyRate.findOne({
+        notification_number: notifNum,
+      });
 
-        const notifSafe = sanitizeFilename(candidate.notifText || `row${rowNum}`);
-        const dateSafe = sanitizeFilename(candidate.dateText || "unknown-date");
-        const pdfName = `${notifSafe}-${dateSafe}.pdf`;
-        let outPath = path.join(TEMP_DIR, pdfName);
+      if (existing && existing.exchange_rates && existing.exchange_rates.length > 0) {
+        console.log(`⏩ Notification ${notifNum} already in DB, skipping.`);
+        results.total_skipped++;
+      } else {
+        missingNotifs.push({ notif, existing });
+      }
+    }
 
-        // Check if we already have this file downloaded/processed to avoid redownloading?
-        // But we rely on PDF parsing to get the real ID. 
-        // We could optimize by checking if a record exists with similar date/notif text, 
-        // but text matching might be flaky. Safe to download and parse.
+    if (missingNotifs.length === 0) {
+      console.log("✨ All inspected notifications are already up to date.");
+      return results;
+    }
 
-        let download;
+    console.log(`📥 Fetching ${missingNotifs.length} missing notification(s) in parallel...`);
+
+    // Fetch missing notifications in parallel for maximum speed
+    await Promise.all(
+      missingNotifs.map(async ({ notif, existing }) => {
+        const notifNum = notif.notificationNumber;
         try {
-          const downloadPromise = page.waitForEvent("download", {
-            timeout: CLICK_TIMEOUT,
-          });
-          await downloadEl.scrollIntoViewIfNeeded({ timeout: 2000 });
-          await downloadEl.click({ timeout: CLICK_TIMEOUT });
-          download = await downloadPromise;
-        } catch (e) {
-          console.error(`Error downloading row ${rowNum}:`, e.message);
-          results.errors.push({ row: rowNum, error: e.message });
-          continue;
-        }
+          const rateResponse = await fetchNotificationRates(notifNum);
 
-        await download.saveAs(outPath);
-        results.total_scraped++;
+          if (
+            !rateResponse ||
+            !rateResponse.currencyDetail ||
+            rateResponse.currencyDetail.length === 0
+          ) {
+            console.warn(`⚠️ No currency rates in response for notification ${notifNum}`);
+            results.errors.push({ notification: notifNum, error: "Empty currencyDetail" });
+            return;
+          }
 
-        // Parse PDF
-        const parsed = await parseExchangePdf(outPath);
+          const exchangeRates = rateResponse.currencyDetail
+            .map((c) => ({
+              currency_code: (c.currencyCode || "").trim().toUpperCase(),
+              currency_name: (c.currencyDesc || "").trim(),
+              unit: parseFloat(c.units) || 1.0,
+              import_rate: parseFloat(c.cbicImport) || 0,
+              export_rate: parseFloat(c.cbicExport) || 0,
+            }))
+            .filter((r) => r.currency_code && (r.import_rate > 0 || r.export_rate > 0))
+            .sort((a, b) => a.currency_code.localeCompare(b.currency_code));
 
-        // Fallback for unknown fields using the table data
-        if ((!parsed.notification_number || parsed.notification_number === "unknown") && candidate.notifText) {
-          console.log(`⚠️ PDF parsing failed for Notification No. Using fallback: ${candidate.notifText}`);
-          parsed.notification_number = candidate.notifText;
-        }
-
-        // If still unknown, use the filename to ensure uniqueness
-        if (!parsed.notification_number || parsed.notification_number === "unknown") {
-          parsed.notification_number = `UNKNOWN_${path.basename(pdfName, '.pdf')}`;
-        }
-
-        if ((!parsed.effective_date || parsed.effective_date === "unknown") && candidate.dateText) {
-          console.log(`⚠️ PDF parsing failed for Date. Using fallback: ${candidate.dateText}`);
-          // Try to format it if needed, or save as is
-          parsed.effective_date = candidate.dateText;
-        }
-
-        if (parsed.error) {
-          results.errors.push({ row: rowNum, error: parsed.error });
-        } else {
-          // Check if this EXACT record already exists
-          const existing = await CurrencyRate.findOne({
-            notification_number: parsed.notification_number,
-            effective_date: parsed.effective_date,
-          });
+          const effectiveDate = (rateResponse.notPublishDate || notif.notPublishDate || "").trim();
 
           if (existing) {
-            console.log(`⏩ Skipping existing record: ${parsed.notification_number}`);
-            results.total_skipped++;
+            existing.effective_date = effectiveDate;
+            existing.exchange_rates = exchangeRates;
+            existing.meta = {
+              parsed_currency_count: exchangeRates.length,
+              raw_lines_detected: exchangeRates.length,
+              total_lines: exchangeRates.length,
+            };
+            existing.scraped_at = new Date();
+            await existing.save();
+            console.log(`🔄 Updated existing record: ${notifNum}`);
+            results.total_saved++;
           } else {
-            console.log(`✅ Saving new record: ${parsed.notification_number}`);
-
             const currencyRate = new CurrencyRate({
-              ...parsed,
+              notification_number: notifNum,
+              effective_date: effectiveDate,
+              exchange_rates: exchangeRates,
+              meta: {
+                parsed_currency_count: exchangeRates.length,
+                raw_lines_detected: exchangeRates.length,
+                total_lines: exchangeRates.length,
+              },
               scraped_at: new Date(),
+              is_active: true,
             });
 
             await currencyRate.save();
+            console.log(
+              `✅ Saved new record: ${notifNum} (effective: ${effectiveDate}, currencies: ${exchangeRates.length})`
+            );
             results.total_saved++;
           }
+
+          results.total_scraped++;
+        } catch (err) {
+          console.error(`❌ Error fetching notification ${notifNum}:`, err.message);
+          results.errors.push({ notification: notifNum, error: err.message });
         }
-
-        // Clean up PDF file
-        try {
-          await fs.unlink(outPath);
-        } catch (e) {
-          console.warn(`  ⚠️ Could not delete PDF: ${e.message}`);
-        }
-
-        // Sleep a bit to be nice to the server
-        await sleep(SLEEP_BETWEEN);
-
-      } catch (e) {
-        console.error(`❌ Error processing row ${rowNum}: ${e.message}`);
-        results.errors.push({ row: rowNum, error: e.message });
-      }
-    }
-  } catch (e) {
-    console.error("❌ Main process error:", e);
+      })
+    );
+  } catch (error) {
+    console.error("❌ ICEGATE API error:", error.message);
     results.success = false;
-    results.errors.push({ general: e.message });
-  } finally {
-    await browser.close();
-    await removeDirIfExists(TEMP_DIR);
+    results.errors.push({ general: error.message });
+    throw error;
   }
 
   return results;

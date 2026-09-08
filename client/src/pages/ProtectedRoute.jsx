@@ -58,18 +58,20 @@ const ProtectedRoute = ({ children, requiredModule, fallbackPath = "/" }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Check if user has the required module permission
-  const hasPermission = userModules.includes(requiredModule);
+  // Check if user has the required module permission (supports string or array of allowed modules)
+  const allowedModules = Array.isArray(requiredModule) ? requiredModule : [requiredModule];
+  const hasPermission = allowedModules.some((mod) => userModules.includes(mod));
 
   if (!hasPermission) {
     // Redirect to fallback path with a message
+    const moduleNames = allowedModules.join(" or ");
     return (
       <Navigate
         to={fallbackPath}
         replace
         state={{
           from: location,
-          message: `Access denied. You don't have permission to access ${requiredModule}.`,
+          message: `Access denied. You don't have permission to access ${moduleNames}.`,
         }}
       />
     );

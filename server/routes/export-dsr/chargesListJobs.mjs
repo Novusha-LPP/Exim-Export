@@ -219,11 +219,7 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
                     {
                         $and: [
                             { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
-                            { "operations.statusDetails.billing_details.agency_bill_no": { $exists: true, $nin: [null, ""] } }
-                        ]
-                    },
-                    {
-                        $and: [
+                            { "operations.statusDetails.billing_details.agency_bill_no": { $exists: true, $nin: [null, ""] } },
                             { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
                             { "operations.statusDetails.billing_details.reimbursement_bill_no": { $exists: true, $nin: [null, ""] } }
                         ]

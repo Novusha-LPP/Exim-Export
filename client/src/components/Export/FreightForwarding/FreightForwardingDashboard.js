@@ -672,7 +672,7 @@ function FreightForwardingDashboard({ onSelectTab, onOpenCreate }) {
                         </div>
                       </td>
                       <td style={{ padding: "8px", fontWeight: 600, color: THEME.text, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {row.shipper_name || row.organization_name || row.consignee_name || "-"}
+                        {row.shipper_name || row.bl_details?.consignor || row.organization_name || row.consignee_name || "-"}
                       </td>
                       <td style={{ padding: "8px" }}>
                         <span style={{

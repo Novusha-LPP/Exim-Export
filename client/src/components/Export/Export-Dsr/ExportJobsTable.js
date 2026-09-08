@@ -102,7 +102,60 @@ import RaiseQueryDialog from "./Queries/RaiseQueryDialog";
 const ResponsiveStyles = () => (
   <style>
     {`
-      @media (max-width: 1200px) {
+      .wrapper-responsive {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+      }
+
+      .header-row-responsive {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 10px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      .tab-container-responsive {
+        display: flex !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: thin !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      .tab-container-responsive::-webkit-scrollbar {
+        height: 3px !important;
+      }
+      .tab-container-responsive::-webkit-scrollbar-thumb {
+        background: #cbd5e1 !important;
+        border-radius: 4px !important;
+      }
+
+      .toolbar-responsive {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      .table-container-responsive {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      @media (max-width: 1024px) {
         .toolbar-responsive {
           justify-content: flex-start !important;
           flex-wrap: wrap !important;
@@ -113,22 +166,22 @@ const ResponsiveStyles = () => (
         }
         .search-input-responsive {
           flex: 1 !important;
-          width: auto !important;
+          width: 100% !important;
+        }
+        .header-row-responsive {
+          flex-direction: row !important;
+          flex-wrap: wrap !important;
         }
       }
 
       @media (max-width: 768px) {
         .wrapper-responsive {
-          padding: 4px !important;
+          padding: 6px !important;
         }
-        .tab-container-responsive {
-          overflow-x: auto !important;
-          white-space: nowrap !important;
-          scrollbar-width: none !important;
-          padding-bottom: 4px !important;
-        }
-        .tab-container-responsive::-webkit-scrollbar {
-          display: none !important;
+        .header-row-responsive {
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          gap: 10px !important;
         }
         .toolbar-responsive {
           padding: 6px !important;
@@ -143,7 +196,7 @@ const ResponsiveStyles = () => (
           min-width: 100% !important;
         }
         .table-container-responsive {
-          max-height: calc(100vh - 220px) !important;
+          max-height: calc(100vh - 180px) !important;
         }
         .s-td {
           padding: 4px 6px !important;
@@ -155,7 +208,7 @@ const ResponsiveStyles = () => (
           min-width: 100% !important;
         }
         .page-title-responsive {
-          font-size: 14px !important;
+          font-size: 15px !important;
         }
         .tab-responsive {
           padding: 6px 10px !important;

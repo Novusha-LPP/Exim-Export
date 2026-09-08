@@ -215,7 +215,7 @@ function HomePage() {
             <Route
               path="/freight-forwarding/job/:jobNo"
               element={
-                <ProtectedRoute requiredModule="Freight Forwarding">
+                <ProtectedRoute requiredModule={["Freight Forwarding", "Export - Billing", "Export - Charges"]}>
                   <FreightForwardingJobDetail />
                 </ProtectedRoute>
               }
@@ -223,7 +223,7 @@ function HomePage() {
             <Route
               path="/export-charges/job/:jobNo"
               element={
-                <ProtectedRoute requiredModule="Export - Charges">
+                <ProtectedRoute requiredModule={["Export - Charges", "Export - Billing"]}>
                   <ExportChargesModule />
                 </ProtectedRoute>
               }

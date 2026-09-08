@@ -187,6 +187,11 @@ const resolveJobNumberQuery = (jobNoInput) => {
         if (cleanJobNo !== rawJobNo) {
             conditions.push({ [field]: rawJobNo });
         }
+        if (/FF-SUC\//i.test(cleanJobNo)) {
+            conditions.push({ [field]: cleanJobNo.replace(/FF-SUC\//gi, "FF/") });
+        } else if (/^FF\//i.test(cleanJobNo) || /\/FF\//i.test(cleanJobNo)) {
+            conditions.push({ [field]: cleanJobNo.replace(/\bFF\//gi, "FF-SUC/") });
+        }
     });
 
     // 2. Check for "TO" format: e.g. AMD/EXP/SEA/00463 TO 00466/26-27
@@ -264,14 +269,14 @@ const resolveJobNumberQuery = (jobNoInput) => {
         if (prefixPart) {
             if (prefixPart.startsWith("GH") || prefixPart.startsWith("HAZ")) {
                 branchRegexStr = "^(HAZ|GH)";
-            } else if (prefixPart.startsWith("GG") || prefixPart.startsWith("GND") || prefixPart.startsWith("GAN")) {
-                branchRegexStr = "^(GND|GAN|GG)";
+            } else if (prefixPart.startsWith("GG") || prefixPart.startsWith("GND") || prefixPart.startsWith("GAN") || prefixPart.startsWith("GIM")) {
+                branchRegexStr = "^(GND|GAN|GIM|GG)";
             } else if (prefixPart.startsWith("GC") || prefixPart.startsWith("COK") || prefixPart.startsWith("COC")) {
                 branchRegexStr = "^(COK|COC|GC)";
             } else if (prefixPart.startsWith("GB") || prefixPart.startsWith("BAR")) {
                 branchRegexStr = "^(BAR|GB)";
-            } else if (prefixPart.startsWith("GE") || prefixPart.startsWith("GI") || prefixPart === "GIA" || prefixPart === "GEA" || prefixPart.startsWith("AMD") || prefixPart.startsWith("AHM")) {
-                branchRegexStr = "^(AMD|AHM|G)";
+            } else if (prefixPart === "GIA" || prefixPart === "GEA" || prefixPart === "GIR" || prefixPart === "GER" || prefixPart.startsWith("GE") || prefixPart.startsWith("AMD") || prefixPart.startsWith("AHM")) {
+                branchRegexStr = "^(AMD|AHM|GEA|GER|GIA|GIR|GE)";
             } else if (prefixPart.startsWith("KAN") || prefixPart.startsWith("KANDLA")) {
                 branchRegexStr = "^(KAN|KANDLA)";
             } else if (prefixPart.startsWith("MUM") || prefixPart.startsWith("MUMBAI")) {
@@ -323,6 +328,14 @@ const isFreightJob = (job) => {
 };
 
 /**
+ * Formats a job number for Tally integration (removes SUC from Freight Forwarding jobs, e.g. FF-SUC/... -> FF/...)
+ */
+const formatTallyJobNo = (jobNo) => {
+    if (!jobNo) return "";
+    return String(jobNo).replace(/\bFF-SUC\//gi, "FF/");
+};
+
+/**
  * Internal helper to format job and invoice data for Tally
  */
 const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
@@ -337,7 +350,7 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
     return {
         "freight": isFreight,
         "Freight": isFreight,
-        "Job Number": job.tally_club_ref_no || job.job_no,
+        "Job Number": formatTallyJobNo(job.tally_club_ref_no || job.job_no),
         "Job Year": job.year || job.job_year || "",
         "Job Type": jobType,
         "Job Date": normalizeDate(job.createdAt || job.job_date || job.jobDate),
@@ -425,7 +438,7 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
     return {
         "freight": isFreight,
         "Freight": isFreight,
-        "Job Number": job.tally_club_ref_no || job.job_no,
+        "Job Number": formatTallyJobNo(job.tally_club_ref_no || job.job_no),
         "Job Year": job.year || job.job_year || "",
         "Job Type": jobType,
         "Job Date": normalizeDate(job.createdAt || job.job_date || job.jobDate),
@@ -1222,7 +1235,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             "Entry Date": normalizeDate(entry.entryDate),
             "Supplier Inv No": supplierInvNo,
             "Supplier Inv Date": supplierInvDate,
-            "Job No": (isClub && clubbedList.length > 0) ? formatClubJobSeries(clubbedList, c1ParentJobNo || entry.jobNo) : (c1ParentJobNo ? c1ParentJobNo : entry.jobNo),
+            "Job No": formatTallyJobNo((isClub && clubbedList.length > 0) ? formatClubJobSeries(clubbedList, c1ParentJobNo || entry.jobNo) : (c1ParentJobNo ? c1ParentJobNo : entry.jobNo)),
             "Supplier Name": entry.supplierName,
             "Address 1": entry.address1,
             "Address 2": entry.address2,
@@ -1654,6 +1667,7 @@ router.get("/payment-request", authApiKey, async (req, res) => {
             enriched["Job Details"] = jobDetails;
         }
 
+        enriched.jobNo = formatTallyJobNo(enriched.jobNo);
         res.status(200).json(enriched);
     } catch (error) {
         console.error("Payment request fetch error:", error);
@@ -1700,10 +1714,10 @@ const formatTallyBillNumber = (rawBillNo, job = {}, fallbackType = "EXPORT", bil
     }
 
     // Branch detection
-    const isHazira = branchCode.includes("HAZ") || branchCode.includes("GH") || jobNoStr.startsWith("HAZ") || jobNoStr.includes("/HAZ/");
-    const isGandhidham = branchCode.includes("GND") || branchCode.includes("GAN") || branchCode.includes("GG") || jobNoStr.startsWith("GND") || jobNoStr.includes("/GND/");
-    const isCochin = branchCode.includes("COK") || branchCode.includes("COC") || branchCode.includes("GC") || jobNoStr.startsWith("COK") || jobNoStr.includes("/COK/");
-    const isBaroda = branchCode.includes("BAR") || branchCode.includes("GB") || jobNoStr.startsWith("BAR") || jobNoStr.includes("/BAR/");
+    const isHazira = branchCode.includes("HAZ") || branchCode.includes("GH") || jobNoStr.startsWith("HAZ") || jobNoStr.startsWith("GH") || jobNoStr.includes("/HAZ/") || jobNoStr.includes("/GH/");
+    const isGandhidham = branchCode.includes("GND") || branchCode.includes("GAN") || branchCode.includes("GIM") || branchCode.includes("GG") || jobNoStr.startsWith("GND") || jobNoStr.startsWith("GAN") || jobNoStr.startsWith("GIM") || jobNoStr.startsWith("GG") || jobNoStr.includes("/GND/") || jobNoStr.includes("/GIM/");
+    const isCochin = branchCode.includes("COK") || branchCode.includes("COC") || branchCode.includes("GC") || jobNoStr.startsWith("COK") || jobNoStr.startsWith("COC") || jobNoStr.startsWith("GC") || jobNoStr.includes("/COK/") || jobNoStr.includes("/COC/");
+    const isBaroda = branchCode.includes("BAR") || branchCode.includes("BRD") || branchCode.includes("GB") || jobNoStr.startsWith("BAR") || jobNoStr.startsWith("BRD") || jobNoStr.startsWith("GB") || jobNoStr.includes("/BAR/") || jobNoStr.includes("/BRD/");
 
     // Format output
     if (isFreight) {
@@ -1782,15 +1796,30 @@ const updateBillingDetailsHandler = async (req, res) => {
             return res.status(400).json({ error: "job_no is required in request body" });
         }
 
-        const rawAgencyNo = bill_no || billNo || bill_number || agency_bill_no || agencyBillNo || "";
-        const rawAgencyDate = bill_date || billDate || agency_bill_date || agencyBillDate;
-        const rawAgencyAmt = (bill_amount ?? billAmount ?? agency_bill_amount ?? agencyBillAmount);
-        const rawAgencyDoc = bill_doc || billDoc || agency_bill_doc || agencyBillDoc || "";
+        const isExplicitReimbType = (req.body.bill_type || req.body.type || req.body.bill_category || "").toString().toLowerCase().includes("reimb");
+        const isReimbBillNo = /ER|IR|REIMB/i.test(bill_no || billNo || bill_number || "");
 
-        const rawReimbNo = reimbursement_bill_no || reimbursementBillNo || "";
-        const rawReimbDate = reimbursement_bill_date || reimbursementBillDate;
-        const rawReimbAmt = (reimbursement_bill_amount ?? reimbursementBillAmount);
-        const rawReimbDoc = reimbursement_bill_doc || reimbursementBillDoc || "";
+        let rawAgencyNo = agency_bill_no || agencyBillNo || "";
+        let rawAgencyDate = agency_bill_date || agencyBillDate;
+        let rawAgencyAmt = (agency_bill_amount ?? agencyBillAmount);
+        let rawAgencyDoc = agency_bill_doc || agencyBillDoc || "";
+
+        let rawReimbNo = reimbursement_bill_no || reimbursementBillNo || "";
+        let rawReimbDate = reimbursement_bill_date || reimbursementBillDate;
+        let rawReimbAmt = (reimbursement_bill_amount ?? reimbursementBillAmount);
+        let rawReimbDoc = reimbursement_bill_doc || reimbursementBillDoc || "";
+
+        if (isExplicitReimbType || isReimbBillNo) {
+            if (!rawReimbNo) rawReimbNo = bill_no || billNo || bill_number || "";
+            if (rawReimbDate === undefined) rawReimbDate = bill_date || billDate;
+            if (rawReimbAmt === undefined) rawReimbAmt = (bill_amount ?? billAmount);
+            if (!rawReimbDoc) rawReimbDoc = bill_doc || billDoc || "";
+        } else {
+            if (!rawAgencyNo) rawAgencyNo = bill_no || billNo || bill_number || "";
+            if (rawAgencyDate === undefined) rawAgencyDate = bill_date || billDate;
+            if (rawAgencyAmt === undefined) rawAgencyAmt = (bill_amount ?? billAmount);
+            if (!rawAgencyDoc) rawAgencyDoc = bill_doc || billDoc || "";
+        }
 
         let agencyNo = "";
         let agencyDate = "";
@@ -1805,10 +1834,21 @@ const updateBillingDetailsHandler = async (req, res) => {
         let updatedJobType = null;
         let matchedJobNo = targetJobNo;
 
-        // 1. Try finding in ExJobModel (Export Jobs)
+        // 1. Try finding in ExJobModel (Export Jobs) - exact match first
         let exJob = await ExJobModel.findOne({
-            $or: resolveJobNumberQuery(targetJobNo)
+            $or: [
+                { job_no: targetJobNo },
+                { job_number: targetJobNo },
+                { tally_club_ref_no: targetJobNo },
+                { custom_job_no: targetJobNo }
+            ]
         });
+
+        if (!exJob) {
+            exJob = await ExJobModel.findOne({
+                $or: resolveJobNumberQuery(targetJobNo)
+            });
+        }
 
         if (exJob) {
             updatedJobType = "EXPORT";
@@ -1909,10 +1949,19 @@ const updateBillingDetailsHandler = async (req, res) => {
 
             for (const collName of collectionsToSearch) {
                 const coll = db.collection(collName);
-                const query = {
-                    $or: resolveJobNumberQuery(targetJobNo)
-                };
-                const doc = await coll.findOne(query);
+                let doc = await coll.findOne({
+                    $or: [
+                        { job_no: targetJobNo },
+                        { job_number: targetJobNo },
+                        { tally_club_ref_no: targetJobNo },
+                        { custom_job_no: targetJobNo }
+                    ]
+                });
+                if (!doc) {
+                    doc = await coll.findOne({
+                        $or: resolveJobNumberQuery(targetJobNo)
+                    });
+                }
                 if (doc) {
                     importJobFound = true;
                     updatedJobType = "IMPORT";

@@ -1417,16 +1417,17 @@ const EditChargeModal = ({
                                             setPurchaseBookData(() => {
                                               const cost = row.cost || {};
                                               const revenue = row.revenue || {};
-                                              const revAmt = (revenue.amountINR !== undefined && revenue.amountINR !== null && revenue.amountINR !== '')
+                                              const exRate = Number(revenue.exchangeRate || revenue.exRate || cost.exchangeRate || cost.exRate || row.exchangeRate || row.exRate || 1);
+                                              const revAmt = (revenue.amountINR !== undefined && revenue.amountINR !== null && revenue.amountINR !== '' && !isNaN(Number(revenue.amountINR)) && Number(revenue.amountINR) > 0)
                                                 ? Number(revenue.amountINR)
                                                 : ((revenue.amount !== undefined && revenue.amount !== null && revenue.amount !== '')
-                                                  ? Number(revenue.amount)
+                                                  ? Number(revenue.amount) * (revenue.currency && revenue.currency !== 'INR' ? exRate : (cost.currency && cost.currency !== 'INR' ? exRate : 1))
                                                   : ((revenue.rate !== undefined && revenue.rate !== null && revenue.rate !== '')
-                                                    ? Number(revenue.rate) * Number(revenue.qty || 1)
+                                                    ? Number(revenue.rate) * Number(revenue.qty || 1) * (revenue.currency && revenue.currency !== 'INR' ? exRate : (cost.currency && cost.currency !== 'INR' ? exRate : 1))
                                                     : 0));
 
-                                              const revBasic = (revenue.basicAmount !== undefined && revenue.basicAmount !== null && revenue.basicAmount !== '')
-                                                ? Number(revenue.basicAmount)
+                                              const revBasic = (revenue.basicAmount !== undefined && revenue.basicAmount !== null && revenue.basicAmount !== '' && !isNaN(Number(revenue.basicAmount)) && Number(revenue.basicAmount) > 0)
+                                                ? (revenue.currency && revenue.currency !== 'INR' ? Number(revenue.basicAmount) * exRate : (cost.currency && cost.currency !== 'INR' ? Number(revenue.basicAmount) * exRate : Number(revenue.basicAmount)))
                                                 : revAmt;
 
                                               return {

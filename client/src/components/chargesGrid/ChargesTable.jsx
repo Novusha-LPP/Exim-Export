@@ -148,6 +148,10 @@ const ChargesTable = ({
             </tr>
           ) : charges.map((ch, idx) => {
             const isSelected = selectedIds.has(ch._id);
+            const attachmentUrls = [...new Set([
+              ...(Array.isArray(ch.revenue?.url) ? ch.revenue.url : []),
+              ...(Array.isArray(ch.cost?.url) ? ch.cost.url : [])
+            ])];
 
             return (
               <tr
@@ -221,7 +225,7 @@ const ChargesTable = ({
                     <td className="align-left" style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ch.remark || ''}>
                       {ch.remark || ''}
                     </td>
-                    {renderAttachmentCell(ch, ch.revenue?.url)}
+                    {renderAttachmentCell(ch, attachmentUrls)}
                   </>
                 )}
 
@@ -235,7 +239,7 @@ const ChargesTable = ({
                     <td className="number">{formatNumber(ch.revenue?.rate)}</td>
                     <td className="number" style={{ fontWeight: 'bold' }}>{formatNumber(ch.revenue?.amount)}</td>
                     <td className="number" style={{ fontWeight: 'bold', color: '#059669' }}>{formatNumber(ch.revenue?.amountINR)}</td>
-                    {renderAttachmentCell(ch, ch.revenue?.url)}
+                    {renderAttachmentCell(ch, attachmentUrls)}
                   </>
                 )}
 
@@ -250,7 +254,7 @@ const ChargesTable = ({
                     <td className="number" style={{ fontWeight: 'bold' }}>{formatNumber(ch.cost?.amount)}</td>
                     <td className="number" style={{ fontWeight: 'bold', color: '#ea580c' }}>{formatNumber(ch.cost?.amountINR)}</td>
                     <td className="number" style={{ fontWeight: 'bold', color: '#d32f2f' }}>{formatNumber(ch.cost?.netPayable)}</td>
-                    {renderAttachmentCell(ch, ch.cost?.url)}
+                    {renderAttachmentCell(ch, attachmentUrls)}
                   </>
                 )}
               </tr>

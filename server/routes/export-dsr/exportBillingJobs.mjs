@@ -246,9 +246,20 @@ function summarizeJob(job) {
       .map((container) => [container.containerNo, container.type].filter(Boolean).join(" | "))
       .filter(Boolean),
     handover_date: opStatus.handoverForwardingNoteDate || "",
-    billing_date: (opStatus.billing_details?.agency_bill_date && opStatus.billing_details?.agency_bill_no ? opStatus.billing_details.agency_bill_date : "") ||
-      (opStatus.billing_details?.reimbursement_bill_date && opStatus.billing_details?.reimbursement_bill_no ? opStatus.billing_details.reimbursement_bill_date : "") ||
-      "",
+    billing_date: (() => {
+      const isFFJob = Boolean(job.isFreightForwarding) ||
+        String(job.job_no || "").toUpperCase().startsWith("FF") ||
+        String(job.job_no || "").toUpperCase().includes("FF-") ||
+        String(job.job_no || "").toUpperCase().includes("/FF/");
+      const hasCompleteAgency = Boolean(opStatus.billing_details?.agency_bill_date && opStatus.billing_details?.agency_bill_no);
+      const hasCompleteReimb = Boolean(opStatus.billing_details?.reimbursement_bill_date && opStatus.billing_details?.reimbursement_bill_no);
+      if (isFFJob) {
+        return hasCompleteAgency ? (opStatus.billing_details?.agency_bill_date || "") : "";
+      }
+      return (hasCompleteAgency && hasCompleteReimb)
+        ? (opStatus.billing_details?.agency_bill_date || opStatus.billing_details?.reimbursement_bill_date || "")
+        : "";
+    })(),
     billing_docs_count: Array.isArray(opStatus.billingDocsSentUpload)
       ? opStatus.billingDocsSentUpload.length
       : 0,

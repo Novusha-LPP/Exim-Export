@@ -110,10 +110,15 @@ const CurrencyRateDialog = ({ open, onClose }) => {
       await handleDateChange(selectedDate);
     } catch (err) {
       console.error('Error scraping currency rates:', err);
-      setError(
+      const rawError =
+        err.response?.data?.error ||
         err.response?.data?.message ||
-        'Failed to manually refresh currency rates'
-      );
+        'Failed to manually refresh currency rates';
+      const displayMsg =
+        typeof rawError === 'string'
+          ? rawError
+          : rawError.message || JSON.stringify(rawError);
+      setError(displayMsg);
       setLoading(false); // handleDateChange won't run if scrape fails
     }
   };

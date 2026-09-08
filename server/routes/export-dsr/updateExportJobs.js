@@ -1564,15 +1564,6 @@ router.get("/exports/:status?", async (req, res) => {
             { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
           ]
         });
-        filter.$and.push({
-          $or: [
-            { status: { $regex: "^pending$", $options: "i" } },
-            { status: { $exists: false } },
-            { status: null },
-            { status: "" },
-          ]
-        });
-        filter.$and.push({ detailedStatus: { $ne: "Billing Done" } });
         filter.$and.push({ isJobCanceled: { $ne: true } });
       } else {
         filter.$and.push({
@@ -2260,6 +2251,14 @@ router.get("/filtered-exporters", async (req, res) => {
             { "operations.statusDetails": { $size: 0 } }
           ]
         });
+      } else if (statusLower === "club-jobs") {
+        filter.$and.push({
+          $or: [
+            { is_club_job_parent: true },
+            { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
+          ]
+        });
+        filter.$and.push({ isJobCanceled: { $ne: true } });
       } else {
         filter.$and.push({
           status: { $regex: `^${status}$`, $options: "i" },
@@ -3105,16 +3104,47 @@ router.get("/:job_no(.*)", async (req, res, next) => {
 
       const mergedContainers = [];
 
+      // 1. Add Parent Job container entry with parent job's own SB, total pkgs, and gross weight
+      const parentInv = exportJob.invoices?.[0] || {};
+      const parentOp = exportJob.operations?.[0] || {};
+      const parentSt = parentOp.statusDetails?.[0] || {};
+      const parentProduct = parentInv.products?.[0] || {};
+      const parentHsnList = [...new Set((parentInv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
+
+      const templateContainer = childJobs[0]?.containers?.[0] || exportJob.containers?.[0] || {};
+      const parentPkgs = Number(exportJob.total_no_of_pkgs || templateContainer.pkgsStuffed || 0);
+      const parentWeight = Number(exportJob.gross_weight_kg || templateContainer.grossWeight || 0);
+
+      mergedContainers.push({
+        ...templateContainer,
+        pkgsStuffed: parentPkgs,
+        grossWeight: parentWeight,
+        vgmWtInvoice: parentWeight,
+        _sourceJobNo: exportJob.job_no,
+        _sourceSbNo: exportJob.custom_house_details?.shipping_bill_no || exportJob.sb_no || exportJob.shippingBillNo,
+        _sourceSbDate: exportJob.custom_house_details?.sb_date || exportJob.sb_date,
+        _sourceInvoiceNumber: parentInv.invoiceNumber,
+        _sourceInvoiceValue: parentInv.invoiceValue,
+        _sourceLeoDate: parentSt.leoDate,
+        _sourceDescription: parentProduct.description || exportJob.descriptionOfGoods || exportJob.description,
+        _sourceHsnList: parentHsnList || exportJob.custom_house_details?.hsn_code || exportJob.hsn,
+        _sourceFobValue: parentInv.freightInsuranceCharges?.fobValue?.amount || ""
+      });
+
+      // 2. Add each Child Job's containers
       for (const j of childJobs) {
         const inv = j.invoices?.[0] || {};
         const op = j.operations?.[0] || {};
         const st = op.statusDetails?.[0] || {};
         const product = inv.products?.[0] || {};
         const hsnList = [...new Set((inv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
+        const containersToUse = (j.containers && j.containers.length > 0) ? j.containers : (op.containerDetails || []);
 
-        for (const c of (j.containers || [])) {
+        for (const c of containersToUse) {
           mergedContainers.push({
             ...c,
+            pkgsStuffed: (c.pkgsStuffed !== undefined && c.pkgsStuffed !== null && c.pkgsStuffed !== 0) ? c.pkgsStuffed : Number(j.total_no_of_pkgs || 0),
+            grossWeight: (c.grossWeight !== undefined && c.grossWeight !== null && c.grossWeight !== 0) ? c.grossWeight : Number(j.gross_weight_kg || 0),
             _sourceJobNo: j.job_no,
             _sourceSbNo: j.custom_house_details?.shipping_bill_no || j.sb_no || j.shippingBillNo,
             _sourceSbDate: j.custom_house_details?.sb_date || j.sb_date,
@@ -3123,29 +3153,24 @@ router.get("/:job_no(.*)", async (req, res, next) => {
             _sourceLeoDate: st.leoDate,
             _sourceDescription: product.description || j.descriptionOfGoods || j.description,
             _sourceHsnList: hsnList || j.custom_house_details?.hsn_code || j.hsn,
-            _sourceFobValue: j.invoices?.[0]?.freightInsuranceCharges?.fobValue?.amount || ""
+            _sourceFobValue: inv.freightInsuranceCharges?.fobValue?.amount || ""
           });
         }
       }
 
       jobData.containers = mergedContainers;
 
-      // Merge invoices from parent job + child jobs and deduplicate by invoice number
-      const rawInvoices = [
-        ...(exportJob.invoices || []).map(inv => ({ ...inv, _sourceJobNo: exportJob.job_no })),
-        ...childJobs.flatMap(j => (j.invoices || []).map(inv => ({ ...inv, _sourceJobNo: j.job_no })))
-      ].filter(Boolean);
-
-      const uniqueInvoices = [];
-      const seenInvKeys = new Set();
-      for (const inv of rawInvoices) {
-        const key = String(inv.invoiceNumber || inv.invoiceNo || inv.invoice_no || inv._id || "").trim().toUpperCase();
-        if (key && seenInvKeys.has(key)) continue;
-        if (key) seenInvKeys.add(key);
-        uniqueInvoices.push(inv);
-      }
-
-      jobData.invoices = uniqueInvoices;
+      // Keep parent job's own invoices as plain objects (do NOT merge child jobs' invoices into parent job)
+      jobData.invoices = (exportJob.invoices || []).map(inv => {
+        const plain = typeof inv.toObject === "function" ? inv.toObject() : (inv._doc ? { ...inv._doc } : { ...inv });
+        delete plain.__parentArray;
+        delete plain.$__parent;
+        delete plain._doc;
+        delete plain.__index;
+        delete plain.$__;
+        delete plain.$isNew;
+        return { ...plain, _sourceJobNo: exportJob.job_no };
+      }).filter(Boolean);
       jobData.operations = [exportJob.operations?.[0] || {}, ...childJobs.flatMap(j => j.operations || [])].filter(Boolean);
     }
 

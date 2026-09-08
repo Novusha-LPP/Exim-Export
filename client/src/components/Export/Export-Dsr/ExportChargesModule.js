@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Typography, Button, Box, Paper, Tabs, Tab, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
@@ -151,13 +151,17 @@ function ExportChargesModule() {
     }
   }, [lockError]);
 
+  const location = useLocation();
+
   const handleClose = async () => {
     try {
       await unlockJob();
       window.open("", "_self");
       window.close();
       setTimeout(() => {
-        if (window.history.state && window.history.state.idx > 0) {
+        if (location.state?.from) {
+          navigate(location.state.from);
+        } else if (window.history.state && window.history.state.idx > 0) {
           navigate(-1);
         } else {
           navigate("/export-charges");
@@ -169,12 +173,23 @@ function ExportChargesModule() {
       window.open("", "_self");
       window.close();
       setTimeout(() => {
-        if (window.history.state && window.history.state.idx > 0) {
+        if (location.state?.from) {
+          navigate(location.state.from);
+        } else if (window.history.state && window.history.state.idx > 0) {
           navigate(-1);
         } else {
           navigate("/export-charges");
         }
       }, 100);
+    }
+  };
+
+  const handleLockDialogClose = () => {
+    setLockDialogOpen(false);
+    if (location.state?.from) {
+      navigate(location.state.from);
+    } else {
+      navigate("/export-charges");
     }
   };
 
@@ -216,11 +231,6 @@ function ExportChargesModule() {
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
     setSearchParams({ tab: newValue.toString() });
-  };
-
-  const handleLockDialogClose = () => {
-    setLockDialogOpen(false);
-    navigate("/export-charges");
   };
 
   if (loading) {

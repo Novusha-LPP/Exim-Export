@@ -222,9 +222,20 @@ function summarizeJob(job) {
       .map((container) => [container.containerNo, container.type].filter(Boolean).join(" | "))
       .filter(Boolean),
     handover_date: opStatus.handoverForwardingNoteDate || "",
-    billing_date: (opStatus.billing_details?.agency_bill_date && opStatus.billing_details?.agency_bill_no ? opStatus.billing_details.agency_bill_date : "") ||
-      (opStatus.billing_details?.reimbursement_bill_date && opStatus.billing_details?.reimbursement_bill_no ? opStatus.billing_details.reimbursement_bill_date : "") ||
-      "",
+    billing_date: (() => {
+      const isFFJob = Boolean(job.isFreightForwarding) ||
+        String(job.job_no || "").toUpperCase().startsWith("FF") ||
+        String(job.job_no || "").toUpperCase().includes("FF-") ||
+        String(job.job_no || "").toUpperCase().includes("/FF/");
+      const hasCompleteAgency = Boolean(opStatus.billing_details?.agency_bill_date && opStatus.billing_details?.agency_bill_no);
+      const hasCompleteReimb = Boolean(opStatus.billing_details?.reimbursement_bill_date && opStatus.billing_details?.reimbursement_bill_no);
+      if (isFFJob) {
+        return hasCompleteAgency ? (opStatus.billing_details?.agency_bill_date || "") : "";
+      }
+      return (hasCompleteAgency && hasCompleteReimb)
+        ? (opStatus.billing_details?.agency_bill_date || opStatus.billing_details?.reimbursement_bill_date || "")
+        : "";
+    })(),
     billing_docs_count: Array.isArray(opStatus.billingDocsSentUpload)
       ? opStatus.billingDocsSentUpload.length
       : 0,
@@ -369,12 +380,7 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "", startDate = "", endD
   if (tab === "club-jobs") {
     const isParent = job.is_club_job_parent === true;
     const isChild = !!job.parent_club_job;
-    if (!isParent && !isChild) return false;
-    if (!isWithinDateRange && isCompleted) return false;
-    if (isParent) {
-      return job.send_for_billing === true;
-    }
-    return true;
+    return isParent || isChild;
   }
 
   return true;
@@ -773,12 +779,6 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
               is_club_job_parent: true
             });
             filter.$and.push({
-              $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }]
-            });
-            filter.$and.push({
-              detailedStatus: { $ne: "Billing Done" }
-            });
-            filter.$and.push({
               isJobCanceled: { $ne: true }
             });
           } else if (tabKeyLower === "completed") {
@@ -960,8 +960,14 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
                   { status: { $regex: "^completed$", $options: "i" } },
                   { detailedStatus: "Billing Done" },
                   { "operations.statusDetails.billingDocsSentDt": { $exists: true, $nin: [null, ""] } },
-                  { $and: [{ "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } }, { "operations.statusDetails.billing_details.agency_bill_no": { $exists: true, $nin: [null, ""] } }] },
-                  { $and: [{ "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } }, { "operations.statusDetails.billing_details.reimbursement_bill_no": { $exists: true, $nin: [null, ""] } }] }
+                  {
+                    $and: [
+                      { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
+                      { "operations.statusDetails.billing_details.agency_bill_no": { $exists: true, $nin: [null, ""] } },
+                      { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
+                      { "operations.statusDetails.billing_details.reimbursement_bill_no": { $exists: true, $nin: [null, ""] } }
+                    ]
+                  }
                 ]
               });
             }

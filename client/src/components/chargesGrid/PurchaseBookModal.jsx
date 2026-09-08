@@ -143,10 +143,10 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                     console.error("Error fetching sequence:", error);
                 }
 
-                    const revAmt = Number(initialData.revenueAmount || initialData.revenueTotal || initialData.revenueBasicAmount || 0);
+                    const revAmt = Number(initialData.revenueTotal || initialData.revenueAmountINR || initialData.revenueAmount || initialData.revenueBasicAmount || 0);
                     const revBasic = Number(initialData.revenueBasicAmount || revAmt || 0);
                     const revGst = Number(initialData.revenueGstAmount || 0);
-                    const revTot = Number(initialData.revenueTotal || revAmt || 0);
+                    const revTot = Number(initialData.revenueTotal || initialData.revenueAmountINR || revAmt || 0);
 
                     setFormData(prev => ({
                         ...prev,

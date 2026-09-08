@@ -1,7 +1,7 @@
 import React from 'react';
 import './charges.css';
 
-const Toolbar = ({ onAddCharge, onDeleteSelected, readOnly, isDeleteDisabled, onCostSheetClick, onMultiPurchaseBook }) => {
+const Toolbar = ({ onAddCharge, onDeleteSelected, readOnly, isDeleteDisabled, onCostSheetClick, onMultiPurchaseBook, purchaseBookLabel = 'Purchase Book' }) => {
   return (
     <div className="toolbar" style={{ marginBottom: 0 }}>
       <button
@@ -88,7 +88,7 @@ const Toolbar = ({ onAddCharge, onDeleteSelected, readOnly, isDeleteDisabled, on
               <line x1="12" y1="18" x2="12" y2="12" />
               <line x1="9" y1="15" x2="15" y2="15" />
             </svg>
-            Combined Purchase Book
+            {purchaseBookLabel}
           </button>
         </>
       )}

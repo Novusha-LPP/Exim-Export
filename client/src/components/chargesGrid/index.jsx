@@ -62,8 +62,8 @@ const ChargesGrid = ({
 
   const handleMultiPurchaseBook = async () => {
     const selectedCharges = charges.filter(c => selectedIds.has(c._id));
-    if (selectedCharges.length < 2) {
-      alert("Please select at least 2 charges to create a combined Purchase Book.");
+    if (selectedCharges.length < 1) {
+      alert("Please select at least 1 charge to create a Purchase Book.");
       return;
     }
 
@@ -136,11 +136,25 @@ const ChargesGrid = ({
     const formattedData = selectedCharges.map(c => {
       const cost = c.cost || {};
       const revenue = c.revenue || {};
+      const exRate = Number(revenue.exchangeRate || revenue.exRate || cost.exchangeRate || cost.exRate || c.exchangeRate || c.exRate || 1);
+
+      const revINR = (revenue.amountINR !== undefined && revenue.amountINR !== null && revenue.amountINR !== '' && !isNaN(Number(revenue.amountINR)) && Number(revenue.amountINR) > 0)
+        ? Number(revenue.amountINR)
+        : ((revenue.amount !== undefined && revenue.amount !== null && revenue.amount !== '' && !isNaN(Number(revenue.amount)))
+          ? Number(revenue.amount) * (revenue.currency && revenue.currency !== 'INR' ? exRate : (cost.currency && cost.currency !== 'INR' ? exRate : 1))
+          : ((revenue.rate !== undefined && revenue.rate !== null && revenue.rate !== '' && !isNaN(Number(revenue.rate)))
+            ? Number(revenue.rate) * Number(revenue.qty || 1) * (revenue.currency && revenue.currency !== 'INR' ? exRate : (cost.currency && cost.currency !== 'INR' ? exRate : 1))
+            : 0));
+
+      const revBasicINR = (revenue.basicAmount !== undefined && revenue.basicAmount !== null && revenue.basicAmount !== '' && !isNaN(Number(revenue.basicAmount)) && Number(revenue.basicAmount) > 0)
+        ? (revenue.currency && revenue.currency !== 'INR' ? Number(revenue.basicAmount) * exRate : (cost.currency && cost.currency !== 'INR' ? Number(revenue.basicAmount) * exRate : Number(revenue.basicAmount)))
+        : revINR;
+
       return {
         partyName: targetPartyName,
         partyDetails,
-        amount: cost.amount,
-        basicAmount: cost.basicAmount,
+        amount: cost.amountINR !== undefined && cost.amountINR !== null && cost.amountINR !== '' ? cost.amountINR : cost.amount,
+        basicAmount: cost.basicAmount !== undefined && cost.basicAmount !== null && cost.basicAmount !== '' ? cost.basicAmount : (cost.amountINR || cost.amount),
         gstAmount: cost.gstAmount,
         gstRate: cost.gstRate,
         cgst: cost.cgst,
@@ -150,14 +164,14 @@ const ChargesGrid = ({
         netPayable: cost.netPayable,
         amountINR: cost.amountINR,
         totalAmount: cost.amountINR,
-        revenueAmount: revenue.amount,
-        revenueBasicAmount: revenue.basicAmount,
+        revenueAmount: revINR,
+        revenueBasicAmount: revBasicINR,
         revenueGstAmount: revenue.gstAmount,
         revenueGstRate: revenue.gstRate,
         revenueCgst: revenue.cgst,
         revenueSgst: revenue.sgst,
         revenueIgst: revenue.igst,
-        revenueTotal: revenue.amountINR || revenue.totalAmount || revenue.amount,
+        revenueTotal: revINR,
         revenuePartyName: revenue.partyName,
         chargeHead: c.name || c.chargeHead,
         chargeType: c.chargeType,
@@ -175,7 +189,7 @@ const ChargesGrid = ({
         virtualBalanceTerminal: cost.virtualBalanceTerminal || '',
         currency: cost.currency || c.currency || 'INR',
         currencyAmount: (cost.currency && cost.currency !== 'INR') ? (cost.amount !== undefined && cost.amount !== null ? cost.amount : (cost.qty && cost.rate ? Number(cost.qty) * Number(cost.rate) : '')) : (cost.currencyAmount || cost.foreignCurrencyAmount || ''),
-        exchangeRate: cost.exchangeRate || cost.exRate || c.exchangeRate || c.exRate || 1,
+        exchangeRate: exRate,
         qty: cost.qty !== undefined && cost.qty !== null ? Number(cost.qty) : 1,
         rate: cost.rate !== undefined && cost.rate !== null ? Number(cost.rate) : (cost.amount !== undefined && cost.amount !== null ? Number(cost.amount) : 0)
       };
@@ -296,14 +310,11 @@ const ChargesGrid = ({
 
   const handleAttachFiles = async (urls) => {
     if (fileModalCharge) {
-      const { charge, tab } = fileModalCharge;
-      const updateData = {};
-
-      if (tab === 'revenue' || tab === 'particulars') {
-        updateData.revenue = { ...(charge.revenue || {}), url: urls };
-      } else if (tab === 'cost') {
-        updateData.cost = { ...(charge.cost || {}), url: urls };
-      }
+      const { charge } = fileModalCharge;
+      const updateData = {
+        revenue: { ...(charge.revenue || {}), url: urls },
+        cost: { ...(charge.cost || {}), url: urls }
+      };
 
       await updateCharge(charge._id, updateData);
       setFileModalCharge(null);
@@ -311,12 +322,10 @@ const ChargesGrid = ({
   };
 
   const handleRemoveAttachment = async (charge, tab, newUrls) => {
-    const updateData = {};
-    if (tab === 'revenue' || tab === 'particulars') {
-      updateData.revenue = { ...(charge.revenue || {}), url: newUrls };
-    } else if (tab === 'cost') {
-      updateData.cost = { ...(charge.cost || {}), url: newUrls };
-    }
+    const updateData = {
+      revenue: { ...(charge.revenue || {}), url: newUrls },
+      cost: { ...(charge.cost || {}), url: newUrls }
+    };
     await updateCharge(charge._id, updateData);
   };
 
@@ -334,7 +343,8 @@ const ChargesGrid = ({
         readOnly={finalReadOnly}
         isDeleteDisabled={isDeleteDisabled}
         onCostSheetClick={jobNumber && (jobNumber.startsWith('FF') || jobNumber.startsWith('FF-SUC')) ? handleCostSheetClick : null}
-        onMultiPurchaseBook={selectedIds.size >= 2 ? handleMultiPurchaseBook : null}
+        onMultiPurchaseBook={selectedIds.size >= 1 ? handleMultiPurchaseBook : null}
+        purchaseBookLabel={selectedIds.size > 1 ? 'Combined Purchase Book' : 'Purchase Book'}
       />
 
       <div style={{ position: 'relative' }}>
@@ -408,11 +418,10 @@ const ChargesGrid = ({
           isOpen={!!fileModalCharge}
           onClose={() => setFileModalCharge(null)}
           chargeLabel={`${fileModalCharge.charge.chargeHead} (${fileModalCharge.tab})`}
-          initialUrls={
-            fileModalCharge.tab === 'cost'
-              ? fileModalCharge.charge.cost?.url || []
-              : fileModalCharge.charge.revenue?.url || []
-          }
+          initialUrls={[...new Set([
+            ...(fileModalCharge.charge.revenue?.url || []),
+            ...(fileModalCharge.charge.cost?.url || [])
+          ])]}
           onAttach={handleAttachFiles}
         />
       )}
