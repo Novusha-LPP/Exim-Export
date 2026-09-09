@@ -309,7 +309,7 @@ const resolveJobNumberQuery = (jobNoInput) => {
     let prefixPart = "";
 
     const slashParts = cleanJobNo.split("/").map(s => s.trim()).filter(Boolean);
-    
+
     if (slashParts.length >= 2) {
         const last = slashParts[slashParts.length - 1];
         if (/^\d{2}-\d{2}$|^\d{4}-\d{4}$/.test(last)) {
@@ -324,7 +324,7 @@ const resolveJobNumberQuery = (jobNoInput) => {
                 break;
             }
         }
-        
+
         prefixPart = slashParts[0].toUpperCase();
         if (slashParts.length > 3 && (slashParts[1] === "IA" || slashParts[1] === "EA" || slashParts[1] === "IR" || slashParts[1] === "ER")) {
             prefixPart = `${slashParts[0]}/${slashParts[1]}`.toUpperCase();
@@ -422,8 +422,8 @@ const formatTallyJobNo = (jobNo) => {
  * Internal helper to format job and invoice data for Tally
  */
 const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
-    const isFreight = explicitFreight !== undefined 
-        ? Boolean(explicitFreight) 
+    const isFreight = explicitFreight !== undefined
+        ? Boolean(explicitFreight)
         : isFreightJob(job);
 
     const jobNoStr = String(job.tally_club_ref_no || job.job_no || "").toUpperCase();
@@ -437,8 +437,8 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Job Year": job.year || job.job_year || "",
         "Job Type": jobType,
         "Job Date": normalizeDate(job.createdAt || job.job_date || job.jobDate),
-        "ImporterExporter Name": isImport 
-            ? (job.importer || job.importer_name || job.importerExporter || job.exporter || job.organization_name || "") 
+        "ImporterExporter Name": isImport
+            ? (job.importer || job.importer_name || job.importerExporter || job.exporter || job.organization_name || "")
             : (job.exporter || job.organization_name || ""),
         "Consignee": job.consignees?.[0]?.consignee_name || job.consignee || job.consignee_name || "",
         "Shipper": job.shipper || job.supplier_name || job.supplier || "",
@@ -507,8 +507,8 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
 };
 
 const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
-    const isFreight = explicitFreight !== undefined 
-        ? Boolean(explicitFreight) 
+    const isFreight = explicitFreight !== undefined
+        ? Boolean(explicitFreight)
         : isFreightJob(job);
 
     const jobNoStr = String(job.tally_club_ref_no || job.job_no || "").toUpperCase();
@@ -525,8 +525,8 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Job Year": job.year || job.job_year || "",
         "Job Type": jobType,
         "Job Date": normalizeDate(job.createdAt || job.job_date || job.jobDate),
-        "ImporterExporter Name": isImport 
-            ? (job.importer || job.importer_name || job.importerExporter || job.exporter || job.organization_name || "") 
+        "ImporterExporter Name": isImport
+            ? (job.importer || job.importer_name || job.importerExporter || job.exporter || job.organization_name || "")
             : (job.exporter || job.organization_name || ""),
         "Consignee": job.consignees?.[0]?.consignee_name || job.consignee_name || job.consignee || job.bl_details?.consignee || "",
         "Shipper": job.shipper || job.exporter || job.organization_name || job.supplier_name || "",
@@ -724,7 +724,7 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
                 parentJob = await importDbConnection.db.collection("jobs").findOne({
                     $or: [{ job_no: job.parent_club_job }, { tally_club_ref_no: job.parent_club_job }]
                 });
-            } catch (err) {}
+            } catch (err) { }
         }
         if (parentJob) {
             job = parentJob;
@@ -740,7 +740,7 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
         if ((!childJobs || childJobs.length === 0) && importDbConnection && importDbConnection.readyState === 1) {
             try {
                 childJobs = await importDbConnection.db.collection("jobs").find({ job_no: { $in: job.clubbed_jobs } }).toArray();
-            } catch (err) {}
+            } catch (err) { }
         }
 
         let totalNetWeight = 0;
@@ -1089,9 +1089,31 @@ const mapPurchaseEntryData = (data) => {
         isMultiCharge: data.isMultiCharge !== undefined ? data.isMultiCharge : false,
         chargeItems: Array.isArray(data.chargeItems) ? data.chargeItems : [],
         chargeRefs: Array.isArray(data.chargeRefs) ? data.chargeRefs : [],
-        currency: data["Currency"] || data["Invoice Currency"] || data.currency || "INR",
-        currencyAmount: Number(data["Currency Amount"] || data["Foreign Currency Amount"] || data.currencyAmount || data.foreignCurrencyAmount || 0),
-        exchangeRate: Number(data["Exchange Rate"] || data.exchangeRate || 1),
+        currency: (() => {
+            let c = data["Currency"] || data["Invoice Currency"] || data.currency || "";
+            if ((!c || c === "INR") && Array.isArray(data.chargeItems) && data.chargeItems.length > 0) {
+                const f = data.chargeItems.find(item => (item.Currency || item.currency) && (item.Currency || item.currency) !== "INR");
+                const target = f || data.chargeItems[0];
+                if (target && (target.Currency || target.currency)) c = target.Currency || target.currency;
+            }
+            return c || "INR";
+        })(),
+        currencyAmount: (() => {
+            let amt = Number(data["Currency Amount"] || data["Foreign Currency Amount"] || data.currencyAmount || data.foreignCurrencyAmount || 0);
+            if (!amt && Array.isArray(data.chargeItems) && data.chargeItems.length > 0) {
+                const f = data.chargeItems.find(item => Number(item["Currency Amount"] || item.currencyAmount || 0) > 0);
+                if (f) amt = Number(f["Currency Amount"] || f.currencyAmount || 0);
+            }
+            return amt;
+        })(),
+        exchangeRate: (() => {
+            let ex = Number(data["Exchange Rate"] || data.exchangeRate || 1);
+            if (ex === 1 && Array.isArray(data.chargeItems) && data.chargeItems.length > 0) {
+                const f = data.chargeItems.find(item => Number(item["Exchange Rate"] || item.exchangeRate || 1) > 1);
+                if (f) ex = Number(f["Exchange Rate"] || f.exchangeRate || 1);
+            }
+            return ex;
+        })(),
         qty: data["Qty"] !== undefined && data["Qty"] !== null ? Number(data["Qty"]) : (data.qty !== undefined ? Number(data.qty) : 1),
         rate: data["Rate"] !== undefined && data["Rate"] !== null ? Number(data["Rate"]) : (data.rate !== undefined ? Number(data.rate) : 0),
         etaDate: normalizeDate(data["ETA Date"] || data.etaDate),
@@ -1175,7 +1197,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                         job = await clientJobsColl.findOne({
                             $or: resolveJobNumberQuery(firstJob)
                         });
-                    } catch (err) {}
+                    } catch (err) { }
                 }
             }
             if (job) {
@@ -1235,7 +1257,7 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     rawJobDB = await importDbConnection.db.collection("jobs").findOne({
                         $or: resolveJobNumberQuery(firstJobRaw)
                     });
-                } catch (e) {}
+                } catch (e) { }
             }
         } catch (e) { }
 
@@ -1295,9 +1317,35 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         const costForeignAmt = costObj.amount !== undefined ? costObj.amount : (costObj.currencyAmount || costObj.foreignCurrencyAmount);
 
         let finalCurrency = entry.currency;
+        if ((!finalCurrency || finalCurrency === "INR") && Array.isArray(entry.chargeItems) && entry.chargeItems.length > 0) {
+            const targetJob = job || rawJobDB;
+            for (const item of entry.chargeItems) {
+                let itemCurr = item.currency || item.costCurrency || item.Currency;
+                if (!itemCurr || itemCurr === "INR") {
+                    if (targetJob && Array.isArray(targetJob.charges)) {
+                        const targetId = String(item.chargeId || item.chargeRef || "");
+                        const matched = targetJob.charges.find(c => c._id?.toString() === targetId || (c.name || c.chargeHead || c.chargeHeading)?.trim().toLowerCase() === (item.chargeHead || item.chargeHeading)?.trim().toLowerCase());
+                        const costCurr = matched?.cost?.currency || matched?.currency;
+                        if (costCurr && costCurr !== "INR") {
+                            itemCurr = costCurr;
+                        }
+                    }
+                }
+                const exRate = Number(item.exchangeRate || item["Exchange Rate"] || entry.exchangeRate || 1);
+                if ((!itemCurr || itemCurr === "INR") && exRate > 1) {
+                    itemCurr = "USD";
+                }
+                if (itemCurr && itemCurr !== "INR") {
+                    finalCurrency = itemCurr;
+                    break;
+                }
+            }
+        }
         if (!finalCurrency || finalCurrency === "INR") {
             if (costCurrency && costCurrency !== "INR") {
                 finalCurrency = costCurrency;
+            } else if (Number(entry.exchangeRate) > 1 || Number(costExRate) > 1) {
+                finalCurrency = "USD";
             }
         }
         if (!finalCurrency) finalCurrency = "INR";
@@ -1741,8 +1789,8 @@ router.get("/payment-request", authApiKey, async (req, res) => {
         const explicitFreight = req.query.freight !== undefined ? (String(req.query.freight).toLowerCase() === "true") : undefined;
         const job_number = enriched.jobNo;
         const jobDetails = await getJobDetailsInternal(job_number, explicitFreight);
-        const isFreight = explicitFreight !== undefined 
-            ? explicitFreight 
+        const isFreight = explicitFreight !== undefined
+            ? explicitFreight
             : (Boolean(enriched.jobNo && String(enriched.jobNo).toUpperCase().includes("FF")) || isFreightJob(jobDetails?.[0]));
 
         enriched["freight"] = isFreight;

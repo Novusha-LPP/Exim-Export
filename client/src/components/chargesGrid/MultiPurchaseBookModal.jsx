@@ -146,7 +146,7 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                     invoiceDate: c.invoice_date || '',
                     qty: c.qty !== undefined && c.qty !== null ? Number(c.qty) : 1,
                     rate: c.rate !== undefined && c.rate !== null ? Number(c.rate) : Number(c.basicAmount || c.amount || 0),
-                    currency: c.costCurrency || (c.cost && c.cost.currency) || 'INR',
+                    currency: c.costCurrency || (c.cost && c.cost.currency) || c.currency || (Number(c.exchangeRate || c.exRate || 1) > 1 ? 'USD' : 'INR'),
                     currencyAmount: Number(c.currencyAmount || c.foreignCurrencyAmount || (c.currency && c.currency !== 'INR' ? (c.amount || c.basicAmount) : 0)),
                     exchangeRate: Number(c.exchangeRate || c.exRate || 1)
                 };
@@ -264,7 +264,7 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                 "Virtual Balance Terminal": firstCharge.virtualBalanceTerminal || '',
                 "Qty": firstCharge.qty !== undefined && firstCharge.qty !== null ? firstCharge.qty : 1,
                 "Rate": firstCharge.rate !== undefined && firstCharge.rate !== null ? firstCharge.rate : (firstCharge.amount || 0),
-                "Currency": firstCharge.costCurrency || (firstCharge.cost && firstCharge.cost.currency) || 'INR',
+                "Currency": firstCharge.costCurrency || (firstCharge.cost && firstCharge.cost.currency) || firstCharge.currency || (Number(firstCharge.exchangeRate || firstCharge.exRate || 1) > 1 ? 'USD' : 'INR'),
                 "Currency Amount": firstCharge.currencyAmount || firstCharge.foreignCurrencyAmount || (firstCharge.currency && firstCharge.currency !== 'INR' ? (firstCharge.amount || firstCharge.basicAmount || '') : ''),
                 "Exchange Rate": firstCharge.exchangeRate || firstCharge.exRate || 1,
                 "ETA Date": formatDate(firstCharge.eta_date || firstCharge.etaDate, 'yyyy-MM-dd') || '',
