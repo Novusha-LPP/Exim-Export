@@ -378,14 +378,30 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
     let sbNosInfo = `${data.sb_no || ""} / ${formatDate(data.sb_date)}`;
     let leoDatesInfo = formatDate(statusDetails.leoDate);
 
-    if (isClubActive && Array.isArray(validClubbedJobs)) {
-      const allInvoices = [invoice.invoiceNumber, ...validClubbedJobs.map(j => j.invoices?.[0]?.invoiceNumber)].filter(Boolean);
+    if (isClubActive) {
+      const merged = data.mergedContainers || [];
+      const allInvoices = [...new Set(
+        [invoice.invoiceNumber]
+          .concat((validClubbedJobs || []).map(j => j.invoices?.[0]?.invoiceNumber))
+          .concat(merged.map(c => c._sourceInvoiceNumber))
+          .filter(Boolean)
+      )];
       invoiceNosInfo = allInvoices.join(", ");
 
-      const allSBs = [`${data.sb_no || ""} (${formatDate(data.sb_date)})`, ...validClubbedJobs.map(j => `${j.sb_no || ""} (${formatDate(j.sb_date)})`)].filter(Boolean);
+      const allSBs = [...new Set(
+        [`${data.sb_no || ""} (${formatDate(data.sb_date)})`]
+          .concat((validClubbedJobs || []).map(j => `${j.sb_no || ""} (${formatDate(j.sb_date)})`))
+          .concat(merged.map(c => c._sourceSbNo ? `${c._sourceSbNo} (${formatDate(c._sourceSbDate)})` : null))
+          .filter(Boolean)
+      )];
       sbNosInfo = allSBs.join(", ");
 
-      const allLeos = [formatDate(statusDetails.leoDate), ...validClubbedJobs.map(j => formatDate(j.operations?.[0]?.statusDetails?.[0]?.leoDate))].filter(Boolean);
+      const allLeos = [...new Set(
+        [formatDate(statusDetails.leoDate)]
+          .concat((validClubbedJobs || []).map(j => formatDate(j.operations?.[0]?.statusDetails?.[0]?.leoDate)))
+          .concat(merged.map(c => formatDate(c._sourceLeoDate)))
+          .filter(Boolean)
+      )];
       leoDatesInfo = allLeos.join(", ");
     }
 

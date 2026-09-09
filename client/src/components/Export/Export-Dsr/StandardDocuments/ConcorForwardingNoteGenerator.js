@@ -227,10 +227,13 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
     let sbNoText = exportJob.sb_no || "";
     let sbDateText = formatDate(exportJob.sb_date);
 
-    if (isClubActive && exportJob.containers?.length > 0) {
+    if (isClubActive) {
+      const containersToScan = (exportJob.mergedContainers && exportJob.mergedContainers.length > 0)
+        ? exportJob.mergedContainers
+        : (exportJob.containers || []);
       const allSBs = [];
       const seenSBs = new Set();
-      exportJob.containers.forEach(c => {
+      containersToScan.forEach(c => {
         const sbNo = c._sourceSbNo || c.shippingBillNo || exportJob.sb_no;
         const sbDate = c._sourceSbDate || c.sb_date || exportJob.sb_date;
         if (sbNo) {

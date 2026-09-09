@@ -239,14 +239,26 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
     const dischargeCountry = primaryData.dischargeCountry || primaryData.discharge_country || "";
     const exporterAddress = primaryData.exporterAddress || primaryData.exporter || "";
     const gatewayPort = primaryData.gatewayPort || primaryData.gateway_port || primaryData.port_of_loading || "";
-    const allSbNos = [...new Set((primaryData.containers || []).map(c => c._sourceSbNo || c.shippingBillNo || primaryData.custom_house_details?.shipping_bill_no || primaryData.sb_no).filter(Boolean))];
+    const aggregatedContainers = getAggregatedContainers(primaryData, isClubActive, clubbedJobsList);
+    const allSbNos = [...new Set(
+      (primaryData.mergedContainers || primaryData.containers || [])
+        .map(c => c._sourceSbNo || c.shippingBillNo || primaryData.custom_house_details?.shipping_bill_no || primaryData.sb_no)
+        .concat(aggregatedContainers.flatMap(c => c.uniqueSBs ? c.uniqueSBs.map(s => s.sbNo) : [c.shippingBillNo]))
+        .concat(primaryData.shippingBillNo || primaryData.sb_no)
+        .filter(Boolean)
+    )];
     const shippingBillNo = allSbNos.length > 0 ? allSbNos.join(", ") : (primaryData.shippingBillNo || primaryData.sb_no || "");
     const portOfDischarge = primaryData.portOfDischarge || primaryData.port_of_discharge || "";
     const stuffingType = primaryData.stuffingType || (primaryData.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS) / FACTORY");
     const shippingLineName = primaryData.shippingLineName || primaryData.shipping_line_airline || "";
-    const fobvalue = primaryData.fobvalue || primaryData.invoices?.[0]?.freightInsuranceCharges?.fobValue?.amount || "";
-
-    const aggregatedContainers = getAggregatedContainers(primaryData, isClubActive, clubbedJobsList);
+    
+    const allFobVals = (primaryData.mergedContainers || [])
+      .map(c => Number(c._sourceFobValue || 0))
+      .filter(v => v > 0);
+    const totalFobVal = allFobVals.length > 0
+      ? allFobVals.reduce((a, b) => a + b, 0)
+      : (primaryData.fobvalue || primaryData.invoices?.[0]?.freightInsuranceCharges?.fobValue?.amount || "");
+    const fobvalue = totalFobVal || primaryData.fobvalue || "";
     
     let containersRows = "";
     aggregatedContainers.forEach((c, i) => {
@@ -367,10 +379,25 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       spacerHtml = `<div style="height: ${remainingOnPage + 10}px;"></div>`;
     }
 
-    const allInvoiceNos = [...new Set((primaryData.invoices || []).map(i => i.invoiceNumber || i.invoice_number).concat(invoice.invoiceNumber).concat(clubbedJobsList?.map(j => j.invoices?.[0]?.invoiceNumber)).filter(Boolean))];
+    const allInvoiceNos = [...new Set(
+      (primaryData.invoices || [])
+        .map(i => i.invoiceNumber || i.invoice_number)
+        .concat((primaryData.mergedContainers || []).map(c => c._sourceInvoiceNumber))
+        .concat(clubbedJobsList?.flatMap(j => (j.invoices || []).map(i => i.invoiceNumber)))
+        .concat(primaryData.invoiceNumber)
+        .concat(invoice.invoiceNumber)
+        .filter(Boolean)
+    )];
     let invoiceInfo = `INVOICE NO.: ${allInvoiceNos.join(", ") || invoice.invoiceNumber || ""}`;
 
-    const allExpRefNos = [...new Set((primaryData.invoices || []).map(i => i.exporter_ref_no).concat(primaryData.exporter_ref_no).concat(clubbedJobsList?.map(j => j.exporter_ref_no)).filter(Boolean))];
+    const allExpRefNos = [...new Set(
+      (primaryData.invoices || [])
+        .map(i => i.exporter_ref_no)
+        .concat((primaryData.mergedContainers || []).map(c => c._sourceExporterRefNo))
+        .concat(primaryData.exporter_ref_no)
+        .concat(clubbedJobsList?.map(j => j.exporter_ref_no))
+        .filter(Boolean)
+    )];
     let exporterRefInfo = allExpRefNos.length > 0 ? `EXPORTER REF NO.: ${allExpRefNos.join(", ")}` : (primaryData.exporter_ref_no ? `EXPORTER REF NO.: ${primaryData.exporter_ref_no}` : "");
 
     return `
@@ -645,6 +672,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
 
 
       setJobData({
+        ...data,
         consignorName,
         vesselName,
         Bookingno,
@@ -661,6 +689,10 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         hsnList,
         descriptionOfGoods,
         containers,
+        mergedContainers: data.mergedContainers || [],
+        is_club_job_parent: data.is_club_job_parent,
+        clubbed_jobs: data.clubbed_jobs,
+        parent_club_job: data.parent_club_job,
         generatedBy,
         sb_date: data.sb_date,
         total_no_of_pkgs: data.total_no_of_pkgs,
@@ -798,10 +830,25 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       worksheet.getCell("D6").alignment = { vertical: "middle", horizontal: "center" };
 
       worksheet.mergeCells("H6:J6");
-      const allInvoices = [...new Set((jobData.invoices || []).map(j => j.invoiceNumber || j.invoice_number).concat(jobData.invoiceNumber).concat(clubbedJobsData.map(j => j.invoices?.[0]?.invoiceNumber)).filter(Boolean))];
+      const aggregatedContainersForExcel = getAggregatedContainers(jobData, isClubJob, clubbedJobsData);
+      const allInvoices = [...new Set(
+        (jobData.invoices || [])
+          .map(j => j.invoiceNumber || j.invoice_number)
+          .concat((jobData.mergedContainers || []).map(c => c._sourceInvoiceNumber))
+          .concat(jobData.invoiceNumber)
+          .concat(clubbedJobsData.map(j => j.invoices?.[0]?.invoiceNumber))
+          .filter(Boolean)
+      )];
       let invoiceInfo = `INVOICE NO.: ${allInvoices.join(", ") || jobData.invoiceNumber || ""}`;
 
-      const allExpRefs = [...new Set((jobData.invoices || []).map(j => j.exporter_ref_no).concat(jobData.exporter_ref_no).concat(clubbedJobsData.map(j => j.exporter_ref_no)).filter(Boolean))];
+      const allExpRefs = [...new Set(
+        (jobData.invoices || [])
+          .map(j => j.exporter_ref_no)
+          .concat((jobData.mergedContainers || []).map(c => c._sourceExporterRefNo))
+          .concat(jobData.exporter_ref_no)
+          .concat(clubbedJobsData.map(j => j.exporter_ref_no))
+          .filter(Boolean)
+      )];
       let exporterRefInfo = allExpRefs.length > 0 ? `EXPORTER REF NO.: ${allExpRefs.join(", ")}` : (jobData.exporter_ref_no ? `EXPORTER REF NO.: ${jobData.exporter_ref_no}` : "");
       worksheet.getCell("H6").value = {
         richText: [
@@ -881,12 +928,21 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       worksheet.getCell("F10").alignment = { vertical: "middle", horizontal: "center" };
       worksheet.getCell("F10").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
 
+      const allExcelSbNos = [...new Set(
+        (jobData.mergedContainers || jobData.containers || [])
+          .map(c => c._sourceSbNo || c.shippingBillNo || jobData.custom_house_details?.shipping_bill_no || jobData.sb_no)
+          .concat(aggregatedContainersForExcel.flatMap(c => c.uniqueSBs ? c.uniqueSBs.map(s => s.sbNo) : [c.shippingBillNo]))
+          .concat(jobData.shippingBillNo || jobData.sb_no)
+          .filter(Boolean)
+      )];
+      const excelSbNoText = allExcelSbNos.length > 0 ? allExcelSbNos.join(", ") : (jobData.shippingBillNo || jobData.sb_no || "");
+
       worksheet.getRow(11).height = 35;
       worksheet.mergeCells("A11:E11");
       worksheet.getCell("A11").value = {
         richText: [
           { text: "SHIPPING BILL NO.\n", font: { name: "Arial", size: 8 } },
-          { text: jobData.shippingBillNo || "", font: { name: "Arial", bold: true, size: 10 } }
+          { text: excelSbNoText, font: { name: "Arial", bold: true, size: 10 } }
         ]
       };
       worksheet.getCell("A11").alignment = { vertical: "top", horizontal: "left", wrapText: true };
@@ -895,6 +951,13 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       worksheet.getCell("F11").value = `Port of Discharge : ${jobData.portOfDischarge || ""}`;
       worksheet.getCell("F11").font = { name: "Arial", bold: true, size: 9.5 };
       worksheet.getCell("F11").alignment = { vertical: "middle", horizontal: "left" };
+
+      const allExcelFobVals = (jobData.mergedContainers || [])
+        .map(c => Number(c._sourceFobValue || 0))
+        .filter(v => v > 0);
+      const totalExcelFob = allExcelFobVals.length > 0
+        ? allExcelFobVals.reduce((a, b) => a + b, 0)
+        : (jobData.fobvalue || jobData.invoices?.[0]?.freightInsuranceCharges?.fobValue?.amount || "");
 
       worksheet.getRow(12).height = 35;
       worksheet.mergeCells("A12:E12");
@@ -907,7 +970,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       worksheet.getCell("A12").alignment = { vertical: "top", horizontal: "left", wrapText: true };
 
       worksheet.mergeCells("F12:J12");
-      worksheet.getCell("F12").value = `F.O.B./C.I.F. Value : ${jobData.fobvalue || ""}`;
+      worksheet.getCell("F12").value = `F.O.B./C.I.F. Value : ${totalExcelFob || jobData.fobvalue || ""}`;
       worksheet.getCell("F12").font = { name: "Arial", bold: true, size: 9.5 };
       worksheet.getCell("F12").alignment = { vertical: "middle", horizontal: "left" };
 
