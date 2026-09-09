@@ -54,7 +54,7 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
         .map(h => String(h).trim())
       )].join(", ") || job.custom_house_details?.hsn_code || job.hsn || job.ritc || job.hsnList || job.hsnCode || job.hsn_code || "";
 
-      const containers = job.containers?.length > 0 ? job.containers : (job.operations?.[0]?.containerDetails || []);
+      const containers = job.mergedContainers?.length > 0 ? job.mergedContainers : (job.containers?.length > 0 ? job.containers : (job.operations?.[0]?.containerDetails || []));
       containers.forEach(c => {
         result.push({
           ...c,

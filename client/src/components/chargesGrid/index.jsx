@@ -136,19 +136,37 @@ const ChargesGrid = ({
     const formattedData = selectedCharges.map(c => {
       const cost = c.cost || {};
       const revenue = c.revenue || {};
-      const exRate = Number(revenue.exchangeRate || revenue.exRate || cost.exchangeRate || cost.exRate || c.exchangeRate || c.exRate || 1);
+
+      const costCurrency = (cost.currency && String(cost.currency).trim()) ? String(cost.currency).trim() : (cost.costCurrency ? String(cost.costCurrency).trim() : 'INR');
+      const costExRate = Number(cost.exchangeRate || cost.exRate || 1);
+
+      const revCurrency = (revenue.currency && String(revenue.currency).trim()) ? String(revenue.currency).trim() : 'INR';
+      const revExRate = Number(revenue.exchangeRate || revenue.exRate || costExRate || 1);
+      const exRate = (costCurrency !== 'INR') ? costExRate : revExRate;
 
       const revINR = (revenue.amountINR !== undefined && revenue.amountINR !== null && revenue.amountINR !== '' && !isNaN(Number(revenue.amountINR)) && Number(revenue.amountINR) > 0)
         ? Number(revenue.amountINR)
         : ((revenue.amount !== undefined && revenue.amount !== null && revenue.amount !== '' && !isNaN(Number(revenue.amount)))
-          ? Number(revenue.amount) * (revenue.currency && revenue.currency !== 'INR' ? exRate : (cost.currency && cost.currency !== 'INR' ? exRate : 1))
+          ? Number(revenue.amount) * (revCurrency !== 'INR' ? revExRate : (costCurrency !== 'INR' ? costExRate : 1))
           : ((revenue.rate !== undefined && revenue.rate !== null && revenue.rate !== '' && !isNaN(Number(revenue.rate)))
-            ? Number(revenue.rate) * Number(revenue.qty || 1) * (revenue.currency && revenue.currency !== 'INR' ? exRate : (cost.currency && cost.currency !== 'INR' ? exRate : 1))
+            ? Number(revenue.rate) * Number(revenue.qty || 1) * (revCurrency !== 'INR' ? revExRate : (costCurrency !== 'INR' ? costExRate : 1))
             : 0));
 
       const revBasicINR = (revenue.basicAmount !== undefined && revenue.basicAmount !== null && revenue.basicAmount !== '' && !isNaN(Number(revenue.basicAmount)) && Number(revenue.basicAmount) > 0)
-        ? (revenue.currency && revenue.currency !== 'INR' ? Number(revenue.basicAmount) * exRate : (cost.currency && cost.currency !== 'INR' ? Number(revenue.basicAmount) * exRate : Number(revenue.basicAmount)))
+        ? (revCurrency !== 'INR' ? Number(revenue.basicAmount) * revExRate : (costCurrency !== 'INR' ? Number(revenue.basicAmount) * costExRate : Number(revenue.basicAmount)))
         : revINR;
+
+      const costQty = cost.qty !== undefined && cost.qty !== null && cost.qty !== '' ? Number(cost.qty) : 1;
+      const costRate = cost.rate !== undefined && cost.rate !== null && cost.rate !== '' ? Number(cost.rate) : (cost.amount !== undefined && cost.amount !== null ? Number(cost.amount) : 0);
+      const costCurrAmt = costCurrency !== 'INR'
+        ? (cost.amount !== undefined && cost.amount !== null && cost.amount !== '' ? Number(cost.amount) : costQty * costRate)
+        : 0;
+
+      const revQty = revenue.qty !== undefined && revenue.qty !== null && revenue.qty !== '' ? Number(revenue.qty) : costQty;
+      const revRate = revenue.rate !== undefined && revenue.rate !== null && revenue.rate !== '' ? Number(revenue.rate) : (revenue.amount !== undefined && revenue.amount !== null ? Number(revenue.amount) : 0);
+      const revCurrAmt = revCurrency !== 'INR'
+        ? (revenue.amount !== undefined && revenue.amount !== null && revenue.amount !== '' ? Number(revenue.amount) : revQty * revRate)
+        : (revenue.amount !== undefined && revenue.amount !== null && revenue.amount !== '' ? Number(revenue.amount) : revQty * revRate);
 
       return {
         partyName: targetPartyName,
@@ -172,6 +190,8 @@ const ChargesGrid = ({
         revenueSgst: revenue.sgst,
         revenueIgst: revenue.igst,
         revenueTotal: revINR,
+        revenueRate: revRate,
+        revenueCurrencyAmount: revCurrAmt,
         revenuePartyName: revenue.partyName,
         chargeHead: c.name || c.chargeHead,
         chargeType: c.chargeType,
@@ -187,11 +207,11 @@ const ChargesGrid = ({
         isClubJob: c.isClubJob || false,
         clubbedJobs: c.clubbedJobs || [],
         virtualBalanceTerminal: cost.virtualBalanceTerminal || '',
-        currency: cost.currency || c.currency || 'INR',
-        currencyAmount: (cost.currency && cost.currency !== 'INR') ? (cost.amount !== undefined && cost.amount !== null ? cost.amount : (cost.qty && cost.rate ? Number(cost.qty) * Number(cost.rate) : '')) : (cost.currencyAmount || cost.foreignCurrencyAmount || ''),
-        exchangeRate: exRate,
-        qty: cost.qty !== undefined && cost.qty !== null ? Number(cost.qty) : 1,
-        rate: cost.rate !== undefined && cost.rate !== null ? Number(cost.rate) : (cost.amount !== undefined && cost.amount !== null ? Number(cost.amount) : 0)
+        currency: costCurrency,
+        currencyAmount: costCurrAmt,
+        exchangeRate: costCurrency !== 'INR' ? costExRate : revExRate,
+        qty: costQty,
+        rate: costRate
       };
     });
 

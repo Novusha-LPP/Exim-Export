@@ -295,12 +295,12 @@ router.get("/freight-enquiries", async (req, res) => {
       const sboDate = !!(e.sailing_date);
       if (!sboDate) return "SOB";
 
-      // Gate 3: Billing – must have all 4 billing fields AFTER ETD
+      // Gate 3: Billing – cleared if at least one bill (agency or reimbursement) or billing submission is completed
       const hasBillingDetails = !!(
-        e.billing_details?.agency_bill_no &&
-        e.billing_details?.agency_bill_date &&
-        e.billing_details?.reimbursement_bill_no &&
-        e.billing_details?.reimbursement_bill_date
+        (e.billing_details?.agency_bill_no && e.billing_details?.agency_bill_date) ||
+        (e.billing_details?.reimbursement_bill_no && e.billing_details?.reimbursement_bill_date) ||
+        e.billing_completed ||
+        e.send_for_billing
       );
       if (!hasBillingDetails) return "Billing";
 

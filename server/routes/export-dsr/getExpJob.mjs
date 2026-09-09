@@ -236,34 +236,11 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
       
       const mergedContainers = [];
 
-      // 1. Add Parent Job container entry with parent job's own SB, total pkgs, and gross weight
-      const parentInv = jobData.invoices?.[0] || {};
-      const parentOp = jobData.operations?.[0] || {};
-      const parentSt = parentOp.statusDetails?.[0] || {};
-      const parentProduct = parentInv.products?.[0] || {};
-      const parentHsnList = [...new Set((parentInv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
-      
-      const templateContainer = childJobs[0]?.containers?.[0] || jobData.containers?.[0] || {};
-      const parentPkgs = Number(jobData.total_no_of_pkgs || templateContainer.pkgsStuffed || 0);
-      const parentWeight = Number(jobData.gross_weight_kg || templateContainer.grossWeight || 0);
+      // Collect child container IDs & signatures
+      const childContainerIds = new Set();
+      const childContainerSignatures = new Set();
 
-      mergedContainers.push({
-        ...templateContainer,
-        pkgsStuffed: parentPkgs,
-        grossWeight: parentWeight,
-        vgmWtInvoice: parentWeight,
-        _sourceJobNo: jobData.job_no,
-        _sourceSbNo: jobData.custom_house_details?.shipping_bill_no || jobData.sb_no || jobData.shippingBillNo,
-        _sourceSbDate: jobData.custom_house_details?.sb_date || jobData.sb_date,
-        _sourceInvoiceNumber: parentInv.invoiceNumber,
-        _sourceInvoiceValue: parentInv.invoiceValue,
-        _sourceLeoDate: parentSt.leoDate,
-        _sourceDescription: parentProduct.description || jobData.descriptionOfGoods || jobData.description,
-        _sourceHsnList: parentHsnList || jobData.custom_house_details?.hsn_code || jobData.hsn,
-        _sourceFobValue: parentInv.freightInsuranceCharges?.fobValue?.amount || ""
-      });
-
-      // 2. Add each Child Job's containers
+      // 1. Process each Child Job's containers
       for (const j of childJobs) {
         const inv = j.invoices?.[0] || {};
         const op = j.operations?.[0] || {};
@@ -273,6 +250,12 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         const containersToUse = (j.containers && j.containers.length > 0) ? j.containers : (op.containerDetails || []);
 
         for (const c of containersToUse) {
+          if (c._id) childContainerIds.add(String(c._id));
+          const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
+          const pkgs = Number(c.pkgsStuffed || 0);
+          const weight = Number(c.grossWeight || 0);
+          if (cNo) childContainerSignatures.add(`${cNo}_${pkgs}_${weight}`);
+
           mergedContainers.push({
             ...c,
             pkgsStuffed: (c.pkgsStuffed !== undefined && c.pkgsStuffed !== null && c.pkgsStuffed !== 0) ? c.pkgsStuffed : Number(j.total_no_of_pkgs || 0),
@@ -290,7 +273,49 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         }
       }
 
-      jobData.containers = mergedContainers;
+      // 2. Add Parent Job's own container entries
+      const parentInv = jobData.invoices?.[0] || {};
+      const parentOp = jobData.operations?.[0] || {};
+      const parentSt = parentOp.statusDetails?.[0] || {};
+      const parentProduct = parentInv.products?.[0] || {};
+      const parentHsnList = [...new Set((parentInv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
+      
+      const rawParentContainers = (jobData.containers && jobData.containers.length > 0)
+        ? jobData.containers
+        : (parentOp.containerDetails || []);
+
+      // Filter out any leaked child containers from parent containers array
+      const parentOwnContainers = rawParentContainers.filter(c => {
+        const cId = c._id ? String(c._id) : "";
+        if (cId && childContainerIds.has(cId)) return false;
+        const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
+        const pkgs = Number(c.pkgsStuffed || 0);
+        const weight = Number(c.grossWeight || 0);
+        const sig = `${cNo}_${pkgs}_${weight}`;
+        if (cNo && childContainerSignatures.has(sig)) return false;
+        return true;
+      });
+
+      const parentMerged = parentOwnContainers.map(c => ({
+        ...c,
+        pkgsStuffed: (c.pkgsStuffed !== undefined && c.pkgsStuffed !== null && c.pkgsStuffed !== 0) ? c.pkgsStuffed : Number(jobData.total_no_of_pkgs || 0),
+        grossWeight: (c.grossWeight !== undefined && c.grossWeight !== null && c.grossWeight !== 0) ? c.grossWeight : Number(jobData.gross_weight_kg || 0),
+        vgmWtInvoice: (c.vgmWtInvoice !== undefined && c.vgmWtInvoice !== null && c.vgmWtInvoice !== 0) ? c.vgmWtInvoice : Number(jobData.gross_weight_kg || 0),
+        _sourceJobNo: jobData.job_no,
+        _sourceSbNo: jobData.custom_house_details?.shipping_bill_no || jobData.sb_no || jobData.shippingBillNo,
+        _sourceSbDate: jobData.custom_house_details?.sb_date || jobData.sb_date,
+        _sourceInvoiceNumber: parentInv.invoiceNumber,
+        _sourceInvoiceValue: parentInv.invoiceValue,
+        _sourceLeoDate: parentSt.leoDate,
+        _sourceDescription: parentProduct.description || jobData.descriptionOfGoods || jobData.description,
+        _sourceHsnList: parentHsnList || jobData.custom_house_details?.hsn_code || jobData.hsn,
+        _sourceFobValue: parentInv.freightInsuranceCharges?.fobValue?.amount || ""
+      }));
+
+      mergedContainers.unshift(...parentMerged);
+
+      jobData.mergedContainers = mergedContainers;
+      jobData.containers = parentOwnContainers;
 
       // Keep parent job's own invoices as plain objects (do NOT merge child jobs' invoices into parent job)
       jobData.invoices = (jobData.invoices || []).map(inv => {

@@ -2417,7 +2417,7 @@ exportJobSchema.statics.findBySealNumber = function (sealNo) {
     return this.findOne({ "annexC1Details.sealNumber": sealNo });
 };
 
-// Add compound index suggested by Performance Advisor
+// Add compound indexes suggested by Performance Advisor
 exportJobSchema.index({
     branch_code: 1,
     port_of_loading: 1,
@@ -2428,6 +2428,8 @@ exportJobSchema.index({
     isGeneralJob: 1,
     isJobCanceled: 1
 });
+exportJobSchema.index({ job_no: 1, port_of_loading: 1, year: 1, branch_code: 1 });
+exportJobSchema.index({ job_no: 1, is_club_job_parent: 1 });
 
 // Create and export the model
 const ExJobModel = mongoose.model("ExportJob", exportJobSchema);

@@ -12,13 +12,81 @@ const router = express.Router();
  * Normalize any date to yyyy-MM-dd format
  * Handles: dd-MM-yyyy, dd/MM/yyyy, yyyy-MM-dd, ISO strings, Date objects
  */
+/**
+ * Normalize any date to yyyy-MM-dd format for outgoing Tally APIs
+ * Handles: dd-MM-yyyy, dd/MM/yyyy, yyyy-MM-dd, ISO strings, Date objects
+ */
 const normalizeDate = (dateVal) => {
     if (!dateVal) return "";
-    const str = String(dateVal).trim();
-    // Already dd-MM-yyyy
+    let str = String(dateVal).trim();
+
+    // Already yyyy-MM-dd format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+    // ISO string or yyyy-MM-dd like 2026-09-05 or 2026-09-05T05:38:55.109Z
+    const ymdMatch = str.match(/^(\d{4})[\-\/\.](\d{1,2})[\-\/\.](\d{1,2})/);
+    if (ymdMatch) {
+        const year = ymdMatch[1];
+        const month = ymdMatch[2].padStart(2, '0');
+        const day = ymdMatch[3].padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // Fix year typo e.g. 26-05-0026 -> 26-05-2026
+    if (/^\d{2}-\d{2}-00\d{2}$/.test(str)) {
+        str = str.replace(/-00(\d{2})$/, '-20$1');
+    }
+
+    // dd-MM-yyyy or dd/MM/yyyy or dd.MM.yyyy (1 or 2 digits)
+    const dmyMatch = str.match(/^(\d{1,2})[\-\/\.](\d{1,2})[\-\/\.](\d{4})/);
+    if (dmyMatch) {
+        const day = dmyMatch[1].padStart(2, '0');
+        const month = dmyMatch[2].padStart(2, '0');
+        const year = dmyMatch[3];
+        return `${year}-${month}-${day}`;
+    }
+
+    // YYYYMMDD string like 20260905
+    if (/^\d{8}$/.test(str)) {
+        return `${str.substring(0, 4)}-${str.substring(4, 6)}-${str.substring(6, 8)}`;
+    }
+
+    // Date object or parseable date string
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    return str;
+};
+
+/**
+ * Normalize billing date to dd-MM-yyyy format for EXIM billing details database storage
+ */
+const normalizeBillingDate = (dateVal) => {
+    if (!dateVal) return "";
+    let str = String(dateVal).trim();
+
+    // Fix year typo e.g. 26-05-0026 -> 26-05-2026
+    if (/^\d{2}-\d{2}-00\d{2}$/.test(str)) {
+        str = str.replace(/-00(\d{2})$/, '-20$1');
+    }
+
+    // Handle 09/XX/YYYY or 09-XX-YYYY (where 09 is September month coming from Tally MM/DD/YYYY)
+    const mdyMatch = str.match(/^(09)[\-\/\.](0[1-9]|1[0-2])[\-\/\.](202[4-6])$/);
+    if (mdyMatch) {
+        const day = mdyMatch[2].padStart(2, '0');
+        const year = mdyMatch[3];
+        return `${day}-09-${year}`;
+    }
+
+    // Already dd-MM-yyyy format
     if (/^\d{2}-\d{2}-\d{4}$/.test(str)) return str;
 
-    // ISO string or yyyy-MM-dd like 2026-05-25 or 2026-05-25T05:38:55.109Z
+    // ISO string or yyyy-MM-dd like 2026-09-05 or 2026-05-09
     const ymdMatch = str.match(/^(\d{4})[\-\/\.](\d{1,2})[\-\/\.](\d{1,2})/);
     if (ymdMatch) {
         const year = ymdMatch[1];
@@ -1009,6 +1077,8 @@ const mapPurchaseEntryData = (data) => {
         revenueSgst: Number(data["Revenue SGST"] || data.revenueSgst || 0),
         revenueIgst: Number(data["Revenue IGST"] || data.revenueIgst || 0),
         revenueTotal: Number(data["Revenue Total"] || data.revenueTotal || data["Revenue Amount"] || data.revenueAmount || 0),
+        revenueRate: Number(data["Revenue Rate"] || data.revenueRate || 0),
+        revenueCurrencyAmount: Number(data["Revenue Currency Amount"] || data.revenueCurrencyAmount || 0),
         chargeRef: data.chargeRef,
         jobRef: data.jobRef,
         status: data["Status"] || data.status || '',
@@ -1870,12 +1940,12 @@ const updateBillingDetailsHandler = async (req, res) => {
             matchedJobNo = exJob.job_no;
 
             agencyNo = formatTallyBillNumber(rawAgencyNo, exJob, "EXPORT", "AGENCY");
-            agencyDate = normalizeDate(rawAgencyDate);
+            agencyDate = normalizeBillingDate(rawAgencyDate);
             agencyAmt = (rawAgencyAmt !== undefined && rawAgencyAmt !== null && rawAgencyAmt !== "") ? Number(rawAgencyAmt) : undefined;
             agencyDoc = rawAgencyDoc;
 
             reimbNo = formatTallyBillNumber(rawReimbNo, exJob, "EXPORT", "REIMBURSEMENT");
-            reimbDate = normalizeDate(rawReimbDate);
+            reimbDate = normalizeBillingDate(rawReimbDate);
             reimbAmt = (rawReimbAmt !== undefined && rawReimbAmt !== null && rawReimbAmt !== "") ? Number(rawReimbAmt) : undefined;
             reimbDoc = rawReimbDoc;
 
@@ -1901,8 +1971,8 @@ const updateBillingDetailsHandler = async (req, res) => {
             if (reimbAmt === undefined && existingBDetails.reimbursement_bill_amount !== undefined) reimbAmt = existingBDetails.reimbursement_bill_amount;
             if (!reimbDoc && existingBDetails.reimbursement_bill_doc) reimbDoc = existingBDetails.reimbursement_bill_doc;
 
-            agencyDate = normalizeDate(agencyDate);
-            reimbDate = normalizeDate(reimbDate);
+            agencyDate = normalizeBillingDate(agencyDate);
+            reimbDate = normalizeBillingDate(reimbDate);
 
             if (!exJob.operations || exJob.operations.length === 0) {
                 exJob.operations = [{ statusDetails: [{ billing_details: {} }] }];
@@ -1997,12 +2067,12 @@ const updateBillingDetailsHandler = async (req, res) => {
                     matchedJobNo = doc.job_no || doc.job_number || doc.jobNo || targetJobNo;
 
                     agencyNo = formatTallyBillNumber(rawAgencyNo, doc, "IMPORT", "AGENCY");
-                    agencyDate = normalizeDate(rawAgencyDate);
+                    agencyDate = normalizeBillingDate(rawAgencyDate);
                     agencyAmt = (rawAgencyAmt !== undefined && rawAgencyAmt !== null && rawAgencyAmt !== "") ? Number(rawAgencyAmt) : undefined;
                     agencyDoc = rawAgencyDoc;
 
                     reimbNo = formatTallyBillNumber(rawReimbNo, doc, "IMPORT", "REIMBURSEMENT");
-                    reimbDate = normalizeDate(rawReimbDate);
+                    reimbDate = normalizeBillingDate(rawReimbDate);
                     reimbAmt = (rawReimbAmt !== undefined && rawReimbAmt !== null && rawReimbAmt !== "") ? Number(rawReimbAmt) : undefined;
                     reimbDoc = rawReimbDoc;
 
@@ -2029,8 +2099,8 @@ const updateBillingDetailsHandler = async (req, res) => {
                     if (reimbAmt === undefined && existingBDetails.reimbursement_bill_amount !== undefined) reimbAmt = existingBDetails.reimbursement_bill_amount;
                     if (!reimbDoc && existingBDetails.reimbursement_bill_doc) reimbDoc = existingBDetails.reimbursement_bill_doc;
 
-                    agencyDate = normalizeDate(agencyDate);
-                    reimbDate = normalizeDate(reimbDate);
+                    agencyDate = normalizeBillingDate(agencyDate);
+                    reimbDate = normalizeBillingDate(reimbDate);
 
                     const setObj = {};
                     if (agencyNo) {

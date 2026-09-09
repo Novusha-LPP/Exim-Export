@@ -4698,7 +4698,7 @@ const ExportJobsTable = () => {
                                 <div style={{ marginBottom: "2px" }}>
                                   {job.containers && job.containers.length > 0 ? (
                                     (() => {
-                                      const validContainers = job.containers.filter((c) => c.containerNo);
+                                      const validContainers = job.containers.filter((c) => c.containerNo && (!c._sourceJobNo || String(c._sourceJobNo).toUpperCase() === String(job.job_no).toUpperCase()));
                                       const containerKey = job._id || job.job_no || idx;
                                       const isExpanded = !!expandedContainers[containerKey];
                                       const visibleContainers = isExpanded ? validContainers : validContainers.slice(0, 3);

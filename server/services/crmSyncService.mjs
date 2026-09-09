@@ -63,10 +63,10 @@ function computeFreightPipelineStage(enquiry) {
   if (!enquiry.draft_bl_approved) return "Draft BL";
   if (!enquiry.sailing_date) return "SOB";
   const hasBilling = !!(
-    enquiry.billing_details?.agency_bill_no &&
-    enquiry.billing_details?.agency_bill_date &&
-    enquiry.billing_details?.reimbursement_bill_no &&
-    enquiry.billing_details?.reimbursement_bill_date
+    (enquiry.billing_details?.agency_bill_no && enquiry.billing_details?.agency_bill_date) ||
+    (enquiry.billing_details?.reimbursement_bill_no && enquiry.billing_details?.reimbursement_bill_date) ||
+    enquiry.billing_completed ||
+    enquiry.send_for_billing
   );
   if (!hasBilling) return "Billing";
   if (!enquiry.arrival_date) return "ETA Pending";

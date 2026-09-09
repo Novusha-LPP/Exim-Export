@@ -3104,34 +3104,11 @@ router.get("/:job_no(.*)", async (req, res, next) => {
 
       const mergedContainers = [];
 
-      // 1. Add Parent Job container entry with parent job's own SB, total pkgs, and gross weight
-      const parentInv = exportJob.invoices?.[0] || {};
-      const parentOp = exportJob.operations?.[0] || {};
-      const parentSt = parentOp.statusDetails?.[0] || {};
-      const parentProduct = parentInv.products?.[0] || {};
-      const parentHsnList = [...new Set((parentInv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
+      // Collect child container IDs & signatures
+      const childContainerIds = new Set();
+      const childContainerSignatures = new Set();
 
-      const templateContainer = childJobs[0]?.containers?.[0] || exportJob.containers?.[0] || {};
-      const parentPkgs = Number(exportJob.total_no_of_pkgs || templateContainer.pkgsStuffed || 0);
-      const parentWeight = Number(exportJob.gross_weight_kg || templateContainer.grossWeight || 0);
-
-      mergedContainers.push({
-        ...templateContainer,
-        pkgsStuffed: parentPkgs,
-        grossWeight: parentWeight,
-        vgmWtInvoice: parentWeight,
-        _sourceJobNo: exportJob.job_no,
-        _sourceSbNo: exportJob.custom_house_details?.shipping_bill_no || exportJob.sb_no || exportJob.shippingBillNo,
-        _sourceSbDate: exportJob.custom_house_details?.sb_date || exportJob.sb_date,
-        _sourceInvoiceNumber: parentInv.invoiceNumber,
-        _sourceInvoiceValue: parentInv.invoiceValue,
-        _sourceLeoDate: parentSt.leoDate,
-        _sourceDescription: parentProduct.description || exportJob.descriptionOfGoods || exportJob.description,
-        _sourceHsnList: parentHsnList || exportJob.custom_house_details?.hsn_code || exportJob.hsn,
-        _sourceFobValue: parentInv.freightInsuranceCharges?.fobValue?.amount || ""
-      });
-
-      // 2. Add each Child Job's containers
+      // 1. Process each Child Job's containers
       for (const j of childJobs) {
         const inv = j.invoices?.[0] || {};
         const op = j.operations?.[0] || {};
@@ -3141,6 +3118,12 @@ router.get("/:job_no(.*)", async (req, res, next) => {
         const containersToUse = (j.containers && j.containers.length > 0) ? j.containers : (op.containerDetails || []);
 
         for (const c of containersToUse) {
+          if (c._id) childContainerIds.add(String(c._id));
+          const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
+          const pkgs = Number(c.pkgsStuffed || 0);
+          const weight = Number(c.grossWeight || 0);
+          if (cNo) childContainerSignatures.add(`${cNo}_${pkgs}_${weight}`);
+
           mergedContainers.push({
             ...c,
             pkgsStuffed: (c.pkgsStuffed !== undefined && c.pkgsStuffed !== null && c.pkgsStuffed !== 0) ? c.pkgsStuffed : Number(j.total_no_of_pkgs || 0),
@@ -3158,7 +3141,49 @@ router.get("/:job_no(.*)", async (req, res, next) => {
         }
       }
 
-      jobData.containers = mergedContainers;
+      // 2. Add Parent Job's own container entries
+      const parentInv = exportJob.invoices?.[0] || {};
+      const parentOp = exportJob.operations?.[0] || {};
+      const parentSt = parentOp.statusDetails?.[0] || {};
+      const parentProduct = parentInv.products?.[0] || {};
+      const parentHsnList = [...new Set((parentInv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
+
+      const rawParentContainers = (exportJob.containers && exportJob.containers.length > 0)
+        ? exportJob.containers
+        : (parentOp.containerDetails || []);
+
+      // Filter out any leaked child containers from parent containers array
+      const parentOwnContainers = rawParentContainers.filter(c => {
+        const cId = c._id ? String(c._id) : "";
+        if (cId && childContainerIds.has(cId)) return false;
+        const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
+        const pkgs = Number(c.pkgsStuffed || 0);
+        const weight = Number(c.grossWeight || 0);
+        const sig = `${cNo}_${pkgs}_${weight}`;
+        if (cNo && childContainerSignatures.has(sig)) return false;
+        return true;
+      });
+
+      const parentMerged = parentOwnContainers.map(c => ({
+        ...c,
+        pkgsStuffed: (c.pkgsStuffed !== undefined && c.pkgsStuffed !== null && c.pkgsStuffed !== 0) ? c.pkgsStuffed : Number(exportJob.total_no_of_pkgs || 0),
+        grossWeight: (c.grossWeight !== undefined && c.grossWeight !== null && c.grossWeight !== 0) ? c.grossWeight : Number(exportJob.gross_weight_kg || 0),
+        vgmWtInvoice: (c.vgmWtInvoice !== undefined && c.vgmWtInvoice !== null && c.vgmWtInvoice !== 0) ? c.vgmWtInvoice : Number(exportJob.gross_weight_kg || 0),
+        _sourceJobNo: exportJob.job_no,
+        _sourceSbNo: exportJob.custom_house_details?.shipping_bill_no || exportJob.sb_no || exportJob.shippingBillNo,
+        _sourceSbDate: exportJob.custom_house_details?.sb_date || exportJob.sb_date,
+        _sourceInvoiceNumber: parentInv.invoiceNumber,
+        _sourceInvoiceValue: parentInv.invoiceValue,
+        _sourceLeoDate: parentSt.leoDate,
+        _sourceDescription: parentProduct.description || exportJob.descriptionOfGoods || exportJob.description,
+        _sourceHsnList: parentHsnList || exportJob.custom_house_details?.hsn_code || exportJob.hsn,
+        _sourceFobValue: parentInv.freightInsuranceCharges?.fobValue?.amount || ""
+      }));
+
+      mergedContainers.unshift(...parentMerged);
+
+      jobData.mergedContainers = mergedContainers;
+      jobData.containers = parentOwnContainers;
 
       // Keep parent job's own invoices as plain objects (do NOT merge child jobs' invoices into parent job)
       jobData.invoices = (exportJob.invoices || []).map(inv => {
@@ -3433,6 +3458,9 @@ router.put(
       if (Array.isArray(containers)) {
         const seen = new Set();
         cleanContainers = containers.filter(c => {
+          if (c._sourceJobNo && String(c._sourceJobNo).toUpperCase() !== String(job_no).toUpperCase()) {
+            return false;
+          }
           const cNo = (c.containerNo || c.container_number || "").trim().toUpperCase();
           if (!cNo) return true;
           if (seen.has(cNo)) return false;
@@ -3597,6 +3625,46 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
           return true;
         });
         updateData.invoices = parentOnlyInvoices;
+      }
+
+      // If updating a club parent job, prevent saving child jobs' containers into the parent job document
+      if (existingJob.is_club_job_parent && Array.isArray(updateData.containers)) {
+        const childJobs = await ExJobModel.find({ job_no: { $in: existingJob.clubbed_jobs, $ne: existingJob.job_no } }).lean();
+        const childContainerIds = new Set();
+        const childContainerSignatures = new Set();
+        for (const j of childJobs) {
+          for (const c of (j.containers || [])) {
+            if (c._id) childContainerIds.add(String(c._id));
+            const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
+            const pkgs = Number(c.pkgsStuffed || 0);
+            const weight = Number(c.grossWeight || 0);
+            if (cNo) childContainerSignatures.add(`${cNo}_${pkgs}_${weight}`);
+          }
+        }
+
+        let parentOnlyContainers = updateData.containers.filter((c) => {
+          if (c._sourceJobNo && String(c._sourceJobNo).toUpperCase() !== String(job_no).toUpperCase()) {
+            return false;
+          }
+          const cId = c._id ? String(c._id) : "";
+          if (cId && childContainerIds.has(cId)) return false;
+          const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
+          const pkgs = Number(c.pkgsStuffed || 0);
+          const weight = Number(c.grossWeight || 0);
+          const sig = `${cNo}_${pkgs}_${weight}`;
+          if (cNo && childContainerSignatures.has(sig)) return false;
+          return true;
+        });
+
+        const seenContNos = new Set();
+        parentOnlyContainers = parentOnlyContainers.filter((c) => {
+          const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
+          if (!cNo) return true;
+          if (seenContNos.has(cNo)) return false;
+          seenContNos.add(cNo);
+          return true;
+        });
+        updateData.containers = parentOnlyContainers;
       }
     }
 
