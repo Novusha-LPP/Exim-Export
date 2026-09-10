@@ -153,10 +153,87 @@ const ExportChecklistGenerator = ({
     });
   };
 
-  const createPDFHelpers = (pdf) => {
+  const createPDFHelpers = (pdf, data, currentDate) => {
     const centerX = PAGE_CONFIG.width / 2;
     const rightX = PAGE_CONFIG.width - PAGE_CONFIG.margins.right;
     const leftX = PAGE_CONFIG.margins.left;
+    const PAGE_BOTTOM_LIMIT = 760;
+
+    const addHeader = (
+      pageNum,
+      totalPages,
+      customStation,
+      aeoRegistrationNo,
+      aeoRole,
+      dateToPrint,
+    ) => {
+      let y = PAGE_CONFIG.margins.top;
+
+      // Line 1: Firm Name Center
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.title);
+      pdf.text("SURAJ FORWARDERS & SHIPPING AGENCIES", centerX, y, {
+        align: "center",
+      });
+
+      // Left below firm name, Custom Station
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(FONT_SIZES.fieldLabel);
+      pdf.text(`Custom stn: ${customStation || ""} `, leftX, y + 13);
+
+      // Center below firm name, Section Title
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.sectionHeader);
+      pdf.text("Checklist for Shipping Bill", centerX, y + 13, {
+        align: "center",
+      });
+
+      // Right, Page Number
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(FONT_SIZES.fieldLabel);
+      pdf.text(`${pageNum}/${totalPages}`, rightX, y + 13, {
+        align: "right",
+      });
+
+      // --- Next Line: Printed On (Left), AEO Reg. No (Center), AEO Role (Right)
+      pdf.setFontSize(FONT_SIZES.fieldLabel);
+      pdf.text(
+        `Printed On : ${dateToPrint || data?.currentDate || currentDate || ""}`,
+        leftX,
+        y + 30,
+      );
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(FONT_SIZES.fieldValue);
+      pdf.text(
+        `AEO Registration No. ${aeoRegistrationNo || "INABOFS1766L0F251"}`,
+        centerX,
+        y + 30,
+        { align: "center" },
+      );
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(FONT_SIZES.fieldLabel);
+      pdf.text(`AEO Role : ${aeoRole || "Customs"}`, rightX, y + 30, {
+        align: "right",
+      });
+    };
+
+    const ensureSpace = (neededHeight, currentY) => {
+      if (currentY + neededHeight > PAGE_BOTTOM_LIMIT) {
+        pdf.addPage();
+        addHeader(
+          pdf.internal.getNumberOfPages(),
+          "?",
+          data?.customStation,
+          data?.aeoRegistrationNo,
+          data?.aeoRole,
+          data?.currentDate || currentDate,
+        );
+        return 80;
+      }
+      return currentY;
+    };
 
     return {
       drawLine: (x1, y, x2, lineWidth = 0.8) => {
@@ -185,65 +262,12 @@ const ExportChecklistGenerator = ({
         return y + 13;
       },
 
-      addHeader: (
-        pageNum,
-        totalPages,
-        customStation,
-        aeoRegistrationNo,
-        aeoRole,
-        currentDate,
-      ) => {
-        let y = PAGE_CONFIG.margins.top;
-
-        // Line 1: Firm Name Center
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(FONT_SIZES.title);
-        pdf.text("SURAJ FORWARDERS & SHIPPING AGENCIES", centerX, y, {
-          align: "center",
-        });
-
-        // Left below firm name, Custom Station
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(FONT_SIZES.fieldLabel);
-        pdf.text(`Custom stn: ${customStation || ""} `, leftX, y + 13);
-
-        // Center below firm name, Section Title
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(FONT_SIZES.sectionHeader);
-        pdf.text("Checklist for Shipping Bill", centerX, y + 13, {
-          align: "center",
-        });
-
-        // Right, Page Number
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(FONT_SIZES.fieldLabel);
-        pdf.text(`${pageNum}/${totalPages}`, rightX, y + 13, {
-          align: "right",
-        });
-
-        // --- Next Line: Printed On (Left), AEO Reg. No (Center), AEO Role (Right)
-        pdf.setFontSize(FONT_SIZES.fieldLabel);
-        pdf.text(`Printed On : ${currentDate || ""}`, leftX, y + 30);
-
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(FONT_SIZES.fieldValue);
-        pdf.text(
-          `AEO Registration No. ${"INABOFS1766L0F251"}`,
-          centerX,
-          y + 30,
-          { align: "center" },
-        );
-
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(FONT_SIZES.fieldLabel);
-        pdf.text(`AEO Role : ${"Customs" || ""}`, rightX, y + 30, {
-          align: "right",
-        });
-      },
-
+      addHeader,
+      ensureSpace,
       centerX,
       rightX,
       leftX,
+      PAGE_BOTTOM_LIMIT,
     };
   };
 
@@ -456,21 +480,8 @@ const ExportChecklistGenerator = ({
 
     // Invoice Details section - Loop through ALL invoices
     (data.invoicesDetail || []).forEach((inv, invIdx) => {
-      // Check if we need a new page if too many invoices
-      if (yPos > 680) {
-        pdf.addPage();
-        helpers.addHeader(
-          pdf.internal.getNumberOfPages(),
-          4,
-          data.customStation,
-          data.aeoRegistrationNo,
-          data.aeoRole,
-          data.currentDate,
-          data.branchCode,
-          data.jobNumber,
-        );
-        yPos = 80;
-      }
+      // Check if this invoice will fit on current page (~165pt required)
+      yPos = helpers.ensureSpace(165, yPos);
 
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.fieldValue);
@@ -582,6 +593,9 @@ const ExportChecklistGenerator = ({
 
     yPos += 5;
 
+    // Check space for Nature Of Payment, Marks & Nos, Buyer Details, AEO, EOU block (~140pt)
+    yPos = helpers.ensureSpace(140, yPos);
+
     // Nature Of Payment and Period Of Payment on same line - exactly like first image
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(FONT_SIZES.fieldLabel);
@@ -598,14 +612,23 @@ const ExportChecklistGenerator = ({
     yPos += 12;
 
     // Marks & Nos - wrap text to prevent cutting off
+    const marksVal = data.marksAndNos || "";
+    const marksLines = pdf.splitTextToSize(marksVal, rightX - (leftColX + 70));
+    const marksHeight = Math.max(marksLines.length * 10 + 5, 20);
+
+    // Buyer address lines
+    const buyerLines = pdf.splitTextToSize(data.buyerName || "", colWidth - 20);
+    const buyerBlockHeight = Math.max(buyerLines.length * 10 + 25, 60);
+
+    // Check space before Marks & Nos and Buyer's Name & Address
+    yPos = helpers.ensureSpace(marksHeight + buyerBlockHeight, yPos);
+
     pdf.setFont("helvetica", "bold");
     pdf.text("Marks & Nos", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(FONT_SIZES.fieldValue);
-    const marksVal = data.marksAndNos || "";
-    const marksLines = pdf.splitTextToSize(marksVal, rightX - (leftColX + 70));
     pdf.text(marksLines, leftColX + 70, yPos);
-    yPos += Math.max(marksLines.length * 10 + 5, 20);
+    yPos += marksHeight;
 
     // Buyer's Name & Address section - exactly like first image
     pdf.setFont("helvetica", "bold");
@@ -614,7 +637,6 @@ const ExportChecklistGenerator = ({
     yPos += 12;
 
     // Buyer address on left side
-    const buyerLines = pdf.splitTextToSize(data.buyerName, colWidth - 20);
     buyerLines.forEach((line) => {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(FONT_SIZES.fieldValue);
@@ -657,6 +679,8 @@ const ExportChecklistGenerator = ({
 
     // EOU Details
     if (data.eou || data.factoryAddress) {
+      yPos = helpers.ensureSpace(35, yPos);
+
       pdf.setFont("helvetica", "bold");
       pdf.text("EOU IEC", leftColX, yPos);
       pdf.setFont("helvetica", "normal");
@@ -734,6 +758,9 @@ const ExportChecklistGenerator = ({
 
     yPos = pdf.lastAutoTable.finalY + 8;
 
+    // Check space for totals (needs ~55pt)
+    yPos = helpers.ensureSpace(55, yPos);
+
     // Totals section - compact
     drawLine(leftX, yPos, rightX);
     yPos += 10;
@@ -762,6 +789,7 @@ const ExportChecklistGenerator = ({
     let yPos = startY;
 
     if (data.thirdPartyRows && data.thirdPartyRows.length > 0) {
+      yPos = helpers.ensureSpace(60, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("THIRD PARTY DETAILS", leftX, yPos);
@@ -818,6 +846,7 @@ const ExportChecklistGenerator = ({
 
     // DBK DETAILS SECTION
     if (data.dbkData && data.dbkData.length > 0) {
+      yPos = helpers.ensureSpace(60, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("DBK DETAILS", leftX, yPos);
@@ -875,6 +904,7 @@ const ExportChecklistGenerator = ({
 
     // ROSCTL DETAILS SECTION (Only if data exists)
     if (data.rosctlData && data.rosctlData.length > 0) {
+      yPos = helpers.ensureSpace(60, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("ROSCTL DETAILS", leftX, yPos);
@@ -933,6 +963,7 @@ const ExportChecklistGenerator = ({
 
     // RE-EXPORT DETAILS SECTION
     if (data.reExportData && data.reExportData.length > 0) {
+      yPos = helpers.ensureSpace(60, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("RE-EXPORT DETAILS", leftX, yPos);
@@ -989,6 +1020,7 @@ const ExportChecklistGenerator = ({
     }
 
     if (data.deecData && data.deecData.length > 0) {
+      yPos = helpers.ensureSpace(60, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("DEEC DETAILS", leftX, yPos);
@@ -1046,6 +1078,7 @@ const ExportChecklistGenerator = ({
 
     // EPCG DETAILS SECTION
     if (data.epcgData && data.epcgData.length > 0) {
+      yPos = helpers.ensureSpace(60, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("EPCG DETAILS", leftX, yPos);
@@ -1103,6 +1136,7 @@ const ExportChecklistGenerator = ({
 
     // VESSEL DETAILS - compact table
     if (data.vesselName || data.voyageNumber || data.factoryStuffed === "Yes") {
+      yPos = helpers.ensureSpace(70, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("VESSEL DETAILS", leftX, yPos);
@@ -1134,6 +1168,7 @@ const ExportChecklistGenerator = ({
 
     // CONTAINER DETAILS
     if (data.containers && data.containers.length > 0) {
+      yPos = helpers.ensureSpace(65, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("CONTAINER DETAILS", leftX, yPos);
@@ -1188,6 +1223,7 @@ const ExportChecklistGenerator = ({
 
     // Additional Details Table
     if (data.additionalDetailsRows && data.additionalDetailsRows.length > 0) {
+      yPos = helpers.ensureSpace(60, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("Additional Details", leftX, yPos);
@@ -1248,6 +1284,7 @@ const ExportChecklistGenerator = ({
 
     // END USE INFORMATION
     if (data.endUseData && data.endUseData.length > 0 && data.endUseData[0].code) {
+      yPos = helpers.ensureSpace(50, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("END USE INFORMATION", leftX, yPos);
@@ -1285,6 +1322,7 @@ const ExportChecklistGenerator = ({
 
     // RODTEP Info
     if (data.rodtepData && data.rodtepData.length > 0) {
+      yPos = helpers.ensureSpace(70, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("RODTEP Info", leftX, yPos);
@@ -1338,6 +1376,7 @@ const ExportChecklistGenerator = ({
 
     // DECLARATIONS
     if (data.declarationData && data.declarationData.length > 0) {
+      yPos = helpers.ensureSpace(70, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("DECLARATIONS", leftX, yPos);
@@ -1381,6 +1420,7 @@ const ExportChecklistGenerator = ({
       yPos += 10;
 
       data.declarationDetails?.forEach((decl) => {
+        yPos = helpers.ensureSpace(35, yPos);
         pdf.setFont("helvetica", "bold");
         pdf.text(decl.code || "", leftX, yPos);
 
@@ -1416,6 +1456,7 @@ const ExportChecklistGenerator = ({
     };
     // SUPPORTING DOCUMENTS - Using autoTable for compact layout
     if (data.supportingDocs && Object.keys(data.supportingDocs).length > 0 && data.supportingDocs.imageRefNo) {
+      yPos = helpers.ensureSpace(80, yPos);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(FONT_SIZES.sectionHeader);
       pdf.text("SUPPORTING DOCUMENTS", leftX, yPos);
@@ -1477,6 +1518,7 @@ const ExportChecklistGenerator = ({
     }
 
     // FINAL DECLARATION
+    yPos = helpers.ensureSpace(120, yPos);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(FONT_SIZES.sectionHeader);
     pdf.text("DECLARATION", leftX, yPos);
@@ -2524,28 +2566,7 @@ const extractPrimaryJobNo = (input) => {
 
       // Create PDF
       const pdf = new jsPDF("p", "pt", "a4");
-      const helpers = createPDFHelpers(pdf);
-      const PAGE_BOTTOM_LIMIT = PAGE_CONFIG.height - 60;
-      let pageCount = 1;
-
-      const ensureSpace = (neededHeight, currentY) => {
-        if (currentY + neededHeight > PAGE_BOTTOM_LIMIT) {
-          pdf.addPage();
-          pageCount++;
-          helpers.addHeader(
-            pageCount,
-            "?",
-            data.customStation,
-            data.aeoRegistrationNo,
-            data.aeoRole,
-            currentDate,
-            data.branchCode,
-            data.jobNumber,
-          );
-          return 80;
-        }
-        return currentY;
-      };
+      const helpers = createPDFHelpers(pdf, data, currentDate);
 
       helpers.addHeader(
         1,
@@ -2553,25 +2574,23 @@ const extractPrimaryJobNo = (input) => {
         data.customStation,
         data.aeoRegistrationNo,
         data.aeoRole,
-        currentDate,
-        data.branchCode,
-        data.jobNumber,
+        data.currentDate || currentDate,
       );
       let yPos = renderPage1(pdf, helpers, data);
 
-      yPos = ensureSpace(100, yPos);
+      yPos = helpers.ensureSpace(140, yPos);
       yPos = renderItemDetailsPage(pdf, helpers, data, yPos);
 
-      yPos = ensureSpace(80, yPos);
+      yPos = helpers.ensureSpace(80, yPos);
       yPos = renderThirdPartyDetails(pdf, helpers, data, yPos);
 
-      yPos = ensureSpace(80, yPos);
+      yPos = helpers.ensureSpace(80, yPos);
       yPos = renderPage2(pdf, helpers, data, yPos);
 
-      yPos = ensureSpace(80, yPos);
+      yPos = helpers.ensureSpace(80, yPos);
       yPos = renderPage3(pdf, helpers, data, yPos);
 
-      yPos = ensureSpace(80, yPos);
+      yPos = helpers.ensureSpace(80, yPos);
       yPos = renderPage4(pdf, helpers, data, yPos);
 
       const totalPages = pdf.internal.getNumberOfPages();

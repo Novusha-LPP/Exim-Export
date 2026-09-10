@@ -1841,7 +1841,56 @@ function ExportBillingPage() {
           </Box>
         ),
       },
+      {
+        header: "Doc Info",
+        size: 160,
+        Cell: ({ row }) => {
+          const r = row.original;
+          const items = [
+            r.sb_no ? { label: "SB", value: r.sb_no, date: r.sb_date } : null,
+            r.hbl_no ? { label: "HBL", value: r.hbl_no, date: r.hbl_date } : null,
+            r.mbl_no ? { label: "MBL", value: r.mbl_no, date: r.mbl_date } : null,
+            r.booking_no ? { label: "BKG", value: r.booking_no, date: null } : null,
+          ].filter(Boolean);
+
+          if (!items.length) {
+            return <Typography sx={{ fontSize: '10px', color: '#94a3b8', fontStyle: 'italic' }}>-</Typography>;
+          }
+
+          return (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '3px', py: 0.3 }}>
+              {items.map((item, i) => (
+                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Typography sx={{
+                    fontSize: '8.5px', fontWeight: 800, color: '#64748b',
+                    letterSpacing: '0.4px', width: '26px', flexShrink: 0
+                  }}>
+                    {item.label}:
+                  </Typography>
+                  <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
+                    {item.value}
+                    {item.date && (
+                      <span style={{ color: '#64748b', fontWeight: 500, fontSize: '9px', marginLeft: '2px' }}>
+                        ({formatDate(item.date).split(',')[0]})
+                      </span>
+                    )}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    sx={{ p: 0.1, opacity: 0.5, '&:hover': { opacity: 1 } }}
+                    onClick={(e) => { e.stopPropagation(); copyText(item.value); }}
+                    title={`Copy ${item.label} No`}
+                  >
+                    <ContentCopyIcon sx={{ fontSize: 9 }} />
+                  </IconButton>
+                </Box>
+              ))}
+            </Box>
+          );
+        },
+      },
       ...((activeTab === "billing-pending" || activeTab === "club-jobs") ? [billingDetailsEditable] : []),
+
       {
         header: "Queries",
         size: 60,

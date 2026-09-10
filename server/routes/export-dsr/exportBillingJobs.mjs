@@ -312,6 +312,14 @@ function summarizeJob(job) {
     hasApprovedPr: paymentRequestState.hasApproved,
     hasUnprocessedPb: charges.some((c) => !c.purchase_book_no),
     hasUnprocessedPr: charges.some((c) => !c.payment_request_no),
+    // Document info fields
+    sb_no: job.sb_no || "",
+    sb_date: job.sb_date || "",
+    booking_no: job.booking_no || "",
+    hbl_no: opStatus.hbl_no || job.hbl_no || "",
+    hbl_date: opStatus.hbl_date || job.hbl_date || "",
+    mbl_no: opStatus.mbl_no || job.mbl_no || "",
+    mbl_date: opStatus.mbl_date || job.mbl_date || "",
   };
 }
 
@@ -630,6 +638,11 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       status: 1,
       booking_no: 1,
       sb_no: 1,
+      sb_date: 1,
+      hbl_no: 1,
+      hbl_date: 1,
+      mbl_no: 1,
+      mbl_date: 1,
       financial_lock: 1,
       send_for_billing: 1,
       send_for_billing_date: 1,
@@ -659,6 +672,11 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       "operations.statusDetails.billingDocsSentDt": 1,
       "operations.statusDetails.billingDocsSentUpload": 1,
       "operations.statusDetails.billing_details": 1,
+      "operations.statusDetails.hbl_no": 1,
+      "operations.statusDetails.hbl_date": 1,
+      "operations.statusDetails.mbl_no": 1,
+      "operations.statusDetails.mbl_date": 1,
+
       "charges.chargeHead": 1,
       "charges.invoice_number": 1,
       "charges.purchase_book_no": 1,

@@ -467,6 +467,9 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Containers": (job.containers || []).map(c => c.containerNo || c.container_number || c.container_no).filter(Boolean).join(", "),
         "BE No": job.be_no || job.be_number || "",
         "BE Date": normalizeDate(job.be_date),
+        "BE Heading": inv?.products?.[0]?.description || job.description || "",
+        "Description": inv?.products?.[0]?.description || job.description || "",
+        "description": inv?.products?.[0]?.description || job.description || "",
         "SB No": job.sb_no || "",
         "SB Date": normalizeDate(job.sb_date),
         "MBL NO": job.awb_bl_no || job.mbl_no || job.mbl_number || "",
@@ -499,6 +502,9 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
             return (fob * rate).toFixed(2);
         })(),
         "Sb Heading": inv?.products?.[0]?.description || "",
+        "BE Heading": inv?.products?.[0]?.description || job.description || "",
+        "Description": inv?.products?.[0]?.description || job.description || "",
+        "description": inv?.products?.[0]?.description || job.description || "",
         "ETA Date": normalizeDate(job.eta_date || job.etaDate || job.bl_details?.eta_date || job.operations?.[0]?.statusDetails?.[0]?.etaDate || ""),
         "Volume CBM": job.volume_cbm ? String(job.volume_cbm) : (job.volume ? String(job.volume) : (job.cbm ? String(job.cbm) : (job.bl_details?.volume ? String(job.bl_details.volume) : ""))),
         "IGM Number": job.igm_no || job.igm_number || job.igmNo || "",
@@ -587,6 +593,9 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
             return (fob * rate).toFixed(2);
         })(),
         "Sb Heading": inv?.products?.[0]?.description || "",
+        "BE Heading": inv?.products?.[0]?.description || job.description || "",
+        "Description": inv?.products?.[0]?.description || job.description || "",
+        "description": inv?.products?.[0]?.description || job.description || "",
         "ETA Date": normalizeDate(job.eta_date || job.bl_details?.eta_date || job.etaDate || ""),
         "Volume CBM": job.volume_cbm ? String(job.volume_cbm) : (job.volume ? String(job.volume) : (job.cbm ? String(job.cbm) : (job.bl_details?.volume ? String(job.bl_details.volume) : ""))),
         "IGM Number": job.igm_no || job.igm_number || job.igmNo || "",
@@ -1460,7 +1469,31 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             ? Number(entry.revenueAmount)
             : Number(revObj.amountINR || revObj.amount || revObj.totalAmount || (revObj.rate ? revObj.rate * (revObj.qty || 1) : 0));
 
+        let revenueRate = (entry.revenueRate !== undefined && entry.revenueRate !== null && entry.revenueRate !== 0)
+            ? Number(entry.revenueRate)
+            : (entry["Revenue Rate"] !== undefined && entry["Revenue Rate"] !== null && entry["Revenue Rate"] !== 0
+                ? Number(entry["Revenue Rate"])
+                : (revObj.rate !== undefined && revObj.rate !== null && revObj.rate !== 0
+                    ? Number(revObj.rate)
+                    : (Array.isArray(entry.chargeItems) && entry.chargeItems.length > 0
+                        ? Number(entry.chargeItems[0]["Revenue Rate"] || entry.chargeItems[0].revenueRate || 0)
+                        : 0)));
+
+        let revenueCurrencyAmount = (entry.revenueCurrencyAmount !== undefined && entry.revenueCurrencyAmount !== null && entry.revenueCurrencyAmount !== 0)
+            ? Number(entry.revenueCurrencyAmount)
+            : (entry["Revenue Currency Amount"] !== undefined && entry["Revenue Currency Amount"] !== null && entry["Revenue Currency Amount"] !== 0
+                ? Number(entry["Revenue Currency Amount"])
+                : (revObj.amount !== undefined && revObj.amount !== null && revObj.amount !== 0
+                    ? Number(revObj.amount)
+                    : (revObj.currencyAmount !== undefined && revObj.currencyAmount !== null && revObj.currencyAmount !== 0
+                        ? Number(revObj.currencyAmount)
+                        : (Array.isArray(entry.chargeItems) && entry.chargeItems.length > 0
+                            ? Number(entry.chargeItems[0]["Revenue Currency Amount"] || entry.chargeItems[0].revenueCurrencyAmount || 0)
+                            : 0))));
+
         formattedData["Revenue Amount"] = revenueAmount.toFixed(2);
+        formattedData["Revenue Rate"] = revenueRate;
+        formattedData["Revenue Currency Amount"] = revenueCurrencyAmount;
 
         // Include chargeItems array with cost & revenue details
         formattedData["isMultiCharge"] = entry.isMultiCharge || false;
@@ -1529,20 +1562,39 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     }
                 }
                 const itemCost = itemMatchedCharge?.cost || {};
+                const itemRevenue = itemMatchedCharge?.revenue || {};
                 const itemCostCurrency = itemCost.currency || itemMatchedCharge?.currency || "";
                 const itemCostExRate = itemCost.exchangeRate || itemCost.exRate || itemMatchedCharge?.exchangeRate || itemMatchedCharge?.exRate || 1;
                 const itemCostQty = itemCost.qty !== undefined ? itemCost.qty : (itemMatchedCharge?.qty !== undefined ? itemMatchedCharge.qty : undefined);
                 const itemCostRate = itemCost.rate !== undefined ? itemCost.rate : (itemMatchedCharge?.rate !== undefined ? itemMatchedCharge.rate : undefined);
                 const itemCostForeignAmt = itemCost.amount !== undefined ? itemCost.amount : (itemCost.currencyAmount || itemCost.foreignCurrencyAmount);
 
+                const itemRevRate = (item["Revenue Rate"] !== undefined && item["Revenue Rate"] !== null && item["Revenue Rate"] !== 0)
+                    ? Number(item["Revenue Rate"])
+                    : ((item.revenueRate !== undefined && item.revenueRate !== null && item.revenueRate !== 0)
+                        ? Number(item.revenueRate)
+                        : (itemRevenue.rate !== undefined && itemRevenue.rate !== null && itemRevenue.rate !== 0
+                            ? Number(itemRevenue.rate)
+                            : 0));
+
+                const itemRevCurrencyAmt = (item["Revenue Currency Amount"] !== undefined && item["Revenue Currency Amount"] !== null && item["Revenue Currency Amount"] !== 0)
+                    ? Number(item["Revenue Currency Amount"])
+                    : ((item.revenueCurrencyAmount !== undefined && item.revenueCurrencyAmount !== null && item.revenueCurrencyAmount !== 0)
+                        ? Number(item.revenueCurrencyAmount)
+                        : (itemRevenue.amount !== undefined && itemRevenue.amount !== null && itemRevenue.amount !== 0
+                            ? Number(itemRevenue.amount)
+                            : (itemRevenue.currencyAmount !== undefined && itemRevenue.currencyAmount !== null && itemRevenue.currencyAmount !== 0
+                                ? Number(itemRevenue.currencyAmount)
+                                : 0)));
+
                 let itemCurrency = item.currency || item.costCurrency || item.chargeCurrency;
                 if (!itemCurrency || itemCurrency === "INR") {
                     if (itemCostCurrency && itemCostCurrency !== "INR") {
                         itemCurrency = itemCostCurrency;
-                    } else if (finalCurrency && finalCurrency !== "INR") {
-                        itemCurrency = finalCurrency;
+                    } else if (Number(item.exchangeRate || itemCostExRate || 1) > 1) {
+                        itemCurrency = finalCurrency || "USD";
                     } else {
-                        itemCurrency = itemCurrency || finalCurrency || "INR";
+                        itemCurrency = "INR";
                     }
                 }
 
@@ -1578,6 +1630,8 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     "Total": Math.round(itemTotal),
                     "Net Amount": Math.round(itemNet),
                     "Revenue Amount": itemRevAmt.toFixed(2),
+                    "Revenue Rate": itemRevRate,
+                    "Revenue Currency Amount": itemRevCurrencyAmt,
                     "Supplier Inv No": item.invoiceNumber || supplierInvNo || '',
                     "Supplier Inv Date": item.invoiceDate || supplierInvDate || '',
                     "Qty": itemQty,
@@ -1634,6 +1688,8 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     "Total": Math.round(formattedData["Total"] !== undefined ? formattedData["Total"] : (grossTotal || 0)),
                     "Net Amount": Math.round(formattedData["Net Amount"] !== undefined ? formattedData["Net Amount"] : (netAmount || 0)),
                     "Revenue Amount": revenueAmount.toFixed(2),
+                    "Revenue Rate": revenueRate,
+                    "Revenue Currency Amount": revenueCurrencyAmount,
                     "Supplier Inv No": supplierInvNo || '',
                     "Supplier Inv Date": supplierInvDate || '',
                     "Qty": finalQty,
