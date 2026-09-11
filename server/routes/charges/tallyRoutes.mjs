@@ -419,6 +419,26 @@ const formatTallyJobNo = (jobNo) => {
 };
 
 /**
+ * Helper to normalize container size / type to standard label like "20", "40", "45", etc.
+ */
+const getNormalizedContainerSize = (container, job) => {
+    const rawVal = container?.container_size || container?.containerSize || container?.size || container?.type || container?.cntr_size || container?.isoCode || "";
+    const str = String(rawVal).toUpperCase().trim();
+    if (/^[2]\d{3}$/.test(str)) return "20";
+    if (/^[4]\d{3}$/.test(str)) return "40";
+    if (/^[9]\d{3}$/.test(str)) return "45";
+    const match = str.match(/\b(20|40|45)\b/);
+    if (match) return match[1];
+
+    // Check job-level fallback if container itself doesn't specify size
+    const jobFallback = String(job?.container_size || job?.containerSize || job?.container_qty_type || "").toUpperCase().trim();
+    const jobMatch = jobFallback.match(/\b(20|40|45)\b/);
+    if (jobMatch) return jobMatch[1];
+
+    return str || "20";
+};
+
+/**
  * Internal helper to format job and invoice data for Tally
  */
 const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
@@ -454,10 +474,17 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Package Unit": job.package_unit || job.pkg_unit || "",
         "Container Count": (() => {
             const containers = job.containers || [];
-            if (containers.length === 0) return job.no_of_containers || "0";
+            if (containers.length === 0) {
+                const rawNo = String(job.no_of_containers || "").trim();
+                const jobFallbackSize = String(job.container_size || job.containerSize || "").match(/\b(20|40|45)\b/)?.[1] || "";
+                if (rawNo && /^\d+$/.test(rawNo) && jobFallbackSize) {
+                    return `${rawNo} X ${jobFallbackSize}`;
+                }
+                return rawNo || "0";
+            }
             const counts = {};
             containers.forEach(c => {
-                const detail = c.type || c.size || "20";
+                const detail = getNormalizedContainerSize(c, job);
                 counts[detail] = (counts[detail] || 0) + 1;
             });
             return Object.entries(counts)
@@ -548,10 +575,17 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Package Unit": job.package_unit || "",
         "Container Count": (() => {
             const containers = job.containers || [];
-            if (containers.length === 0) return job.no_of_containers || "0";
+            if (containers.length === 0) {
+                const rawNo = String(job.no_of_containers || "").trim();
+                const jobFallbackSize = String(job.container_size || job.containerSize || "").match(/\b(20|40|45)\b/)?.[1] || "";
+                if (rawNo && /^\d+$/.test(rawNo) && jobFallbackSize) {
+                    return `${rawNo} X ${jobFallbackSize}`;
+                }
+                return rawNo || "0";
+            }
             const counts = {};
             containers.forEach(c => {
-                const detail = c.type || c.size || "20";
+                const detail = getNormalizedContainerSize(c, job);
                 counts[detail] = (counts[detail] || 0) + 1;
             });
             return Object.entries(counts)
@@ -673,6 +707,11 @@ const getJobDetailsInternal = async (job_number, explicitFreight) => {
             if (!job.vessel && (enq.vessel_name || enq.bl_details?.vessel_name)) job.vessel = enq.vessel_name || enq.bl_details?.vessel_name;
             if (!job.voyage_no && (enq.voyage_no || enq.bl_details?.voyage_no)) job.voyage_no = enq.voyage_no || enq.bl_details?.voyage_no;
             if (enq.bl_details) job.bl_details = enq.bl_details;
+            if (enq.container_size) job.container_size = enq.container_size;
+            if (enq.no_of_containers) job.no_of_containers = enq.no_of_containers;
+            if ((!job.containers || job.containers.length === 0) && Array.isArray(enq.containers) && enq.containers.length > 0) {
+                job.containers = enq.containers;
+            }
         }
 
         const invoices = job.invoices || [];
@@ -1499,31 +1538,29 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         formattedData["isMultiCharge"] = entry.isMultiCharge || false;
         formattedData["chargeItems"] = (Array.isArray(entry.chargeItems) && entry.chargeItems.length > 0)
             ? entry.chargeItems.map(item => {
-                const cat = item.category || item.chargeType || '';
-                const isReimbursement = (cat === 'Reimbursement');
-                const isMargin = (String(cat).toLowerCase() === 'margin');
+                let cat = item.category || item.chargeType || '';
+                const isReimbursement = (cat === 'Reimbursement') || (entry.chargeHeadCategory === 'Reimbursement');
+                if (isReimbursement) cat = 'Reimbursement';
+                const isMargin = !isReimbursement && ((String(cat).toLowerCase() === 'margin') || (String(entry.chargeHeadCategory).toLowerCase() === 'margin'));
+                if (isMargin) cat = 'Margin';
 
-                let rawItemHead = item.chargeHead || item.chargeHeading || item.name || item.chargeName || (chargeObj && (chargeObj.name || chargeObj.chargeHead || chargeObj.chargeHeading || chargeObj.particulars)) || entry.chargeHeading || entry.chargeDescription || (isReimbursement ? entry.supplierName : '') || '';
+                let rawItemHead = item.chargeHead || item.chargeHeading || item.name || item.chargeName || (chargeObj && (chargeObj.name || chargeObj.chargeHead || chargeObj.chargeHeading || chargeObj.particulars)) || entry.chargeHeading || entry.chargeDescription || '';
                 let itemHead = typeof rawItemHead === 'string'
                     ? rawItemHead.replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim()
                     : rawItemHead;
 
-                let itemDesc = item.descriptionOfServices || item.chargeDescription || '';
-                if (!itemDesc) {
-                    if (isReimbursement) {
-                        itemDesc = entry.supplierName ? `NEW - ${entry.supplierName}` : itemHead;
-                    } else if (isMargin) {
-                        itemDesc = itemHead;
-                    } else {
-                        itemDesc = entry.supplierName ? `NEW - ${entry.supplierName}` : itemHead;
-                    }
+                let itemDesc = '';
+                if (isReimbursement) {
+                    const payableParty = entry.supplierName || item.supplierName || itemHead;
+                    itemDesc = payableParty ? (payableParty.startsWith('NEW - ') ? payableParty : `NEW - ${payableParty}`) : (item.descriptionOfServices || item.chargeDescription || itemHead);
+                } else if (isMargin) {
+                    itemDesc = itemHead ? (itemHead.endsWith(' - E') ? itemHead : `${itemHead} - E`) : (item.descriptionOfServices || item.chargeDescription || '');
+                } else {
+                    itemDesc = item.descriptionOfServices || item.chargeDescription || (entry.supplierName ? `NEW - ${entry.supplierName}` : itemHead);
                 }
-                if (isReimbursement && entry.supplierName && !itemDesc.startsWith('NEW - ')) {
-                    itemDesc = `NEW - ${entry.supplierName}`;
-                }
+
                 let itemRevLedger = '';
                 if (isMargin && itemHead) {
-                    itemDesc = itemHead.endsWith(' - E') ? itemHead : `${itemHead} - E`;
                     itemRevLedger = `${itemHead} - I`;
                 } else {
                     let rawRevLedger = item.revenueLedger || item.revenue_ledger || item.revenueHead || item.revenueHeading || '';
@@ -1642,32 +1679,32 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 };
             })
             : (() => {
-                const fallbackIsMargin = (String(chargeCategory).toLowerCase() === 'margin');
-                let rawFallbackHead = entry.chargeHeading || entry.chargeDescription || (chargeObj && (chargeObj.name || chargeObj.chargeHead || chargeObj.chargeHeading || chargeObj.particulars)) || (chargeCategory === 'Reimbursement' ? entry.supplierName : '') || '';
+                const isReimb = (chargeCategory === 'Reimbursement');
+                const fallbackIsMargin = !isReimb && (String(chargeCategory).toLowerCase() === 'margin');
+                let rawFallbackHead = entry.chargeHeading || entry.chargeDescription || (chargeObj && (chargeObj.name || chargeObj.chargeHead || chargeObj.chargeHeading || chargeObj.particulars)) || '';
                 let fallbackHead = typeof rawFallbackHead === 'string'
                     ? rawFallbackHead.replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim()
                     : rawFallbackHead;
 
-                let fallbackDesc = entry.descriptionOfServices || '';
-                if (!fallbackDesc) {
-                    if (chargeCategory === 'Reimbursement') {
-                        fallbackDesc = entry.supplierName ? `NEW - ${entry.supplierName}` : fallbackHead;
-                    } else if (fallbackIsMargin) {
-                        fallbackDesc = fallbackHead;
-                    } else {
-                        fallbackDesc = entry.supplierName ? `NEW - ${entry.supplierName}` : fallbackHead;
-                    }
+                let fallbackDesc = '';
+                if (isReimb) {
+                    const payableParty = entry.supplierName || fallbackHead;
+                    fallbackDesc = payableParty ? (payableParty.startsWith('NEW - ') ? payableParty : `NEW - ${payableParty}`) : (entry.descriptionOfServices || fallbackHead);
+                } else if (fallbackIsMargin) {
+                    fallbackDesc = fallbackHead ? (fallbackHead.endsWith(' - E') ? fallbackHead : `${fallbackHead} - E`) : (entry.descriptionOfServices || '');
+                } else {
+                    fallbackDesc = entry.descriptionOfServices || (entry.supplierName ? `NEW - ${entry.supplierName}` : fallbackHead);
                 }
-                if (chargeCategory === 'Reimbursement' && entry.supplierName && !fallbackDesc.startsWith('NEW - ')) {
-                    fallbackDesc = `NEW - ${entry.supplierName}`;
-                }
+
                 let fallbackRevLedger = '';
                 if (fallbackIsMargin && fallbackHead) {
-                    fallbackDesc = fallbackHead.endsWith(' - E') ? fallbackHead : `${fallbackHead} - E`;
                     fallbackRevLedger = `${fallbackHead} - I`;
                 } else {
-                    if (!fallbackRevLedger) {
+                    let rawRevLedger = entry.revenueLedger || entry.revenue_ledger || '';
+                    if (!rawRevLedger) {
                         fallbackRevLedger = fallbackDesc || fallbackHead;
+                    } else {
+                        fallbackRevLedger = rawRevLedger;
                     }
                 }
 

@@ -265,13 +265,25 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                 const revGst = Number(tallyData["Revenue GST Amount"] || initialData.revenueGstAmount || 0);
                 const revTot = Number(tallyData["Revenue Total"] || initialData.revenueTotal || revAmt || 0);
 
+                const isReimb = isReimbursement || tallyData["Charge Head Category"] === 'Reimbursement' || initialData.category === 'Reimbursement' || initialData.chargeType === 'Reimbursement';
+                const isMarg = !isReimb && (tallyData["Charge Head Category"]?.toLowerCase() === 'margin' || initialData.category?.toLowerCase() === 'margin' || initialData.chargeType?.toLowerCase() === 'margin');
+
+                const headClean = (initialData.name || initialData.chargeHead || tallyData["Charge Heading"] || '').replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim();
+
+                const chargeDesc = isReimb
+                    ? (tallyData["Description of Services"] || (initialData.partyName ? `NEW - ${initialData.partyName}` : (tallyData["Supplier Name"] ? `NEW - ${tallyData["Supplier Name"]}` : headClean)))
+                    : (isMarg
+                        ? (headClean ? (headClean.endsWith(' - E') ? headClean : `${headClean} - E`) : (tallyData["Description of Services"] || headClean))
+                        : (tallyData["Description of Services"] || headClean));
+
                 const singleChargeItem = {
-                    chargeHead: initialData.name || initialData.chargeHead || '',
-                    chargeDescription: initialData.name || initialData.chargeHead || '',
+                    chargeHead: headClean,
+                    chargeDescription: chargeDesc,
+                    descriptionOfServices: chargeDesc,
                     chargeId: initialData.chargeId || '',
                     sac: initialData.cthNo || '',
-                    chargeType: initialData.chargeType || initialData.category || '',
-                    category: initialData.category || '',
+                    chargeType: isReimb ? 'Reimbursement' : (isMarg ? 'Margin' : (initialData.chargeType || initialData.category || '')),
+                    category: isReimb ? 'Reimbursement' : (isMarg ? 'Margin' : (initialData.category || '')),
                     qty: Number(tallyData["Qty"] || initialData.qty || 1),
                     rate: Number(tallyData["Rate"] || initialData.rate || 0),
                     costAmount: Number(initialData.amount || 0),
@@ -302,6 +314,8 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
 
                 const submissionData = {
                     ...tallyData,
+                    "Charge Head Category": isReimb ? 'Reimbursement' : (isMarg ? 'Margin' : (tallyData["Charge Head Category"] || initialData.chargeType || '')),
+                    "Description of Services": chargeDesc,
                     "Entry Date": formatDate(tallyData["Entry Date"], 'dd-MM-yyyy'),
                     "Supplier Inv Date": formatDate(tallyData["Supplier Inv Date"], 'dd-MM-yyyy'),
                     "Qty": Number(tallyData["Qty"] || initialData.qty || 1),

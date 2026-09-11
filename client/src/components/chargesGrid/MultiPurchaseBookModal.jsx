@@ -99,13 +99,23 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                 const revIgst = Number(c.revenueIgst || 0);
                 const revTot = Number(c.revenueTotal || c.revenueAmountINR || revAmt || 0);
 
+                const isMarg = !isReimb && (c.chargeType?.toLowerCase() === 'margin' || c.category?.toLowerCase() === 'margin');
+                const headClean = (c.chargeHead || c.name || '').replace(/\s*-\s*[EI]$/i, '').replace(/^NEW\s*-\s*/i, '').replace(/^NEW\s+/i, '').trim();
+
+                const chargeDesc = isReimb
+                    ? (c.partyName ? `NEW - ${c.partyName}` : (firstCharge.partyName ? `NEW - ${firstCharge.partyName}` : headClean))
+                    : (isMarg
+                        ? (headClean ? (headClean.endsWith(' - E') ? headClean : `${headClean} - E`) : headClean)
+                        : headClean);
+
                 return {
-                    chargeHead: c.chargeHead || c.name || '',
-                    chargeDescription: c.chargeHead || c.name || '',
+                    chargeHead: headClean,
+                    chargeDescription: chargeDesc,
+                    descriptionOfServices: chargeDesc,
                     chargeId: c.chargeId || '',
                     sac: c.cthNo || '',
-                    chargeType: c.chargeType || c.category || '',
-                    category: c.category || '',
+                    chargeType: isReimb ? 'Reimbursement' : (isMarg ? 'Margin' : (c.chargeType || c.category || '')),
+                    category: isReimb ? 'Reimbursement' : (isMarg ? 'Margin' : (c.category || '')),
                     taxableValue: isReimb
                         ? Number(c.totalAmount || c.amount || c.amountINR || c.netPayable || 0)
                         : costBasic,
@@ -209,6 +219,19 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
             const gstin = branch.gst || branch.gstNo || branch.GST || '';
             const isIntraState = gstin.trim().startsWith("24");
 
+            const allReimb = items.length > 0 && items.every(i => i.category === 'Reimbursement' || i.chargeType === 'Reimbursement');
+            const anyReimb = items.some(i => i.category === 'Reimbursement' || i.chargeType === 'Reimbursement');
+            const partyName = firstCharge.partyName || '';
+
+            let defaultDesc = '';
+            if (items.length === 1) {
+                defaultDesc = items[0].descriptionOfServices || items[0].chargeDescription || (allReimb ? (partyName ? `NEW - ${partyName}` : items[0].chargeHead) : items[0].chargeHead || '');
+            } else {
+                defaultDesc = allReimb
+                    ? (partyName ? `NEW - ${partyName}` : `COMBINED PB - ${chargeHeadList}`)
+                    : `COMBINED PB - ${chargeHeadList}`;
+            }
+
             setFormData(prev => ({
                 ...prev,
                 "Entry No": finalEntryNo,
@@ -227,7 +250,7 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                 "CIN": party?.cin || party?.CIN || '',
                 "Place of Supply": branch.state || branch.State || '',
                 "Credit Terms": party?.credit_terms || party?.CreditTerms || '',
-                "Description of Services": items.length === 1 ? (items[0].chargeHead || '') : `COMBINED PB - ${chargeHeadList}`,
+                "Description of Services": defaultDesc,
                 "SAC": items[0]?.sac || '',
                 "Taxable Value": totalTaxable.toFixed(2),
                 "GST%": '',
@@ -255,7 +278,7 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                 "Revenue Currency Amount": firstCharge.revenueCurrencyAmount !== undefined && firstCharge.revenueCurrencyAmount !== null ? firstCharge.revenueCurrencyAmount : (firstCharge.revenueCurrencyAmountVal || firstCharge.revenue?.currencyAmount || ''),
                 revenueRate: firstCharge.revenueRate !== undefined && firstCharge.revenueRate !== null ? firstCharge.revenueRate : (firstCharge.revenueRateAmount || firstCharge.revenue?.rate || ''),
                 revenueCurrencyAmount: firstCharge.revenueCurrencyAmount !== undefined && firstCharge.revenueCurrencyAmount !== null ? firstCharge.revenueCurrencyAmount : (firstCharge.revenueCurrencyAmountVal || firstCharge.revenue?.currencyAmount || ''),
-                "Charge Head Category": firstCharge.chargeType || '',
+                "Charge Head Category": allReimb ? 'Reimbursement' : (firstCharge.chargeType || firstCharge.category || ''),
                 "TDS Category": firstCharge.tdsCategory || '',
                 "chargeRef": chargesData.map(c => c.chargeId).filter(Boolean).join(','),
                 "jobRef": firstCharge.jobId || '',
