@@ -7117,7 +7117,7 @@ const ExportJobsTable = () => {
                     <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
                       <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>VGM AUTHORIZATION</MenuItem>
                     </VGMAuthorizationGenerator>
-                                        <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
                       <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>BILL OF LADING</MenuItem>
                     </BillOfLadingGenerator>
                     <CertificateOfOriginGenerator jobNo={selectedGenDocJob?.job_no}>

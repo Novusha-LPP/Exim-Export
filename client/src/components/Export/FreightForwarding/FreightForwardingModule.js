@@ -103,6 +103,24 @@ const s = {
     gap: "5px",
     marginBottom: "12px",
     borderBottom: "1px solid #cbd5e1",
+  },
+  tableContainer: {
+    overflowX: "auto",
+    border: "1px solid #ccccccff",
+    borderRadius: "5px",
+    maxHeight: "calc(100vh - 205px)",
+    overflowY: "auto",
+    backgroundColor: "#fff",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+  },
+  footer: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "8px 2px",
+    marginTop: "4px",
+    color: "#6b7280",
+    fontSize: "12px",
   }
 };
 
@@ -999,6 +1017,24 @@ function FreightForwardingModule() {
 
   return (
     <div style={s.wrapper}>
+      <style>
+        {`
+          .ff-table-container::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+          }
+          .ff-table-container::-webkit-scrollbar-track {
+            background: #f8fafc;
+          }
+          .ff-table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+          }
+          .ff-table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+          }
+        `}
+      </style>
       {/* Title Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", paddingTop: "4px", flexWrap: "wrap", gap: "10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -1303,34 +1339,45 @@ function FreightForwardingModule() {
             )}
           </div>
 
-          <div style={{
-            background: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: "6px",
-            overflow: "hidden",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-            marginBottom: "20px"
-          }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11.5px" }}>
-                <thead>
-                  <tr style={{ backgroundColor: "#1e3a8a", color: "#fff", borderBottom: "2px solid #1e40af" }}>
-                    {[
-                      isPipelineTab ? "JOB NO" : activeTab === "Rejected" ? "REJECTED NO" : "ENQUIRY NO",
-                      "SHIPPER / ORGANIZATION",
-                      "DOCUMENT INFO",
-                      "PORT & ROUTING",
-                      "CONTAINER & CARGO",
-                      "TRANSIT DATES & TERMS",
-                      "ACTIONS"
-                    ].map((h) => (
-                      <th key={h} style={{ textAlign: h === "ACTIONS" ? "center" : "left", padding: "9px 12px", fontWeight: "700", fontSize: "11px", letterSpacing: "0.5px", textTransform: "uppercase", borderRight: "1px solid rgba(255,255,255,0.15)", whiteSpace: "nowrap" }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
+          <div style={s.tableContainer} className="ff-table-container">
+            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "11.5px" }}>
+              <thead>
+                <tr style={{ position: "sticky", top: 0, zIndex: 10 }}>
+                  {[
+                    isPipelineTab ? "JOB NO" : activeTab === "Rejected" ? "REJECTED NO" : "ENQUIRY NO",
+                    "SHIPPER / ORGANIZATION",
+                    "DOCUMENT INFO",
+                    "PORT & ROUTING",
+                    "CONTAINER & CARGO",
+                    "TRANSIT DATES & TERMS",
+                    "ACTIONS"
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        position: "sticky",
+                        top: 0,
+                        zIndex: 10,
+                        backgroundColor: "#1e3a8a",
+                        color: "#fff",
+                        textAlign: h === "ACTIONS" ? "center" : "left",
+                        padding: "9px 12px",
+                        fontWeight: "700",
+                        fontSize: "11px",
+                        letterSpacing: "0.5px",
+                        textTransform: "uppercase",
+                        borderRight: "1px solid rgba(255,255,255,0.15)",
+                        borderBottom: "2px solid #1e40af",
+                        whiteSpace: "nowrap",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
                   {filteredRows.length ? (
                     filteredRows.map((row, idx) => (
                       <tr
@@ -1834,9 +1881,15 @@ function FreightForwardingModule() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </>
-      )}
+
+            {/* Table Footer */}
+            <div style={s.footer}>
+              <div>
+                Showing {filteredRows.length} Records
+              </div>
+            </div>
+          </>
+        )}
     </>
   )}
 
