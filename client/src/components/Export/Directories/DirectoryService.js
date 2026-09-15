@@ -48,6 +48,15 @@ const DirectoryService = {
       throw error.response?.data || error;
     }
   },
+
+  approve: async (id) => {
+    try {
+      const response = await axios.put(`${API_URL}/${id}/approve`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
 };
 
 export default DirectoryService;

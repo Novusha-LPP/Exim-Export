@@ -988,7 +988,7 @@ function FreightForwardingModule() {
       }
     } catch (error) {
       console.error("Error creating enquiry:", error);
-      alert("Failed to create enquiry. Please try again.");
+      alert(`Failed to create enquiry: ${error.response?.data?.message || error.message || "Please try again."}`);
     }
   };
 
@@ -1550,19 +1550,19 @@ function FreightForwardingModule() {
                                 <CopyButton text={row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no} title="Copy MBL No" iconSize={10} />
                               </div>
                             ) : null}
-                            {row.hbl_no || row.bl_details?.hbl_no ? (
+                            {(row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no) ? (
                               <div>
                                 <span style={{ color: "#64748b", fontWeight: "600" }}>HBL No: </span>
                                 <span style={{ fontWeight: "700", color: "#0f172a" }}>
-                                  {row.hbl_no || row.bl_details?.hbl_no}{" "}
+                                  {row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no}{" "}
                                   {row.hbl_date || row.bl_details?.hbl_date
                                     ? `(${formatDateDisplay(row.hbl_date || row.bl_details?.hbl_date)})`
                                     : ""}
                                 </span>
-                                <CopyButton text={row.hbl_no || row.bl_details?.hbl_no} title="Copy HBL No" iconSize={10} />
+                                <CopyButton text={row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no} title="Copy HBL No" iconSize={10} />
                               </div>
                             ) : null}
-                            {!row.sb_no && !row.bl_details?.sb_no && !row.egm_no && !(row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no) && !(row.hbl_no || row.bl_details?.hbl_no) && (
+                            {!row.sb_no && !row.bl_details?.sb_no && !row.egm_no && !(row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no) && !(row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no) && (
                               <span style={{ color: "#94a3b8", fontStyle: "italic" }}>-</span>
                             )}
                           </div>
@@ -1768,6 +1768,14 @@ function FreightForwardingModule() {
                                 <span style={{ color: "#64748b", fontWeight: "600" }}>Consol: </span>
                                 <span style={{ fontWeight: "700", color: "#0f172a" }}>
                                   {row.consol_no ? `${row.consol_no} (${formatDateDisplay(row.consol_date)})` : formatDateDisplay(row.consol_date)}
+                                </span>
+                              </div>
+                            )}
+                            {(row.final_delivery_date || row.delivery_date || row.bl_details?.final_delivery_date || row.bl_details?.delivery_date) && (
+                              <div>
+                                <span style={{ color: "#64748b", fontWeight: "600" }}>Delivery: </span>
+                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                  {formatDateDisplay(row.final_delivery_date || row.delivery_date || row.bl_details?.final_delivery_date || row.bl_details?.delivery_date)}
                                 </span>
                               </div>
                             )}

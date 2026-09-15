@@ -1,0 +1,2263 @@
+[
+  {
+    "_id": "6964d071074f97944b688bc2",
+    "organization": "INDORE ALUMINIUM",
+    "approvalStatus": "Pending",
+    "generalInfo": {
+      "entityType": "Partnership Firm",
+      "exporterType": "Trader"
+    },
+    "address": {
+      "addressLine": "1,OPP.RANASAN POWER HOUSE",
+      "postalCode": "382340",
+      "telephone": "9374107315",
+      "email": "indorealuminium@yahoo.co.in"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/customers/Unknown_Customer/pan-copy/INODRE_PAN_CARD_1751526197877.pdf",
+            "name": "INODRE_PAN_CARD_1751526197877.pdf",
+            "uploadedAt": "2026-01-12T11:08:36.075Z"
+          }
+        ]
+      },
+      "gstRegistrationCopy": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/customers/Unknown_Customer/gst-registration-0/INODRE_GST_1751526061179.pdf",
+            "name": "INODRE_GST_1751526061179.pdf",
+            "uploadedAt": "2026-01-12T11:08:36.075Z"
+          }
+        ]
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "0807019381",
+      "panNo": "AABFI6290D",
+      "gstinMainBranch": "24AABFI6290D1ZN"
+    },
+    "authorizedSignatory": [],
+    "bankDetails": [
+      {
+        "entityName": "Icicibank",
+        "ifscCode": "ICIC0000844",
+        "branchLocation": "Naroda Ahmedabad branch",
+        "accountNumber": "084405500616",
+        "adCode": "6391008",
+        "isDefault": false,
+        "_id": "6964d63438d38bb7a13e4a0f"
+      }
+    ],
+    "history": [
+      {
+        "action": "Migrated from CustomerKyc DB",
+        "user": "system",
+        "changes": "6866315c82dfff7f61d8d090",
+        "_id": "6964d63438d38bb7a13e4a0e",
+        "timestamp": "2026-01-12T11:08:36.075Z"
+      }
+    ],
+    "branchInfo": [
+      {
+        "branchName": "Factory",
+        "address": "1,OPP.RANASAN POWER HOUSE, NATIONAL HIGHWAY NO.08 ,  AHMEDABAD",
+        "city": "AHMEDABAD",
+        "state": "GUJARAT",
+        "postalCode": "382340",
+        "country": "India",
+        "msmeRegistered": false,
+        "_id": "6964d63438d38bb7a13e4a10"
+      }
+    ],
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "customHouse": [],
+    "accountCreditInfo": {
+      "creditLimit": 0,
+      "unlimitedEnabled": false,
+      "creditPeriod": 0
+    },
+    "affiliateBranches": [],
+    "createdAt": "2026-01-12T10:44:01.473Z",
+    "updatedAt": "2026-01-12T11:08:36.075Z",
+    "__v": 0
+  },
+  {
+    "_id": "6964d071074f97944b688cec",
+    "organization": "CHANDRESH TECH",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Partnership Firm",
+      "exporterType": "Trader"
+    },
+    "address": {
+      "addressLine": "F6 MAHARSHI COMPLEX NR USMANPURA",
+      "postalCode": "380014",
+      "telephone": "9725482233",
+      "email": "chandresh.tech@gmail.com"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/customers/CHANDRESH_TECH/pan-copy/CHANDRESH_PAN_CARD_1752233132156.pdf",
+            "name": "CHANDRESH_PAN_CARD_1752233132156.pdf",
+            "uploadedAt": "2026-01-12T11:08:36.336Z"
+          }
+        ]
+      },
+      "gstRegistrationCopy": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/customers/CHANDRESH_TECH/gst-registration-0/CHANDRESH_GST_1752233145334.pdf",
+            "name": "CHANDRESH_GST_1752233145334.pdf",
+            "uploadedAt": "2026-01-12T11:08:36.336Z"
+          }
+        ]
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "AANFC3649L",
+      "panNo": "AANFC3649L",
+      "gstinMainBranch": "24AANFC3649L1Z3"
+    },
+    "authorizedSignatory": [],
+    "bankDetails": [
+      {
+        "entityName": "HDFC BANK",
+        "ifscCode": "HDFCO002213",
+        "branchLocation": "CHHATRAL GIDC",
+        "accountNumber": "50200051120414",
+        "adCode": "0511911",
+        "isDefault": false,
+        "_id": "6964d63438d38bb7a13e4bb7"
+      }
+    ],
+    "history": [
+      {
+        "action": "Migrated from CustomerKyc DB",
+        "user": "system",
+        "changes": "6870f56a839cb9fd3e818280",
+        "_id": "6964d63438d38bb7a13e4bb6",
+        "timestamp": "2026-01-12T11:08:36.337Z"
+      }
+    ],
+    "branchInfo": [
+      {
+        "branchName": "Factory",
+        "address": "F6 MAHARSHI COMPLEX NR USMANPURA, UNDERBRIDGE SP COLONY NARANPURA",
+        "city": "AHMEDABAD",
+        "state": "GUJARAT",
+        "postalCode": "380014",
+        "country": "India",
+        "msmeRegistered": false,
+        "_id": "6964d63438d38bb7a13e4bb8"
+      }
+    ],
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "customHouse": [],
+    "accountCreditInfo": {
+      "creditLimit": 0,
+      "unlimitedEnabled": false,
+      "creditPeriod": 0
+    },
+    "affiliateBranches": [],
+    "createdAt": "2026-01-12T10:44:01.784Z",
+    "updatedAt": "2026-01-12T11:08:36.336Z",
+    "__v": 0
+  },
+  {
+    "_id": "6964d071074f97944b688dac",
+    "organization": "ARTHWAY",
+    "approvalStatus": "Pending",
+    "generalInfo": {
+      "entityType": "Individual/ Proprietary Firm",
+      "exporterType": "Trader"
+    },
+    "address": {
+      "addressLine": "C-1002, VANDEMATARAM FABULA, B/H NIRMA",
+      "postalCode": "382481",
+      "telephone": "9924123451",
+      "email": "info.arthway@gmail.com"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/customers/ARTHWAY/pan-copy/ARTHWAY_PAN_Card_1767854406878.pdf",
+            "name": "ARTHWAY_PAN_Card_1767854406878.pdf",
+            "uploadedAt": "2026-01-12T11:08:36.488Z"
+          }
+        ]
+      },
+      "gstRegistrationCopy": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/customers/ARTHWAY/gst-registration-0/ARTHWAY_GST_1767854380275.pdf",
+            "name": "ARTHWAY_GST_1767854380275.pdf",
+            "uploadedAt": "2026-01-12T11:08:36.488Z"
+          }
+        ]
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "0814012264",
+      "panNo": "ACQPH4205C",
+      "gstinMainBranch": ""
+    },
+    "authorizedSignatory": [],
+    "bankDetails": [
+      {
+        "entityName": "KOTAK MAHINDRA BANK LIMITED",
+        "ifscCode": "KKBK0002562",
+        "branchLocation": "Ahmedabad - Ashram Road",
+        "accountNumber": "9349449891",
+        "adCode": "0180395",
+        "isDefault": false,
+        "_id": "6964d63438d38bb7a13e4ccd"
+      }
+    ],
+    "history": [
+      {
+        "action": "Migrated from CustomerKyc DB",
+        "user": "system",
+        "changes": "695f526940b1185e8f877ac8",
+        "_id": "6964d63438d38bb7a13e4ccc",
+        "timestamp": "2026-01-12T11:08:36.489Z"
+      }
+    ],
+    "branchInfo": [
+      {
+        "branchName": "Factory",
+        "address": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": "India",
+        "msmeRegistered": false,
+        "_id": "6964d63438d38bb7a13e4cce"
+      }
+    ],
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "customHouse": [],
+    "accountCreditInfo": {
+      "creditLimit": 0,
+      "unlimitedEnabled": false,
+      "creditPeriod": 0
+    },
+    "affiliateBranches": [],
+    "createdAt": "2026-01-12T10:44:01.942Z",
+    "updatedAt": "2026-01-12T11:08:36.488Z",
+    "__v": 0
+  },
+  {
+    "_id": "69aab4f2993aeb416e90fb6d",
+    "organization": "PARAMOUNT PROPACK PVT LTD",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Private Limited",
+      "exporterType": "Marchant Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "0814000657",
+      "panNo": "AAHCP4599D",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24AAHCP4599D1Z8",
+        "address": "306/A ,WALL STREET - 2 ,  OPP.ORIENT CLUB, ELLIS BRIDGE",
+        "city": "AHMEDABAD ",
+        "state": "GUJARAT",
+        "postalCode": "380006",
+        "country": "India",
+        "_id": "69aab4f2993aeb416e90fb6e"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "69aab4f2993aeb416e90fb6f"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "IDBI BANK",
+        "ifscCode": "",
+        "branchLocation": "MAIN BRANCH",
+        "accountNumber": "0009102000056939",
+        "adCode": "6910451",
+        "isDefault": true,
+        "_id": "69aab4f2993aeb416e90fb70"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-03-06T11:05:22.776Z",
+    "updatedAt": "2026-03-16T12:58:04.432Z",
+    "__v": 0
+  },
+  {
+    "_id": "69b7be24bc55e9c380460cc8",
+    "organization": "ISHAN BIO FILMS PRIVATE LIMITED",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Private Limited",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "AAGCI0804H",
+      "panNo": "AAGCI0804H",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24AAGCI0804H1Z0",
+        "address": "B-302, ATMA HOUSE ,  OPP. OLD RBI, ASHRAM ROAD , ",
+        "city": "AHMEDABAD ",
+        "state": "GUJARAT",
+        "postalCode": "380009",
+        "country": "India",
+        "_id": "69b7be24bc55e9c380460cc9"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "69b7be24bc55e9c380460cca"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "PNB BANK",
+        "ifscCode": "",
+        "branchLocation": "BO NRI (740600) AHMEDABAD, PELICAN BUILDING, ASHRAM ROAD, AHMEDABAD - 380009",
+        "accountNumber": "0033002102043879",
+        "adCode": "0303969",
+        "isDefault": true,
+        "_id": "69b7be24bc55e9c380460ccb"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-03-16T08:24:04.628Z",
+    "updatedAt": "2026-03-16T08:24:04.628Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f9c44aeaa3fad10d65b23c",
+    "organization": "SHRI AMBICA POLYFILL",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Private Limited",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "0817508490",
+      "panNo": "ADJFS1867K",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24ADJFS1867K1ZN",
+        "address": " F SUR NO 197 3 4 C1 RANHATH VAS,NR.SHAKTIDHAM RAWHOUSE,SHAHWADI,NAROL AHMEDABAD ",
+        "city": "AHMEDABAD ",
+        "state": "GUJARAT",
+        "postalCode": "382405",
+        "country": "India",
+        "mobile": "9687981007",
+        "email": "",
+        "_id": "69f9c44aeaa3fad10d65b23d"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "69f9c44aeaa3fad10d65b23e"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "",
+        "ifscCode": "",
+        "branchLocation": "",
+        "accountNumber": "",
+        "adCode": "",
+        "isDefault": false,
+        "_id": "69f9c44aeaa3fad10d65b23f"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-05T10:19:54.743Z",
+    "updatedAt": "2026-05-05T10:19:54.743Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fb26abdd9ef620ab026738",
+    "organization": "ASSOCIATED DYESTUFF PRIVATE LIMITED",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Private Limited",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/certificateOfIncorporation/KYC-1778067105805.pdf",
+            "name": "KYC.pdf",
+            "size": 1570537,
+            "uploadedAt": "2026-05-06T11:19:36.885Z"
+          }
+        ]
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "0888001487",
+      "panNo": "AACCA4885C",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24AACCA4885C1ZX",
+        "address": "A-1/4,PHASE I,GIDC VATVA,",
+        "city": "AHMEDABAD",
+        "state": "GUJARAT",
+        "postalCode": "382445",
+        "country": "India",
+        "mobile": "",
+        "email": "",
+        "_id": "69fb26abdd9ef620ab026739"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "69fb26abdd9ef620ab02673a"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "HDFC BANK LTD",
+        "ifscCode": "",
+        "branchLocation": "AHMEDABAD",
+        "accountNumber": "50200021443364",
+        "adCode": "0510007",
+        "isDefault": true,
+        "_id": "69fb26abdd9ef620ab02673b"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-06T11:31:55.327Z",
+    "updatedAt": "2026-05-06T11:31:55.327Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fb28f3dd9ef620ab026c23",
+    "organization": "BATLIWALA PROCESS ENGINEERING",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Private Limited",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/certificateOfIncorporation/KYC-1778067682082.pdf",
+            "name": "KYC.pdf",
+            "size": 0,
+            "uploadedAt": "2026-05-06T11:29:13.135Z"
+          }
+        ]
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "0803006918",
+      "panNo": "ABXPB6343H",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24ABXPB6343H1ZJ",
+        "address": "720/5, OPP: SADANI DHABI BUS STOP,",
+        "city": "AHMEDABAD",
+        "state": "GUJARAT",
+        "postalCode": "382405",
+        "country": "India",
+        "mobile": "",
+        "email": "",
+        "_id": "69fb28f3dd9ef620ab026c24"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "69fb28f3dd9ef620ab026c25"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "AXIS BANK LTD",
+        "ifscCode": "",
+        "branchLocation": "",
+        "accountNumber": "91XXXXXXXXXX013",
+        "adCode": "6360079",
+        "isDefault": true,
+        "_id": "69fb28f3dd9ef620ab026c26"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-06T11:41:39.960Z",
+    "updatedAt": "2026-05-06T11:41:39.960Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fb2b51dd9ef620ab026eef",
+    "organization": "BHARAT COLOR CHEM",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Private Limited",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/certificateOfIncorporation/KYC(1)-1778068301747.pdf",
+            "name": "KYC(1).pdf",
+            "size": 1585604,
+            "uploadedAt": "2026-05-06T11:39:32.825Z"
+          }
+        ]
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "0811000290",
+      "panNo": "AAEFB6775F",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24AAEFB6775F1ZH",
+        "address": "PLOT NO. 81/1 A,PHASE 1,GIDC ESTATE VATVA",
+        "city": "Ahmedabad",
+        "state": "GUJARAT",
+        "postalCode": "382445",
+        "country": "India",
+        "mobile": "",
+        "email": "",
+        "_id": "69fb2b51dd9ef620ab026ef0"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "69fb2b51dd9ef620ab026ef1"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "KALUPUR BANK",
+        "ifscCode": "",
+        "branchLocation": "VATVA",
+        "accountNumber": "00936000015",
+        "adCode": "8656901",
+        "isDefault": false,
+        "_id": "69fb2b51dd9ef620ab026ef2"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-06T11:51:45.201Z",
+    "updatedAt": "2026-05-06T11:51:45.201Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fc26711171a8a5a01b68ea",
+    "organization": "CTM GEOSYNTHETICS INDIA LLP",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Partner",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/certificateOfIncorporation/CTM-TECHNICAL-TEXTILES---KYC19052017142925-1778132587362.pdf",
+            "name": "CTM TECHNICAL TEXTILES - KYC19052017142925.pdf",
+            "size": 1451827,
+            "uploadedAt": "2026-05-07T05:30:58.019Z"
+          }
+        ]
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "AATFC8105B",
+      "panNo": "AATFC8105B",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRACH",
+        "branchCode": "0",
+        "gstNo": "24AATFC8105B1ZP",
+        "address": "A-504 THE FIRST B/S KESHAVBAUG PARTY PLOT,VASTRAPUR,IIM VASTRAPUR,",
+        "city": "AHMEDABAD",
+        "state": "GUJARAT",
+        "postalCode": "380015",
+        "country": "India",
+        "mobile": "9265028894",
+        "email": "accounts2@ctmagrotextiles.com",
+        "_id": "69fc26711171a8a5a01b68eb"
+      },
+      {
+        "branchName": "Branch 1",
+        "branchCode": "1",
+        "address": "SUB PLOT NO B-03-1 CITY SURVEY NO NA533 NA718 SH189, KHERPUR AND SARSAV,KADI,",
+        "city": "MAHESANA",
+        "state": "GUJARAT",
+        "postalCode": "384440",
+        "country": "India",
+        "mobile": "9265028894",
+        "email": "accounts2@ctmagrotextiles.com",
+        "_id": "69fc26711171a8a5a01b68ec"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "69fc26711171a8a5a01b68ed"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "ICICI BANK",
+        "ifscCode": "",
+        "branchLocation": "AMBAWADI ",
+        "accountNumber": "002405031914",
+        "adCode": "6390030",
+        "isDefault": true,
+        "_id": "69fc26711171a8a5a01b68ee"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-07T05:43:13.798Z",
+    "updatedAt": "2026-05-07T05:43:13.798Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fc5a321171a8a5a01ce165",
+    "organization": "ESCO EXPORTS",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Partner",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/certificateOfIncorporation/KYC-1778145771450.pdf",
+            "name": "KYC.pdf",
+            "size": 2247387,
+            "uploadedAt": "2026-05-07T09:10:42.158Z"
+          }
+        ]
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "0895004160",
+      "panNo": "AAAFE4636N",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24AAAFE4636N1ZD",
+        "address": "A-702-703, 7 th, RATNAKAR NINE SQUARE, ,  OPP KESHAVBAUG PARTY PLOT, MANSI CIRCLE ROAD, VASTRAPUR,",
+        "city": "AHMEDABAD ",
+        "state": "GUJARAT",
+        "postalCode": "380015",
+        "country": "India",
+        "mobile": "9833437923",
+        "email": "koshish@acuityglobal.in",
+        "_id": "69fc5a321171a8a5a01ce166"
+      },
+      {
+        "branchName": "Branch 1",
+        "branchCode": "1",
+        "gstNo": "24AAAFE4636N1ZD",
+        "address": "BLOCK NO 288 PANCHRATNA INDUSTRIAL ESTATE, PLOT NO-47 PHASE-III CHANGODAR , ,,",
+        "city": "AHMEDABAD",
+        "state": "GUJARAT",
+        "postalCode": "382210",
+        "country": "India",
+        "mobile": "9833437923",
+        "email": "koshish@acuityglobal.in",
+        "_id": "69fc5a321171a8a5a01ce167"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "69fc5a321171a8a5a01ce168"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "AXIS BANK",
+        "ifscCode": "",
+        "branchLocation": "",
+        "accountNumber": "91XXXXXXXXXX070",
+        "adCode": "6360003",
+        "isDefault": true,
+        "_id": "69fc5a321171a8a5a01ce169"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-07T09:24:02.334Z",
+    "updatedAt": "2026-05-07T09:24:02.334Z",
+    "__v": 0
+  },
+  {
+    "_id": "69fd8bf44da7d5da53ac3d6a",
+    "organization": "GRUPO GRIFFIN CERAMICA LLP",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Partner",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "AAUFG6907E",
+      "panNo": "AAUFG6907E",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24AAUFG6907E1Z8",
+        "address": "SR NO 944/p1,OFFICE NO 3 AND 4,GROUND FLOOR,NUEVA MOSAICS LLP,8A NATIONAL HIGHWAY,LAKHDHIRPUR ROAD,",
+        "city": "MORBI",
+        "state": "GUJARAT",
+        "postalCode": "363642",
+        "country": "India",
+        "mobile": "9726729430",
+        "email": "reena@bluepeaksoverseas.com",
+        "_id": "69fd8bf44da7d5da53ac3d6b"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "69fd8bf44da7d5da53ac3d6c"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "",
+        "ifscCode": "",
+        "branchLocation": "",
+        "accountNumber": "",
+        "adCode": "",
+        "isDefault": false,
+        "_id": "69fd8bf44da7d5da53ac3d6d"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-08T07:08:36.850Z",
+    "updatedAt": "2026-05-08T07:08:36.850Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a044416ddefcf4a32b769a7",
+    "organization": "HIMALAYA REFRIGERATION INDUSTRIES",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Partner",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/certificateOfIncorporation/ALL-KYC(1)-1778664464068.pdf",
+            "name": "ALL KYC(1).pdf",
+            "size": 3310137,
+            "uploadedAt": "2026-05-13T09:15:36.528Z"
+          }
+        ]
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "2415003221",
+      "panNo": "AAEFH8219E",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24AAEFH8219E1ZM",
+        "address": "PLOT NO.2222, ROAD NO.A/13, KRANTI ,GATE GIDC LODHIKA, KALAWAD ROAD,METODA,",
+        "city": " RAJKOT",
+        "state": "GUJARAT",
+        "postalCode": "360021",
+        "country": "India",
+        "mobile": "",
+        "email": "",
+        "_id": "6a044416ddefcf4a32b769a8"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "6a044416ddefcf4a32b769a9"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "UNION BANK OF INDIA",
+        "ifscCode": "",
+        "branchLocation": "",
+        "accountNumber": "560101000065051",
+        "adCode": "02902TT",
+        "isDefault": false,
+        "_id": "6a044416ddefcf4a32b769aa"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-13T09:27:50.296Z",
+    "updatedAt": "2026-05-13T09:27:50.296Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0445b8ddefcf4a32b7710b",
+    "organization": "HOLY FAMILY APPARELS",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Private Limited",
+      "exporterType": "Marchant Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "AJCPP4327N",
+      "panNo": "AJCPP4327N",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24AJCPP4327N1Z0",
+        "address": "H / 330,3RD FLOOR , SUMEL BUSINESS PARK - 6, ,  DUDHESHWAR ROAD, DUDHESHWAR ,",
+        "city": "AHMEDABAD ",
+        "state": "GUJARAT",
+        "postalCode": "380004",
+        "country": "India",
+        "mobile": "",
+        "email": "nelnikk@yahoo.com",
+        "_id": "6a0445b8ddefcf4a32b7710c"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "6a0445b8ddefcf4a32b7710d"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "HDFC BANK",
+        "ifscCode": "",
+        "branchLocation": "",
+        "accountNumber": "50200081889970",
+        "adCode": "0510007",
+        "isDefault": false,
+        "_id": "6a0445b8ddefcf4a32b7710e"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-13T09:34:48.902Z",
+    "updatedAt": "2026-05-13T09:34:48.902Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a044a2eddefcf4a32b78768",
+    "organization": "JANAK PERFUMERS",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Partner",
+      "exporterType": "Marchant Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/certificateOfIncorporation/KYC-1778666028482.pdf",
+            "name": "KYC.pdf",
+            "size": 3123488,
+            "uploadedAt": "2026-05-13T09:41:40.932Z"
+          }
+        ]
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "2401001778",
+      "panNo": "AABFJ5638G",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "BRANCH 1",
+        "branchCode": "1",
+        "gstNo": "24AABFJ5638G1ZI",
+        "address": "REVENUE SUR NO 158 PART 2, NR KHANDHERI CRICKET STADIUM, JANAK COMPLEX, RAJKOT JAMNAGAR HIGHWAY AT. NARANKA, TAL.PADDHARI",
+        "city": "RAJKOT ",
+        "state": "GUJARAT",
+        "postalCode": "360001",
+        "country": "India",
+        "mobile": "8347097480",
+        "email": "sales@darshinilogistics.com",
+        "_id": "6a044a2eddefcf4a32b78769"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "6a044a2eddefcf4a32b7876a"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "UNION BANK",
+        "ifscCode": "",
+        "branchLocation": "",
+        "accountNumber": "560101000099762",
+        "adCode": "02904Q0",
+        "isDefault": false,
+        "_id": "6a044a2eddefcf4a32b7876b"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-13T09:53:50.422Z",
+    "updatedAt": "2026-05-13T09:53:50.422Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a044be8ddefcf4a32b7971d",
+    "organization": "JANSHAIL IRON DESIGN",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Proprietor",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "2412012407",
+      "panNo": "ARJPP6151D",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "1",
+        "gstNo": "24ARJPP6151D1ZW",
+        "address": "G-722, G.I.D.C.,METODA TA:- LODHIKA , ",
+        "city": "RAJKOT ",
+        "state": "GUJARAT",
+        "postalCode": "360021",
+        "country": "India",
+        "mobile": "9879531320",
+        "email": "rahul@vishalshipping.in",
+        "_id": "6a044be8ddefcf4a32b7971e"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "6a044be8ddefcf4a32b7971f"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "AXIS BANK",
+        "ifscCode": "",
+        "branchLocation": "",
+        "accountNumber": "912020041669275",
+        "adCode": "6360089",
+        "isDefault": false,
+        "_id": "6a044be8ddefcf4a32b79720"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-13T10:01:12.817Z",
+    "updatedAt": "2026-05-13T10:01:12.817Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a0706edaaf20ea0bf040eec",
+    "organization": "KNACKWELL THERMAL ENGINEERS",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Proprietor",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/certificateOfIncorporation/AURHORITY-LETTER-1778845420495.pdf",
+            "name": "AURHORITY LETTER.pdf",
+            "size": 308443,
+            "uploadedAt": "2026-05-15T11:31:32.828Z"
+          }
+        ]
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "AEJPT6178B",
+      "panNo": "AEJPT6178B",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24AEJPT6178B1ZC",
+        "address": "GF, Plot No. 57 and 60, Panchratna Industrial Estate , Inside Pirana Gate, ,  Near Ghoda Circle ,Paldi Kankaj, ",
+        "city": "AHMEDABAD ",
+        "state": "GUJARAT",
+        "postalCode": "382445",
+        "country": "India",
+        "mobile": "9624042423",
+        "email": "ravi@knackwell.com",
+        "_id": "6a0706edaaf20ea0bf040eed"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "6a0706edaaf20ea0bf040eee"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "HDFC BANK",
+        "ifscCode": "",
+        "branchLocation": "HDFC BANK",
+        "accountNumber": "50200086256714",
+        "adCode": "05101B4",
+        "isDefault": true,
+        "_id": "6a0706edaaf20ea0bf040eef"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-15T11:43:41.836Z",
+    "updatedAt": "2026-05-15T11:43:41.836Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a070806aaf20ea0bf042450",
+    "organization": "SHREE SIDDHI FRAGRANCE",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Partner",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "ACTFS8907R",
+      "panNo": "ACTFS8907R",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24ACTFS8907R1ZY",
+        "address": "PLOT NO 23/B, PANCHRATNA INDUSTRIAL ESTATE, SARKEHJ-BAVLA ROAD ,  OPP VIDHATA OXYGEN, B/H ARJUN ALLYOS, CHANGODAR, ",
+        "city": "AHMEDABAD ",
+        "state": "GUJARAT",
+        "postalCode": "382213",
+        "country": "India",
+        "mobile": "9898133440",
+        "email": "shreesiddhifragrance@gmail.com",
+        "_id": "6a070806aaf20ea0bf042451"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "6a070806aaf20ea0bf042452"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "HDFC Bank Limited",
+        "ifscCode": "",
+        "branchLocation": "HDFC Bank CHANGODAR BRANCH",
+        "accountNumber": "50200020451141",
+        "adCode": "0511475",
+        "isDefault": false,
+        "_id": "6a070806aaf20ea0bf042453"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-05-15T11:48:22.368Z",
+    "updatedAt": "2026-05-15T11:48:22.368Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a84236c6d54810d76eb79ce",
+    "organization": "SHREE SWASTIK TECHWEAVE LLP",
+    "approvalStatus": "Pending",
+    "generalInfo": {
+      "entityType": "Partner",
+      "exporterType": "Marchant Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "ADJFS2543L",
+      "panNo": "ADJFS2543L",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN",
+        "branchCode": "0",
+        "gstNo": "24ADJFS2543L1ZU",
+        "address": "NEW SURVEY NO.223/2, OLD SURVEY NO.96/1, BAVLA, DHEDHAL , , AHMADABAD,GUJARAT,AHMEDABAD ,",
+        "city": "AHMEDABAD ",
+        "state": "GUJARAT",
+        "postalCode": "382220",
+        "country": "India",
+        "mobile": "",
+        "email": "",
+        "_id": "6a84236c6d54810d76eb79cf"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "6a84236c6d54810d76eb79d0"
+      }
+    ],
+    "selfSealValidity": [],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "",
+        "ifscCode": "",
+        "branchLocation": "",
+        "accountNumber": "",
+        "adCode": "",
+        "isDefault": false,
+        "_id": "6a84236c6d54810d76eb79d1"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-08-18T09:18:36.251Z",
+    "updatedAt": "2026-08-18T09:23:49.586Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a967236587dcd704bb48f3f",
+    "organization": "JAY BHOJALRAM HARDWARE",
+    "approvalStatus": "Approved",
+    "generalInfo": {
+      "entityType": "Proprietor",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "GMKPS2037B",
+      "panNo": "GMKPS2037B",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24GMKPS2037B2Z6",
+        "address": "GROUND FLOOR, SURVEY NO 160 PAIKI 1-3 SURVEY NO- 162 PLOT NO-71 SHED NO 2 ,  JEET IND AREA, OPP DWARKADHISH HOTEL, KOTHARIYA MAIN ROAD ,",
+        "city": "RAJKOT ",
+        "state": "GUJARAT",
+        "postalCode": "360002",
+        "country": "India",
+        "mobile": "9099270260",
+        "email": "savaliyamehul1993@gmail.com",
+        "_id": "6a967236587dcd704bb48f40"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "6a967236587dcd704bb48f41"
+      }
+    ],
+    "selfSealValidity": [],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "ICICI BANK",
+        "ifscCode": "",
+        "branchLocation": "RAJKOT",
+        "accountNumber": "084805501855",
+        "adCode": "6391035",
+        "isDefault": true,
+        "_id": "6a967236587dcd704bb48f42"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-09-01T06:35:34.486Z",
+    "updatedAt": "2026-09-01T07:41:32.543Z",
+    "__v": 0
+  }
+]

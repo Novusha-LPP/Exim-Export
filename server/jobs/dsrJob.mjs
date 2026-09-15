@@ -26,7 +26,8 @@ export const initDsrCronJob = () => {
                     { year: currentFY },
                     { status: { $nin: ["Completed", "completed", "Cancelled", "cancelled"] } },
                     { isJobCanceled: { $ne: true } },
-                    { detailedStatus: { $ne: "Billing Done" } }
+                    { detailedStatus: { $ne: "Billing Done" } },
+                    { isGeneralJob: { $ne: true } }
                 ]
             });
 
@@ -34,6 +35,21 @@ export const initDsrCronJob = () => {
 
             for (const exporterName of exportersWithPending) {
                 if (!exporterName) continue;
+
+                // Double check pending job count for this exporter in current FY
+                const activeJobCount = await ExportJob.countDocuments({
+                    exporter: { $regex: `^${exporterName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" },
+                    year: currentFY,
+                    status: { $nin: ["Completed", "completed", "Cancelled", "cancelled"] },
+                    isJobCanceled: { $ne: true },
+                    detailedStatus: { $ne: "Billing Done" },
+                    isGeneralJob: { $ne: true }
+                });
+
+                if (activeJobCount === 0) {
+                    console.log(`[DSR Cron] ⚠️ Skipping email for "${exporterName}": 0 pending jobs in FY ${currentFY}.`);
+                    continue;
+                }
 
                 // 2. Find directory entry for this exporter to get email addresses
                 const directory = await Directory.findOne({ 

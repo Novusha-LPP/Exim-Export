@@ -28,6 +28,9 @@ import {
   MenuItem,
   Avatar,
   Divider,
+  Tabs,
+  Tab,
+  Tooltip,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -42,14 +45,16 @@ import {
   Assignment as AssignmentIcon,
   FileDownload as FileDownloadIcon,
   Email as EmailIcon,
+  AttachFile as AttachFileIcon,
+  CheckCircle as CheckCircleIcon,
+  OpenInNew as OpenInNewIcon,
 } from "@mui/icons-material";
 import DirectoryForm from "./DirectoryForm.js";
-import axios from "axios"; // For testing API call
+import axios from "axios";
 import DirectoryService from "../Directories/DirectoryService";
 import { formatDate } from "../../../utils/dateUtils";
 
-
-// Directory Listing Table Columns (Compact, dense structure)
+// Directory Listing Table Columns
 const TABLE_COLUMNS = [
   { key: "organization", label: "Organization", minWidth: 200 },
   { key: "approvalStatus", label: "Status", minWidth: 100 },
@@ -58,7 +63,7 @@ const TABLE_COLUMNS = [
   { key: "adCode", label: "AD Code", minWidth: 120 },
   { key: "panNo", label: "PAN", minWidth: 110 },
   { key: "createdAt", label: "Created", minWidth: 100 },
-  { key: "actions", label: "Actions", minWidth: 120, align: "center" },
+  { key: "actions", label: "Actions", minWidth: 180, align: "center" },
 ];
 
 // Helper - Color for Approval Status
@@ -99,11 +104,256 @@ const getFirstGstNo = (branchInfo) => {
   return branchInfo[0]?.gstNo || "-";
 };
 
+// Attachments View Dialog
+const AttachmentsViewDialog = ({ open, directory, onClose, onApprove }) => {
+  if (!directory) return null;
+
+  const kycDocs = directory.kycDocuments || {};
+
+  const chaFiles =
+    kycDocs.chaAppointmentForm?.files ||
+    kycDocs.certificateOfIncorporation?.files ||
+    [];
+  const otherFiles = kycDocs.other?.files || [];
+
+  const legacyFiles = [];
+  [
+    "memorandumOfAssociation",
+    "articlesOfAssociation",
+    "powerOfAttorney",
+    "copyOfPanAllotment",
+    "copyOfTelephoneBill",
+    "gstRegistrationCopy",
+    "balanceSheet",
+    "msmeCertificate",
+  ].forEach((key) => {
+    if (kycDocs[key]?.files?.length > 0) {
+      kycDocs[key].files.forEach((f) => legacyFiles.push({ ...f, docType: key }));
+    }
+  });
+
+  const totalFiles = chaFiles.length + otherFiles.length + legacyFiles.length;
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <AttachFileIcon color="primary" />
+            <Typography variant="h6" fontWeight={700}>
+              KYC Attachments: {directory.organization}
+            </Typography>
+          </Box>
+          <Chip
+            label={directory.approvalStatus}
+            color={getStatusColor(directory.approvalStatus)}
+            size="small"
+          />
+        </Box>
+      </DialogTitle>
+
+      <DialogContent sx={{ p: 3 }}>
+        {totalFiles === 0 ? (
+          <Box sx={{ py: 4, textAlign: "center" }}>
+            <DocumentIcon sx={{ fontSize: 48, color: "text.disabled", mb: 1 }} />
+            <Typography variant="body1" color="textSecondary">
+              No attachments uploaded for this directory.
+            </Typography>
+          </Box>
+        ) : (
+          <Grid container spacing={3}>
+            {/* CHA Appointment Form */}
+            <Grid item xs={12} md={6}>
+              <Paper variant="outlined" sx={{ p: 2, height: "100%", bgcolor: "#f8fafc" }}>
+                <Typography
+                  variant="subtitle2"
+                  fontWeight={700}
+                  color="primary"
+                  sx={{ mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}
+                >
+                  <DocumentIcon fontSize="small" /> CHA Appointment Form ({chaFiles.length})
+                </Typography>
+                {chaFiles.length === 0 ? (
+                  <Typography variant="body2" color="textSecondary" sx={{ fontStyle: "italic" }}>
+                    Not uploaded
+                  </Typography>
+                ) : (
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    {chaFiles.map((file, idx) => (
+                      <Paper
+                        key={idx}
+                        sx={{
+                          p: 1.5,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          bgcolor: "white",
+                        }}
+                      >
+                        <Box sx={{ overflow: "hidden", textOverflow: "ellipsis", pr: 1 }}>
+                          <Typography variant="body2" fontWeight={600} noWrap>
+                            {file.name || `CHA Appointment Form #${idx + 1}`}
+                          </Typography>
+                          {file.uploadedAt && (
+                            <Typography variant="caption" color="textSecondary">
+                              Uploaded: {formatDate(file.uploadedAt)}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="primary"
+                          href={file.url || file.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          startIcon={<OpenInNewIcon fontSize="small" />}
+                          sx={{ textTransform: "none", flexShrink: 0 }}
+                        >
+                          View
+                        </Button>
+                      </Paper>
+                    ))}
+                  </Box>
+                )}
+              </Paper>
+            </Grid>
+
+            {/* Other Documents */}
+            <Grid item xs={12} md={6}>
+              <Paper variant="outlined" sx={{ p: 2, height: "100%", bgcolor: "#f8fafc" }}>
+                <Typography
+                  variant="subtitle2"
+                  fontWeight={700}
+                  color="primary"
+                  sx={{ mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}
+                >
+                  <AttachFileIcon fontSize="small" /> Other Documents ({otherFiles.length})
+                </Typography>
+                {otherFiles.length === 0 ? (
+                  <Typography variant="body2" color="textSecondary" sx={{ fontStyle: "italic" }}>
+                    No other documents uploaded
+                  </Typography>
+                ) : (
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    {otherFiles.map((file, idx) => (
+                      <Paper
+                        key={idx}
+                        sx={{
+                          p: 1.5,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          bgcolor: "white",
+                        }}
+                      >
+                        <Box sx={{ overflow: "hidden", textOverflow: "ellipsis", pr: 1 }}>
+                          <Typography variant="body2" fontWeight={600} noWrap>
+                            {file.name || `Document #${idx + 1}`}
+                          </Typography>
+                          {file.uploadedAt && (
+                            <Typography variant="caption" color="textSecondary">
+                              Uploaded: {formatDate(file.uploadedAt)}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="primary"
+                          href={file.url || file.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          startIcon={<OpenInNewIcon fontSize="small" />}
+                          sx={{ textTransform: "none", flexShrink: 0 }}
+                        >
+                          View
+                        </Button>
+                      </Paper>
+                    ))}
+                  </Box>
+                )}
+              </Paper>
+            </Grid>
+
+            {/* Legacy files */}
+            {legacyFiles.length > 0 && (
+              <Grid item xs={12}>
+                <Paper variant="outlined" sx={{ p: 2, bgcolor: "#fffbe6" }}>
+                  <Typography
+                    variant="subtitle2"
+                    fontWeight={700}
+                    color="warning.dark"
+                    sx={{ mb: 1 }}
+                  >
+                    Legacy Uploaded Files ({legacyFiles.length})
+                  </Typography>
+                  <Grid container spacing={1}>
+                    {legacyFiles.map((file, idx) => (
+                      <Grid item xs={12} sm={6} key={idx}>
+                        <Paper
+                          sx={{
+                            p: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            fontWeight={600}
+                            noWrap
+                            sx={{ maxWidth: 200 }}
+                          >
+                            {file.name || file.docType}
+                          </Typography>
+                          <Button
+                            size="small"
+                            href={file.url}
+                            target="_blank"
+                            startIcon={<OpenInNewIcon fontSize="small" />}
+                          >
+                            View
+                          </Button>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Paper>
+              </Grid>
+            )}
+          </Grid>
+        )}
+      </DialogContent>
+
+      <DialogActions
+        sx={{ p: 2, borderTop: "1px solid #e2e8f0", justifyContent: "space-between" }}
+      >
+        {directory.approvalStatus === "Pending" ? (
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<CheckCircleIcon />}
+            onClick={() => onApprove(directory)}
+            sx={{ textTransform: "none", fontWeight: 700 }}
+          >
+            Approve Directory Now
+          </Button>
+        ) : (
+          <div />
+        )}
+        <Button onClick={onClose} variant="outlined">
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 // Directory Detail View (Dialog)
 const DirectoryDetailView = ({ directory }) => (
   <Box sx={{ p: 2 }}>
     <Grid container spacing={3}>
-      {/* Header Card */}
       <Grid item xs={12}>
         <Paper
           sx={{
@@ -144,7 +394,6 @@ const DirectoryDetailView = ({ directory }) => (
         </Paper>
       </Grid>
 
-      {/* Quick Stats */}
       <Grid item xs={12}>
         <Grid container spacing={2}>
           <Grid item xs={3}>
@@ -193,156 +442,6 @@ const DirectoryDetailView = ({ directory }) => (
           </Grid>
         </Grid>
       </Grid>
-
-      {/* Detailed - Company Info */}
-      <Grid item xs={12} md={6}>
-        <Paper sx={{ p: 2 }}>
-          <Box sx={{ mb: 1 }}>
-            <Typography variant="h6" color="primary">
-              Company Information
-            </Typography>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>Organization:</strong> {directory.organization}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>Company Type:</strong>{" "}
-              {directory.generalInfo?.entityType || "-"}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>Exporter Type:</strong>{" "}
-              {directory.generalInfo?.exporterType || "-"}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>Shipper/Consignee:</strong>{" "}
-              {directory.generalInfo?.shipperConsignee || "-"}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>IE Code:</strong>{" "}
-              {directory.registrationDetails?.ieCode || "-"}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>PAN No:</strong>{" "}
-              {directory.registrationDetails?.panNo || "-"}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>MSME Registered:</strong>{" "}
-              {directory.registrationDetails?.msmeRegistered ? "Yes" : "No"}
-            </Typography>
-            {directory.selfSealValidity && directory.selfSealValidity.length > 0 && (
-              <Box sx={{ mt: 1.5 }}>
-                <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                  Self Seal Validity:
-                </Typography>
-                {directory.selfSealValidity.map((item, idx) => (
-                  <Typography key={idx} variant="body2" sx={{ mb: 0.25, pl: 1 }}>
-                    • <strong>{item.customHouse}</strong>: {item.validityDate}
-                  </Typography>
-                ))}
-              </Box>
-            )}
-          </Box>
-        </Paper>
-      </Grid>
-
-      {/* Detailed - Branch Info */}
-      <Grid item xs={12} md={6}>
-        <Paper sx={{ p: 2 }}>
-          <Box sx={{ mb: 1 }}>
-            <Typography variant="h6" color="primary">
-              Branch Information
-            </Typography>
-            <Divider sx={{ my: 1 }} />
-            {directory.branchInfo && directory.branchInfo.length > 0 ? (
-              directory.branchInfo.map((branch, idx) => (
-                <Box key={idx} sx={{ mb: 2 }}>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Branch {idx + 1}:</strong> {branch.branchName || "-"} (Code: {branch.branchCode || "-"})
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>GST No:</strong> {branch.gstNo || "-"}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Address:</strong> {branch.address || "-"}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>City:</strong> {branch.city || "-"},{" "}
-                    <strong>State:</strong> {branch.state || "-"}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Postal Code:</strong> {branch.postalCode || "-"}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Mobile:</strong> {branch.mobile || "-"}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Email:</strong> {branch.email || "-"}
-                  </Typography>
-
-                  {idx < directory.branchInfo.length - 1 && (
-                    <Divider sx={{ my: 1 }} />
-                  )}
-                </Box>
-              ))
-            ) : (
-              <Typography variant="body2" color="textSecondary">
-                No branch information available
-              </Typography>
-            )}
-          </Box>
-        </Paper>
-      </Grid>
-
-      {/* Detailed - Bank Info */}
-      <Grid item xs={12}>
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" color="primary" sx={{ mb: 1 }}>
-            Banking Information
-          </Typography>
-          {directory.bankDetails && directory.bankDetails.length > 0 ? (
-            directory.bankDetails.map((bank, idx) => (
-              <Box key={idx} sx={{ mb: 2 }}>
-                <Divider sx={{ mb: 1 }} />
-                <Grid container spacing={2}>
-                  <Grid item xs={4}>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      <strong>Bank:</strong> {bank.entityName || "-"}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      <strong>Branch:</strong> {bank.branchLocation || "-"}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      <strong>Account:</strong> {bank.accountNumber || "-"}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      <strong>IFSC Code:</strong> {bank.ifscCode || "-"}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      <strong>AD Code:</strong> {bank.adCode || "-"}
-                    </Typography>
-                    {bank.isDefault && (
-                      <Chip
-                        label="Default"
-                        color="primary"
-                        size="small"
-                        sx={{ mt: 1 }}
-                      />
-                    )}
-                  </Grid>
-                </Grid>
-              </Box>
-            ))
-          ) : (
-            <Typography variant="body2" color="textSecondary">
-              No banking information available
-            </Typography>
-          )}
-        </Paper>
-      </Grid>
     </Grid>
   </Box>
 );
@@ -354,6 +453,12 @@ const ExportDirectory = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedDirectory, setSelectedDirectory] = useState(null);
   const [viewMode, setViewMode] = useState(false);
+  const [activeTab, setActiveTab] = useState("Approved"); // "Approved" | "Pending"
+  const [attachmentDialog, setAttachmentDialog] = useState({
+    open: false,
+    directory: null,
+  });
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -362,15 +467,29 @@ const ExportDirectory = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [filteredDirectories, setFilteredDirectories] = useState([]);
 
   useEffect(() => {
     fetchDirectories();
   }, []);
 
+  const approvedCount = directories.filter(
+    (d) => d.approvalStatus === "Approved",
+  ).length;
+  const pendingCount = directories.filter(
+    (d) => d.approvalStatus === "Pending",
+  ).length;
+
   useEffect(() => {
     let filtered = directories;
+
+    // Filter by Active Tab
+    if (activeTab === "Approved") {
+      filtered = filtered.filter((dir) => dir.approvalStatus === "Approved");
+    } else if (activeTab === "Pending") {
+      filtered = filtered.filter((dir) => dir.approvalStatus === "Pending");
+    }
+
     if (searchTerm) {
       filtered = filtered.filter(
         (dir) =>
@@ -384,18 +503,14 @@ const ExportDirectory = () => {
           dir.generalInfo?.entityType
             ?.toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          // Search in bank details AD codes
           dir.bankDetails?.some((bank) =>
             bank.adCode?.toLowerCase().includes(searchTerm.toLowerCase()),
           ),
       );
     }
-    if (statusFilter) {
-      filtered = filtered.filter((dir) => dir.approvalStatus === statusFilter);
-    }
     setFilteredDirectories(filtered);
     setPage(0);
-  }, [directories, searchTerm, statusFilter]);
+  }, [directories, activeTab, searchTerm]);
 
   const fetchDirectories = async () => {
     try {
@@ -438,6 +553,29 @@ const ExportDirectory = () => {
     setOpenDialog(true);
   };
 
+  const handleViewAttachments = (directory) => {
+    setAttachmentDialog({ open: true, directory });
+  };
+
+  const handleApproveDirectly = async (directory) => {
+    try {
+      await DirectoryService.approve(directory._id);
+      showSnackbar(
+        `Directory "${directory.organization}" approved successfully!`,
+        "success",
+      );
+      if (attachmentDialog.open) {
+        setAttachmentDialog({ open: false, directory: null });
+      }
+      fetchDirectories();
+    } catch (error) {
+      showSnackbar(
+        "Error approving directory: " + (error.message || "Unknown error"),
+        "error",
+      );
+    }
+  };
+
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this directory?")) {
       try {
@@ -452,18 +590,32 @@ const ExportDirectory = () => {
 
   const handleTestEmail = async (directory) => {
     try {
-      showSnackbar(`Sending test DSR email for ${directory.organization}...`, "info");
-      const response = await axios.post(`${import.meta.env.VITE_API_STRING}/export-dsr/test-dsr-email`, {
-        exporterName: directory.organization
-      });
+      showSnackbar(
+        `Sending test DSR email for ${directory.organization}...`,
+        "info",
+      );
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_STRING}/export-dsr/test-dsr-email`,
+        {
+          exporterName: directory.organization,
+        },
+      );
       if (response.data.success) {
         showSnackbar(response.data.message, "success");
       } else {
-        showSnackbar("Failed to send test email: " + (response.data.message || "Unknown error"), "error");
+        showSnackbar(
+          "Failed to send test email: " +
+            (response.data.message || "Unknown error"),
+          "error",
+        );
       }
     } catch (error) {
       console.error("Test email error:", error);
-      showSnackbar("Error sending test email: " + (error.response?.data?.message || error.message), "error");
+      showSnackbar(
+        "Error sending test email: " +
+          (error.response?.data?.message || error.message),
+        "error",
+      );
     }
   };
 
@@ -494,7 +646,6 @@ const ExportDirectory = () => {
       dir.registrationDetails?.panNo || "-",
     ]);
 
-    // Build CSV
     const csvContent = [headers, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
       .join("\n");
@@ -519,7 +670,64 @@ const ExportDirectory = () => {
 
   return (
     <Box>
-      <Paper sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, gap: 2 }}>
+      {/* Navigation Tabs */}
+      <Paper sx={{ mb: 2, px: 2, pt: 1, pb: 0 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(e, val) => setActiveTab(val)}
+          indicatorColor="primary"
+          textColor="primary"
+          sx={{
+            "& .MuiTab-root": {
+              textTransform: "none",
+              fontWeight: 700,
+              fontSize: "0.95rem",
+              minHeight: 48,
+            },
+          }}
+        >
+          <Tab
+            value="Approved"
+            label={
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <span>Approved Directories</span>
+                <Chip
+                  label={approvedCount}
+                  color="success"
+                  size="small"
+                  sx={{ fontWeight: 700, height: 20 }}
+                />
+              </Box>
+            }
+          />
+          <Tab
+            value="Pending"
+            label={
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <span>Pending Directories</span>
+                <Chip
+                  label={pendingCount}
+                  color={pendingCount > 0 ? "warning" : "default"}
+                  size="small"
+                  sx={{ fontWeight: 700, height: 20 }}
+                />
+              </Box>
+            }
+          />
+        </Tabs>
+      </Paper>
+
+      {/* Filter and Actions Bar */}
+      <Paper
+        sx={{
+          mb: 2,
+          display: "flex",
+          justify: "space-between",
+          alignItems: "center",
+          p: 2,
+          gap: 2,
+        }}
+      >
         {/* Search */}
         <TextField
           size="small"
@@ -536,28 +744,18 @@ const ExportDirectory = () => {
           }}
         />
 
-        {/* Status Filter */}
-        <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={statusFilter}
-            label="Status"
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <MenuItem value="">All Status</MenuItem>
-            <MenuItem value="Pending">Pending</MenuItem>
-            <MenuItem value="Approved">Approved</MenuItem>
-            <MenuItem value="Rejected">Rejected</MenuItem>
-          </Select>
-        </FormControl>
-
         {/* Count */}
-        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-          {filteredDirectories.length} record{filteredDirectories.length !== 1 ? 's' : ''}
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ whiteSpace: "nowrap" }}
+        >
+          {filteredDirectories.length} record
+          {filteredDirectories.length !== 1 ? "s" : ""}
         </Typography>
 
         {/* Actions */}
-        <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+        <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
           <Button
             variant="outlined"
             startIcon={<FileDownloadIcon />}
@@ -578,7 +776,7 @@ const ExportDirectory = () => {
       </Paper>
 
       {/* Directory Table */}
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <Paper sx={{ width: "100%", overflow: "hidden" }}>
         <TableContainer sx={{ maxHeight: "70vh" }}>
           <Table stickyHeader size="small">
             <TableHead>
@@ -586,7 +784,11 @@ const ExportDirectory = () => {
                 {TABLE_COLUMNS.map((col) => (
                   <TableCell
                     key={col.key}
-                    sx={{ fontWeight: 600, minWidth: col.minWidth, background: '#f5f5f5' }}
+                    sx={{
+                      fontWeight: 600,
+                      minWidth: col.minWidth,
+                      background: "#f5f5f5",
+                    }}
                     align={col.align || "left"}
                   >
                     {col.label}
@@ -617,15 +819,15 @@ const ExportDirectory = () => {
                         fontSize: 48,
                         color: "text.secondary",
                         mb: 2,
-                        display: 'block',
-                        mx: 'auto',
+                        display: "block",
+                        mx: "auto",
                       }}
                     />
                     <Typography variant="h6" color="textSecondary">
-                      No directories found
+                      No {activeTab.toLowerCase()} directories found
                     </Typography>
                     <Typography variant="body2" color="textSecondary">
-                      Try adjusting your search filters
+                      Try adjusting your search criteria
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -699,18 +901,51 @@ const ExportDirectory = () => {
                       <Box
                         sx={{
                           display: "flex",
-                          justifyContent: "center",
+                          justify: "center",
+                          alignItems: "center",
                           gap: 0.5,
                         }}
                       >
-                        <IconButton
-                            onClick={() => handleTestEmail(directory)}
+                        {/* Option to see attachments directly from the list */}
+                        <Tooltip title="See Attachments / KYC Docs">
+                          <IconButton
+                            onClick={() => handleViewAttachments(directory)}
                             size="small"
-                            title="Send Test DSR Email"
-                            color="secondary"
+                            color="primary"
                           >
-                            <EmailIcon fontSize="small" />
+                            <AttachFileIcon fontSize="small" />
                           </IconButton>
+                        </Tooltip>
+
+                        {/* Direct Approve button for Pending tab */}
+                        {directory.approvalStatus === "Pending" && (
+                          <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            startIcon={<CheckCircleIcon fontSize="small" />}
+                            onClick={() => handleApproveDirectly(directory)}
+                            sx={{
+                              textTransform: "none",
+                              fontWeight: 700,
+                              fontSize: "0.75rem",
+                              py: 0.25,
+                              px: 1,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            Approve
+                          </Button>
+                        )}
+
+                        <IconButton
+                          onClick={() => handleTestEmail(directory)}
+                          size="small"
+                          title="Send Test DSR Email"
+                          color="secondary"
+                        >
+                          <EmailIcon fontSize="small" />
+                        </IconButton>
                         <IconButton
                           onClick={() => handleView(directory)}
                           size="small"
@@ -754,6 +989,14 @@ const ExportDirectory = () => {
           sx={{ borderTop: 1, borderColor: "divider" }}
         />
       </Paper>
+
+      {/* Attachments Preview Dialog */}
+      <AttachmentsViewDialog
+        open={attachmentDialog.open}
+        directory={attachmentDialog.directory}
+        onClose={() => setAttachmentDialog({ open: false, directory: null })}
+        onApprove={handleApproveDirectly}
+      />
 
       {/* Directory Dialog */}
       <Dialog

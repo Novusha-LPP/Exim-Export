@@ -23,15 +23,12 @@ const formatUnitPrice = (v) => {
   if (v === "" || v == null || v === 0) return "";
   const num = Number(v);
   if (isNaN(num)) return "";
-  // Check up to 6 decimal places to prevent rounding drift on recalculation (e.g. 25676.70 / 14380 = 1.785584)
-  const fixed6 = num.toFixed(6);
-  if (fixed6.endsWith("00")) {
+  // Check up to 5 decimal places (Customs / ICEGATE allows at most 5 decimal places)
+  const fixed5 = num.toFixed(5);
+  if (fixed5.endsWith("0")) {
     return num.toFixed(4);
   }
-  if (fixed6.endsWith("0")) {
-    return num.toFixed(5);
-  }
-  return fixed6;
+  return fixed5;
 };
 const formatAmount = (v) => {
   if (v === "" || v == null || v === 0) return "";

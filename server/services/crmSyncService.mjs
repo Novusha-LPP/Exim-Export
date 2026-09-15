@@ -47,6 +47,31 @@ function determineCrmStage(enquiry, existingOppStage) {
   return "opportunity";
 }
 
+const isDateReached = (dateVal) => {
+  if (!dateVal) return false;
+  let dateObj = null;
+  if (dateVal instanceof Date) {
+    dateObj = dateVal;
+  } else if (typeof dateVal === "string") {
+    const trimmed = dateVal.trim();
+    if (!trimmed) return false;
+    if (/^\d{1,2}[-/.]\d{1,2}[-/.]\d{4}$/.test(trimmed)) {
+      const parts = trimmed.split(/[-/.]/);
+      dateObj = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    } else if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(trimmed)) {
+      dateObj = new Date(trimmed);
+    } else {
+      dateObj = new Date(trimmed);
+    }
+  }
+  if (!dateObj || isNaN(dateObj.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const targetDate = new Date(dateObj);
+  targetDate.setHours(0, 0, 0, 0);
+  return targetDate.getTime() <= today.getTime();
+};
+
 // ─── Compute the freight pipeline stage (for the UI Badge) ───────────────────
 function computeFreightPipelineStage(enquiry) {
   const isConverted =
@@ -59,18 +84,18 @@ function computeFreightPipelineStage(enquiry) {
     return "Enquiry";
   }
 
-  // Operational stages post-conversion
+  // Operational stages post-conversion (transitions occur on execution date <= today)
   if (!enquiry.draft_bl_approved) return "Draft BL";
-  if (!enquiry.sailing_date) return "SOB";
+  if (!enquiry.sailing_date || !isDateReached(enquiry.sailing_date)) return "SOB";
   const hasBilling = !!(
-    (enquiry.billing_details?.agency_bill_no && enquiry.billing_details?.agency_bill_date) ||
-    (enquiry.billing_details?.reimbursement_bill_no && enquiry.billing_details?.reimbursement_bill_date) ||
+    (enquiry.billing_details?.agency_bill_no && enquiry.billing_details?.agency_bill_date && isDateReached(enquiry.billing_details.agency_bill_date)) ||
+    (enquiry.billing_details?.reimbursement_bill_no && enquiry.billing_details?.reimbursement_bill_date && isDateReached(enquiry.billing_details.reimbursement_bill_date)) ||
     enquiry.billing_completed ||
     enquiry.send_for_billing
   );
   if (!hasBilling) return "Billing";
-  if (!enquiry.arrival_date) return "ETA Pending";
-  if (!enquiry.final_delivery_date) return "Delivery";
+  if (!enquiry.arrival_date || !isDateReached(enquiry.arrival_date)) return "ETA Pending";
+  if (!enquiry.final_delivery_date || !isDateReached(enquiry.final_delivery_date)) return "Delivery";
   return "Completed";
 }
 

@@ -1,0 +1,383 @@
+[
+  {
+    "_id": "69f08f8f9e4c2bef79f557ce",
+    "organization": "VIBRANT COTFAB PVT LTD",
+    "approvalStatus": "Pending",
+    "generalInfo": {
+      "entityType": "Private Limited",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "0815008325",
+      "panNo": "AAECV5055H",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "AHMEDABAD",
+        "branchCode": "0",
+        "gstNo": "24AAECV5055H1ZC",
+        "address": "201, S.T., ONE-42 ,  AMBLI BOPAL ROAD , ",
+        "city": "AHMEDABAD",
+        "state": "GUJARAT",
+        "postalCode": "380054",
+        "country": "India",
+        "mobile": "9879615793",
+        "email": "amitjindal533@gmail.com",
+        "_id": "69f08f8f9e4c2bef79f557cf"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "69f08f8f9e4c2bef79f557d0"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "STATE BANK OF INDIA",
+        "ifscCode": "",
+        "branchLocation": "ahmedabad",
+        "accountNumber": "38076283308",
+        "adCode": "0020438",
+        "isDefault": true,
+        "_id": "69f08f8f9e4c2bef79f557d1"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-04-28T10:44:31.075Z",
+    "updatedAt": "2026-04-28T11:58:12.808Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a3b94daac5d3b09308e9346",
+    "organization": "OMSARA INDUSTRIES PRIVATE LIMITED",
+    "approvalStatus": "Pending",
+    "generalInfo": {
+      "entityType": "Private Limited",
+      "exporterType": "Marchant Exporter",
+      "shipperConsignee": "consignee"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/certificateOfIncorporation/KYC-DOCUMENTS-(2)_compressed-1782289556186.pdf",
+            "name": "KYC DOCUMENTS (2)_compressed.pdf",
+            "size": 1363101,
+            "uploadedAt": "2026-06-24T08:10:56.032Z"
+          }
+        ]
+      },
+      "memorandumOfAssociation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/memorandumOfAssociation/COMPANY-PIC-GST-1782289572092.jpeg",
+            "name": "COMPANY PIC GST.jpeg",
+            "size": 147011,
+            "uploadedAt": "2026-06-24T08:11:11.934Z"
+          }
+        ]
+      },
+      "articlesOfAssociation": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/articlesOfAssociation/ankitbhai-adharcard-self-sign_compressed-1782289578099.pdf",
+            "name": "ankitbhai adharcard self sign_compressed.pdf",
+            "size": 191907,
+            "uploadedAt": "2026-06-24T08:11:17.930Z"
+          }
+        ]
+      },
+      "powerOfAttorney": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/powerOfAttorney/kyc-(1)-1782289586511.pdf",
+            "name": "kyc (1).pdf",
+            "size": 482351,
+            "uploadedAt": "2026-06-24T08:11:26.386Z"
+          }
+        ]
+      },
+      "copyOfPanAllotment": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/copyOfPanAllotment/PAN-CARD-1782289599805.pdf",
+            "name": "PAN CARD.pdf",
+            "size": 316973,
+            "uploadedAt": "2026-06-24T08:11:39.635Z"
+          }
+        ]
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/copyOfTelephoneBill/LIGHT-BILL-1782289609933.pdf",
+            "name": "LIGHT BILL.pdf",
+            "size": 185246,
+            "uploadedAt": "2026-06-24T08:11:49.758Z"
+          }
+        ]
+      },
+      "gstRegistrationCopy": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/gstRegistrationCopy/GST-1782289618416.pdf",
+            "name": "GST.pdf",
+            "size": 217147,
+            "uploadedAt": "2026-06-24T08:11:58.257Z"
+          }
+        ]
+      },
+      "balanceSheet": {
+        "uploaded": true,
+        "files": [
+          {
+            "url": "https://exim-images-p1.s3.ap-south-1.amazonaws.com/kyc-documents/balanceSheet/IEC-1782289623019.pdf",
+            "name": "IEC.pdf",
+            "size": 268134,
+            "uploadedAt": "2026-06-24T08:12:02.873Z"
+          }
+        ]
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "AAECO0416D",
+      "panNo": "AAECO0416D",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN BRANCH",
+        "branchCode": "0",
+        "gstNo": "24AAECO0416D1Z4",
+        "address": "PLOT NO. 250, GROUND FLOOR, RUDRA INDUSTRIAL PARK,, B/H, NK ESTATE,  DHAMATVAN ROAD, BAKROL-BUJRANG ROAD, ",
+        "city": "AHMEDABAD ",
+        "state": "GUJARAT",
+        "postalCode": "382430",
+        "country": "India",
+        "mobile": "",
+        "email": "",
+        "_id": "6a3b94daac5d3b09308e9347"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "6a3b94daac5d3b09308e9348"
+      }
+    ],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "KARUR VYSYA BANK",
+        "ifscCode": "",
+        "branchLocation": "KARUR VYSYA BANK",
+        "accountNumber": "2212149000000010",
+        "adCode": "6100119",
+        "isDefault": true,
+        "_id": "6a3b94daac5d3b09308e9349"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-06-24T08:27:06.338Z",
+    "updatedAt": "2026-06-24T10:57:59.402Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a8c1c6960a2fe4ecec76dc6",
+    "organization": "KESAR INDUSTRIES",
+    "approvalStatus": "Pending",
+    "generalInfo": {
+      "entityType": "Partner",
+      "exporterType": "Manufacturer Exporter",
+      "shipperConsignee": "shipper"
+    },
+    "kycDocuments": {
+      "certificateOfIncorporation": {
+        "uploaded": false,
+        "files": []
+      },
+      "memorandumOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "articlesOfAssociation": {
+        "uploaded": false,
+        "files": []
+      },
+      "powerOfAttorney": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfPanAllotment": {
+        "uploaded": false,
+        "files": []
+      },
+      "copyOfTelephoneBill": {
+        "uploaded": false,
+        "files": []
+      },
+      "gstRegistrationCopy": {
+        "uploaded": false,
+        "files": []
+      },
+      "balanceSheet": {
+        "uploaded": false,
+        "files": []
+      },
+      "msmeCertificate": {
+        "uploaded": false,
+        "files": []
+      }
+    },
+    "registrationDetails": {
+      "ieCode": "ABFFK8012Q",
+      "panNo": "ABFFK8012Q",
+      "aeoCode": "",
+      "msmeRegistered": false
+    },
+    "branchInfo": [
+      {
+        "branchName": "MAIN",
+        "branchCode": "0",
+        "gstNo": "24ABFFK8012Q1Z0",
+        "address": "B-61 , GOPAL CHARAN SOPAN INDUSTRIAL ESTATE, BAKROL BUJRANG ROAD, BAKROL, AHMEDABAD, , , ",
+        "city": "AHMEDABAD",
+        "state": "GUJARAT",
+        "postalCode": "382430",
+        "country": "India",
+        "mobile": "",
+        "email": "",
+        "_id": "6a8c1c6960a2fe4ecec76dc7"
+      }
+    ],
+    "billingCurrency": {
+      "defaultCurrency": "INR",
+      "defaultBillTypes": []
+    },
+    "authorizedSignatory": [
+      {
+        "name": "",
+        "designation": "",
+        "mobile": "",
+        "email": "",
+        "_id": "6a8c1c6960a2fe4ecec76dc8"
+      }
+    ],
+    "selfSealValidity": [],
+    "accountCreditInfo": {
+      "creditLimit": null,
+      "unlimitedEnabled": false,
+      "creditPeriod": null
+    },
+    "bankDetails": [
+      {
+        "entityName": "",
+        "ifscCode": "",
+        "branchLocation": "",
+        "accountNumber": "",
+        "adCode": "",
+        "isDefault": false,
+        "_id": "6a8c1c6960a2fe4ecec76dc9"
+      }
+    ],
+    "notes": "",
+    "aeoDetails": {
+      "aeoCountry": "India"
+    },
+    "customHouse": [],
+    "affiliateBranches": [],
+    "history": [],
+    "createdAt": "2026-08-24T10:26:50.000Z",
+    "updatedAt": "2026-08-24T10:26:50.000Z",
+    "__v": 0
+  }
+]

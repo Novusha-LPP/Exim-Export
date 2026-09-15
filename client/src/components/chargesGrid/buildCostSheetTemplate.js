@@ -154,7 +154,7 @@ export const buildCostSheetTemplate = (job = {}, charges = [], logoSrc = '') => 
           </td>
           <td style="width: 84%; text-align: center; vertical-align: middle; border: none; padding: 0;">
             <h2 style="margin: 0; font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2;">SURAJ FORWARDERS PVT LTD</h2>
-            <div style="font-size: 10px; font-weight: bold; margin-top: 1px;">Branch :- FORWARDING BRANCH</div>
+            <div style="font-size: 10px; font-weight: bold; margin-top: 1px;">Branch - FORWARDING BRANCH</div>
             <div style="font-size: 12px; font-weight: bold; text-decoration: underline; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px;">Cost Sheet</div>
           </td>
         </tr>
@@ -164,47 +164,47 @@ export const buildCostSheetTemplate = (job = {}, charges = [], logoSrc = '') => 
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 8.5px; border: 1.5px solid #000; table-layout: fixed;">
         <tbody>
           <tr>
-            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Shipment No.</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.job_no || job.jobNumber || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">dt</div><div style="line-height: 1.2; margin-top: 1px;">: ${formatDate(job.job_date || job.jobDate)}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Gross Wt./Unit</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.gross_weight_kg || ""} ${job.gross_weight_unit || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Movement Type</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.movement_type || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Shipper Name</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.shipper || job.exporter || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Vessel</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.vessel_name || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Shipment No.</div><div style="line-height: 1.2; margin-top: 1px;">${job.job_no || job.jobNumber || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">dt</div><div style="line-height: 1.2; margin-top: 1px;">${formatDate(job.job_date || job.jobDate)}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Gross Wt./Unit</div><div style="line-height: 1.2; margin-top: 1px;">${job.gross_weight_kg || ""} ${job.gross_weight_unit || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Movement Type</div><div style="line-height: 1.2; margin-top: 1px;">${job.movement_type || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Shipper Name</div><div style="line-height: 1.2; margin-top: 1px;">${job.shipper || job.exporter || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; width: 16.66%; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Vessel</div><div style="line-height: 1.2; margin-top: 1px;">${job.vessel_name || ""}</div></td>
           </tr>
           <tr>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Booking No.</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.booking_no || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">dt</div><div style="line-height: 1.2; margin-top: 1px;">: ${formatDate(job.booking_date)}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Chg. Wt./Unit</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.chargeable_weight || ""} ${job.chargeable_weight_unit || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Place of Receipt</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.place_of_receipt || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Consignee Name</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.consignees?.[0]?.consignee_name || job.consignee_name || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Voyage</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.voyage_no || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Booking No.</div><div style="line-height: 1.2; margin-top: 1px;">${job.booking_no || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">dt</div><div style="line-height: 1.2; margin-top: 1px;">${formatDate(job.booking_date)}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Chg. Wt./Unit</div><div style="line-height: 1.2; margin-top: 1px;">${job.chargeable_weight || ""} ${job.chargeable_weight_unit || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Place of Receipt</div><div style="line-height: 1.2; margin-top: 1px;">${job.place_of_receipt || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Consignee Name</div><div style="line-height: 1.2; margin-top: 1px;">${job.consignees?.[0]?.consignee_name || job.consignee_name || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Voyage</div><div style="line-height: 1.2; margin-top: 1px;">${job.voyage_no || ""}</div></td>
           </tr>
           <tr>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;" colspan="2"><div style="font-weight: bold; color: #111; line-height: 1.15;">Volume/Unit</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.volume_cbm || ""} ${job.volume_unit || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;" colspan="2"><div style="font-weight: bold; color: #111; line-height: 1.15;">Loading Port</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.port_of_loading || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Booking Thru</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.booking_thru || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">ETA (Dest)</div><div style="line-height: 1.2; margin-top: 1px;">: ${formatDate(job.eta_date)}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;" colspan="2"><div style="font-weight: bold; color: #111; line-height: 1.15;">Volume/Unit</div><div style="line-height: 1.2; margin-top: 1px;">${job.volume_cbm || ""} ${job.volume_unit || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;" colspan="2"><div style="font-weight: bold; color: #111; line-height: 1.15;">Loading Port</div><div style="line-height: 1.2; margin-top: 1px;">${job.port_of_loading || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Booking Thru</div><div style="line-height: 1.2; margin-top: 1px;">${job.booking_thru || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">ETA (Dest)</div><div style="line-height: 1.2; margin-top: 1px;">${formatDate(job.eta_date)}</div></td>
           </tr>
           <tr>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">BL No</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.mbl_no || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">dt</div><div style="line-height: 1.2; margin-top: 1px;">: ${formatDate(job.mbl_date)}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">No of Pkgs</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.total_no_of_pkgs || ""} ${job.package_unit || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Discharge Port</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.port_of_discharge || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Sales Person</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.sales_person || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">ETD</div><div style="line-height: 1.2; margin-top: 1px;">: ${formatDate(job.sailing_date)}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">BL No</div><div style="line-height: 1.2; margin-top: 1px;">${job.mbl_no || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">dt</div><div style="line-height: 1.2; margin-top: 1px;">${formatDate(job.mbl_date)}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">No of Pkgs</div><div style="line-height: 1.2; margin-top: 1px;">${job.total_no_of_pkgs || ""} ${job.package_unit || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Discharge Port</div><div style="line-height: 1.2; margin-top: 1px;">${job.port_of_discharge || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Sales Person</div><div style="line-height: 1.2; margin-top: 1px;">${job.sales_person || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">ETD</div><div style="line-height: 1.2; margin-top: 1px;">${formatDate(job.sailing_date)}</div></td>
           </tr>
           <tr>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">HBL No</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.hbl_no || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">dt</div><div style="line-height: 1.2; margin-top: 1px;">: ${formatDate(job.hbl_date)}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Volume Weight</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.volume_weight || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Delivery</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.place_of_delivery || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Shipping line</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.shipping_line_airline || ""}</div></td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Freight Type</div><div style="line-height: 1.2; margin-top: 1px;">: ${job.freight_type || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">HBL No</div><div style="line-height: 1.2; margin-top: 1px;">${job.hbl_no || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">dt</div><div style="line-height: 1.2; margin-top: 1px;">${formatDate(job.hbl_date)}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Volume Weight</div><div style="line-height: 1.2; margin-top: 1px;">${job.volume_weight || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Delivery</div><div style="line-height: 1.2; margin-top: 1px;">${job.place_of_delivery || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Shipping line</div><div style="line-height: 1.2; margin-top: 1px;">${job.shipping_line_airline || ""}</div></td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><div style="font-weight: bold; color: #111; line-height: 1.15;">Freight Type</div><div style="line-height: 1.2; margin-top: 1px;">${job.freight_type || ""}</div></td>
           </tr>
           <tr>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;" colspan="2"><b>Shipment Terms</b> : ${job.shipment_terms || ""}</td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><b>Cargo Type</b> : ${job.cargo_type || ""}</td>
-            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;" colspan="3"><b>Container Qty & Type</b> : ${job.container_qty_type || ""}</td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;" colspan="2"><b>Shipment Terms</b> ${job.shipment_terms || ""}</td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;"><b>Cargo Type</b> ${job.cargo_type || ""}</td>
+            <td style="padding: 4px 5px; border: 1px solid #999; vertical-align: middle;" colspan="3"><b>Container Qty & Type</b> ${job.container_qty_type || ""}</td>
           </tr>
         </tbody>
       </table>
@@ -228,7 +228,7 @@ export const buildCostSheetTemplate = (job = {}, charges = [], logoSrc = '') => 
           ${operationRowsHtml}
           <!-- Totals Row -->
           <tr style="background: #f8fafc; font-weight: bold; border-top: 1.5px solid #000;">
-            <td style="padding: 5px 5px; border: 1px solid #999; text-align: left; vertical-align: middle; font-size: 9px;" colspan="2">Total :</td>
+            <td style="padding: 5px 5px; border: 1px solid #999; text-align: left; vertical-align: middle; font-size: 9px;" colspan="2">Total</td>
             <td style="padding: 5px 5px; border: 1px solid #999; text-align: right; vertical-align: middle;" colspan="2"></td>
             <td style="padding: 5px 5px; border: 1px solid #999; text-align: right; vertical-align: middle; font-size: 9px;">${formatNumber(totalRevenueINR)}</td>
             <td style="padding: 5px 5px; border: 1px solid #999; text-align: right; vertical-align: middle;" colspan="2"></td>

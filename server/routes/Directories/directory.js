@@ -201,6 +201,18 @@ router.get("/api/directory/:id", async (req, res) => {
 // POST /api/directory - Create new directory or update existing if organization name matches case-insensitively
 router.post("/api/directory/", async (req, res) => {
   try {
+    const branchInfo = req.body.branchInfo || [];
+    const authSig = req.body.authorizedSignatory || [];
+    const hasBranchEmail = branchInfo.some((b) => b && b.email && String(b.email).trim().length > 0);
+    const hasSigEmail = authSig.some((s) => s && s.email && String(s.email).trim().length > 0);
+
+    if (!hasBranchEmail && !hasSigEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Email ID is compulsory when creating an organization directory",
+      });
+    }
+
     const orgName = (req.body.organization || "").trim();
     if (orgName) {
       const existing = await Directory.findOne({
@@ -239,6 +251,20 @@ router.post("/api/directory/", async (req, res) => {
 // PUT /api/directory/:id - Update directory
 router.put("/api/directory/:id", async (req, res) => {
   try {
+    if (req.body.branchInfo || req.body.authorizedSignatory) {
+      const branchInfo = req.body.branchInfo || [];
+      const authSig = req.body.authorizedSignatory || [];
+      const hasBranchEmail = branchInfo.some((b) => b && b.email && String(b.email).trim().length > 0);
+      const hasSigEmail = authSig.some((s) => s && s.email && String(s.email).trim().length > 0);
+
+      if (!hasBranchEmail && !hasSigEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "Email ID is compulsory when updating an organization directory",
+        });
+      }
+    }
+
     const directory = await Directory.findByIdAndUpdate(
       req.params.id,
       req.body,

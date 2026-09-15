@@ -144,7 +144,9 @@ router.get("/freight-enquiries", async (req, res) => {
           exporter: 1,
           shipped_on_board_date: 1,
           sailing_date: 1,
-          "operations.statusDetails.billing_details": 1,
+          operations: 1,
+          send_for_billing: 1,
+          billing_completed: 1,
           arrival_date: 1,
           final_delivery_date: 1,
           booking_no: 1,
@@ -183,10 +185,32 @@ router.get("/freight-enquiries", async (req, res) => {
         }
       ).lean();
       const jobMap = {};
-      exJobs.forEach(j => { jobMap[j.job_no] = j; });
+
+      // Helper to score a job by how much billing data it has (higher = better)
+      const jobBillingScore = (j) => {
+        let score = 0;
+        if (j.send_for_billing) score += 10;
+        if (j.billing_completed) score += 10;
+        const opBillings = (j.operations || []).flatMap(op => op.statusDetails || []).map(sd => sd.billing_details);
+        const hasOpBilling = opBillings.some(b => b && (b.agency_bill_no || b.agency_bill_date || b.reimbursement_bill_no || b.reimbursement_bill_date));
+        if (hasOpBilling) score += 5;
+        return score;
+      };
+
+      exJobs.forEach(j => { 
+        if (j.job_no) {
+          const key = j.job_no.trim();
+          // Prefer the job with more billing data when there are duplicates
+          if (!jobMap[key] || jobBillingScore(j) > jobBillingScore(jobMap[key])) {
+            jobMap[key] = j;
+            jobMap[j.job_no] = j;
+          }
+        }
+      });
+
       for (const e of dataList) {
         if (isConverted(e)) {
-          const job = (e.success_no && jobMap[e.success_no]) || (e.source_job_no && jobMap[e.source_job_no]) || (e.enquiry_no && jobMap[e.enquiry_no]);
+          const job = (e.success_no && jobMap[e.success_no]) || (e.source_job_no && jobMap[e.source_job_no]) || (e.enquiry_no && jobMap[e.enquiry_no]) || (e.job_no && jobMap[e.job_no]);
           if (job) {
             if (job.place_of_receipt) e.place_of_receipt = job.place_of_receipt;
             if (job.hbl_no) {
@@ -268,19 +292,53 @@ router.get("/freight-enquiries", async (req, res) => {
               e.hbl_no = job.hbl_no;
             }
 
-            // Merge billing submission details
-            if (job.operations?.[0]?.statusDetails?.[0]?.billing_details) {
-              e.billing_details = job.operations[0].statusDetails[0].billing_details;
+            // Merge billing submission details and status
+            if (job.send_for_billing) e.send_for_billing = job.send_for_billing;
+            if (job.billing_completed) e.billing_completed = job.billing_completed;
+
+            const opBilling = job.operations?.flatMap(op => op.statusDetails || [])
+              .find(sd => sd.billing_details?.agency_bill_no || sd.billing_details?.reimbursement_bill_no || sd.billing_details?.agency_bill_date || sd.billing_details?.reimbursement_bill_date)?.billing_details;
+            if (opBilling) {
+              e.billing_details = { ...e.billing_details, ...opBilling };
+            } else if (job.operations?.[0]?.statusDetails?.[0]?.billing_details) {
+              e.billing_details = { ...e.billing_details, ...job.operations[0].statusDetails[0].billing_details };
             }
           }
         }
       }
     }
 
+    // Helper to verify if a milestone date has been executed (i.e. date is reached on or before today)
+    const isDateReached = (dateVal) => {
+      if (!dateVal) return false;
+      let dateObj = null;
+      if (dateVal instanceof Date) {
+        dateObj = dateVal;
+      } else if (typeof dateVal === "string") {
+        const trimmed = dateVal.trim();
+        if (!trimmed) return false;
+        if (/^\d{1,2}[-/.]\d{1,2}[-/.]\d{4}$/.test(trimmed)) {
+          const parts = trimmed.split(/[-/.]/);
+          dateObj = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        } else if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(trimmed)) {
+          dateObj = new Date(trimmed);
+        } else {
+          dateObj = new Date(trimmed);
+        }
+      }
+      if (!dateObj || isNaN(dateObj.getTime())) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const targetDate = new Date(dateObj);
+      targetDate.setHours(0, 0, 0, 0);
+      return targetDate.getTime() <= today.getTime();
+    };
+
     // ─── Strict sequential pipeline stage classifier ───────────────────────────
     // Each stage requires ALL prior gates to be fully satisfied.
-    // A job is "locked" in a stage until its OWN condition is met.
+    // A job is "locked" in a stage until its OWN execution condition/date is met.
     // e.g. even if ETD is present, if draft is not approved → stays in Draft BL.
+    // Stage transitions happen on the execution date (date <= today).
     const getPipelineStage = (e) => {
       if (!isConverted(e)) {
         if (e.status === "Rejected") return "Rejected";
@@ -291,28 +349,28 @@ router.get("/freight-enquiries", async (req, res) => {
       const draftApproved = e.draft_bl_approved === true;
       if (!draftApproved) return "Draft BL";
 
-      // Gate 2: SOB – must have ETD (sailing_date) AFTER draft approved
-      const sboDate = !!(e.sailing_date);
+      // Gate 2: SOB – must have ETD (sailing_date) reached on or before today
+      const sboDate = !!(e.sailing_date) && isDateReached(e.sailing_date);
       if (!sboDate) return "SOB";
 
-      // Gate 3: Billing – cleared if at least one bill (agency or reimbursement) or billing submission is completed
+      // Gate 3: Billing – cleared if at least one bill or submission completed
       const hasBillingDetails = !!(
-        (e.billing_details?.agency_bill_no && e.billing_details?.agency_bill_date) ||
-        (e.billing_details?.reimbursement_bill_no && e.billing_details?.reimbursement_bill_date) ||
+        (e.billing_details?.agency_bill_no && e.billing_details?.agency_bill_date && isDateReached(e.billing_details.agency_bill_date)) ||
+        (e.billing_details?.reimbursement_bill_no && e.billing_details?.reimbursement_bill_date && isDateReached(e.billing_details.reimbursement_bill_date)) ||
         e.billing_completed ||
         e.send_for_billing
       );
       if (!hasBillingDetails) return "Billing";
 
-      // Gate 4: ETA Pending – billing done, waiting for final arrival date
-      const hasArrivalDate = !!(e.arrival_date);
+      // Gate 4: ETA Pending – billing done, waiting for final arrival date to be reached
+      const hasArrivalDate = !!(e.arrival_date) && isDateReached(e.arrival_date);
       if (!hasArrivalDate) return "ETA Pending";
 
-      // Gate 5: Delivery – arrival date present, waiting for final delivery date
-      const hasFinalDelivery = !!(e.final_delivery_date);
+      // Gate 5: Delivery – arrival date reached, waiting for final delivery date to be reached
+      const hasFinalDelivery = !!(e.final_delivery_date) && isDateReached(e.final_delivery_date);
       if (!hasFinalDelivery) return "Delivery";
 
-      // Gate 6: Completed – all gates passed
+      // Gate 6: Completed – all gates passed on execution date
       return "Completed";
     };
 
@@ -534,7 +592,7 @@ router.post("/freight-enquiries", async (req, res) => {
 
     const isConverted = req.body.status === "Converted" || req.body.is_success || !!source_job_no;
     const enquiry_no = await getNextNo("enquiry_no", "FF-ENQ");
-    let success_no = null;
+    let success_no = undefined;
 
     if (isConverted) {
       success_no = await getNextNo("success_no", "FF-SUC");
@@ -551,22 +609,48 @@ router.post("/freight-enquiries", async (req, res) => {
       ? buildBlDetailsFromExportJob(sourceJob, req.body.bl_details || {})
       : (req.body.bl_details || {});
 
-    const newEnquiry = new FreightEnquiryModel({
+    // Sanitize consignment_type & goods_stuffed
+    let rawConsignment = String(req.body.consignment_type || sourceJob?.consignmentType || "").toUpperCase();
+    if (!["LCL", "FCL", "AIR"].includes(rawConsignment)) {
+      rawConsignment = "";
+    }
+
+    let rawGoodsStuffed = String(req.body.goods_stuffed || (sourceJob?.goods_stuffed_at === "DOCK" ? "DOCK STUFFED" : (sourceJob?.goods_stuffed_at === "FACTORY" ? "FACTORY STUFFED" : ""))).toUpperCase();
+    if (rawGoodsStuffed.includes("FACTORY")) rawGoodsStuffed = "FACTORY STUFFED";
+    else if (rawGoodsStuffed.includes("DOCK")) rawGoodsStuffed = "DOCK STUFFED";
+    else rawGoodsStuffed = "";
+
+    const enquiryData = {
       ...req.body,
       enquiry_no,
-      success_no,
+      enquiry_date: req.body.enquiry_date || new Date().toISOString().split("T")[0],
       status: isConverted ? "Converted" : (req.body.status || "Open"),
       organization_name: req.body.organization_name || sourceJob?.exporter || sourceJob?.organization_name || "",
       gross_weight: req.body.gross_weight || sourceJob?.gross_weight_kg || sourceJob?.gross_weight || "",
       net_weight: req.body.net_weight || sourceJob?.net_weight_kg || sourceJob?.net_weight || "",
       no_packages: req.body.no_packages || sourceJob?.total_no_of_pkgs || sourceJob?.no_packages || "",
-      consignment_type: req.body.consignment_type || sourceJob?.consignmentType || "",
-      goods_stuffed: req.body.goods_stuffed || (sourceJob?.goods_stuffed_at === "DOCK" ? "DOCK STUFFED" : (sourceJob?.goods_stuffed_at === "FACTORY" ? "FACTORY STUFFED" : "")),
+      consignment_type: rawConsignment,
+      goods_stuffed: rawGoodsStuffed,
       container_size: req.body.container_size || sourceJob?.containers?.[0]?.type || "",
       containers: req.body.containers?.length > 0 ? req.body.containers : (sourceJob?.containers || []),
       bl_details
-    });
+    };
 
+    if (success_no) {
+      enquiryData.success_no = success_no;
+    } else {
+      delete enquiryData.success_no;
+    }
+
+    if (!enquiryData.rejected_no) {
+      delete enquiryData.rejected_no;
+    }
+
+    // Unset any empty strings or nulls for sparse unique index fields
+    if (enquiryData.success_no === null || enquiryData.success_no === "") delete enquiryData.success_no;
+    if (enquiryData.rejected_no === null || enquiryData.rejected_no === "") delete enquiryData.rejected_no;
+
+    const newEnquiry = new FreightEnquiryModel(enquiryData);
     const savedEnquiry = await newEnquiry.save();
 
     // AUTO-CONVERSION: Create a Job entry if status is Converted
@@ -671,6 +755,7 @@ Freight Forwarding Team
 
     res.status(201).json({ success: true, data: savedEnquiry });
   } catch (error) {
+    console.error("Error in POST /freight-enquiries:", error);
     res.status(400).json({ success: false, message: error.message });
   }
 });
@@ -736,6 +821,22 @@ router.put("/freight-enquiries/:id", async (req, res) => {
     if (req.body.status === "Rejected" && !existing.rejected_no) {
       updates.rejected_no = await getNextNo("rejected_no", "FF-REJ");
     }
+
+    if (updates.consignment_type !== undefined) {
+      let rawConsignment = String(updates.consignment_type || "").toUpperCase();
+      if (!["LCL", "FCL", "AIR"].includes(rawConsignment)) rawConsignment = "";
+      updates.consignment_type = rawConsignment;
+    }
+    if (updates.goods_stuffed !== undefined) {
+      let rawGoodsStuffed = String(updates.goods_stuffed || "").toUpperCase();
+      if (rawGoodsStuffed.includes("FACTORY")) rawGoodsStuffed = "FACTORY STUFFED";
+      else if (rawGoodsStuffed.includes("DOCK")) rawGoodsStuffed = "DOCK STUFFED";
+      else rawGoodsStuffed = "";
+      updates.goods_stuffed = rawGoodsStuffed;
+    }
+
+    if (!updates.success_no) delete updates.success_no;
+    if (!updates.rejected_no) delete updates.rejected_no;
 
     const updated = await FreightEnquiryModel.findByIdAndUpdate(
       req.params.id,

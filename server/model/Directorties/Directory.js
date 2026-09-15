@@ -25,6 +25,8 @@ const documentUploadSchema = new Schema(
 // Updated KYC Documents schema
 const kycDocumentsSchema = new Schema(
   {
+    chaAppointmentForm: { type: documentUploadSchema, default: () => ({}) },
+    other: { type: documentUploadSchema, default: () => ({}) },
     certificateOfIncorporation: {
       type: documentUploadSchema,
       default: () => ({}),

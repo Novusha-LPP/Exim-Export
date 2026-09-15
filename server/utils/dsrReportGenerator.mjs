@@ -151,13 +151,17 @@ export const extractScrollAndEgmInfo = (job) => {
  * @param {boolean} onlyPending - If true, filter out completed/cancelled jobs
  * @returns {Promise<{ html: string, jobCount: number }>}
  */
-export const generateDSRHTMLTable = async (exporter, onlyPending = true) => {
+export const generateDSRHTMLTable = async (exporter, onlyPending = true, year = "") => {
   try {
     const isAll = String(exporter || "").toLowerCase() === "all";
     const filter = { $and: [] };
 
     if (!isAll && exporter) {
       filter.$and.push({ exporter: { $regex: `^${exporter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" } });
+    }
+
+    if (year && year !== "" && year.toLowerCase() !== "all") {
+      filter.$and.push({ year });
     }
 
     filter.$and.push({ job_no: { $regex: "^(?!GEN|FF).*", $options: "i" } });

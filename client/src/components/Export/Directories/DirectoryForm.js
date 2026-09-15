@@ -76,8 +76,9 @@ const validationSchema = Yup.object({
         country: Yup.string().max(100).required("Country is required"),
         mobile: Yup.string().matches(/^\d{10}$/, "Mobile must be 10 digits"),
         email: Yup.string()
+          .required("Email ID is required")
           .test("emails", "One or more email addresses are invalid", (value) => {
-            if (!value) return true;
+            if (!value) return false;
             const emails = value.split(",").map((e) => e.trim());
             const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
             return emails.every((email) => emailRegex.test(email));
@@ -88,51 +89,14 @@ const validationSchema = Yup.object({
     .min(1, "At least one branch is required"),
 
   kycDocuments: Yup.object({
-    certificateOfIncorporation: Yup.object({
+    chaAppointmentForm: Yup.object({
       uploaded: Yup.boolean(),
       files: Yup.array(),
     }),
-    memorandumOfAssociation: Yup.object({
+    other: Yup.object({
       uploaded: Yup.boolean(),
       files: Yup.array(),
     }),
-    articlesOfAssociation: Yup.object({
-      uploaded: Yup.boolean(),
-      files: Yup.array(),
-    }),
-    powerOfAttorney: Yup.object({
-      uploaded: Yup.boolean(),
-      files: Yup.array(),
-    }),
-    copyOfPanAllotment: Yup.object({
-      uploaded: Yup.boolean(),
-      files: Yup.array(),
-    }),
-    copyOfTelephoneBill: Yup.object({
-      uploaded: Yup.boolean(),
-      files: Yup.array(),
-    }),
-    gstRegistrationCopy: Yup.object({
-      uploaded: Yup.boolean(),
-      files: Yup.array(),
-    }),
-    balanceSheet: Yup.object({
-      uploaded: Yup.boolean(),
-      files: Yup.array(),
-    }),
-    msmeCertificate: Yup.object({
-      uploaded: Yup.boolean(),
-      files: Yup.array(),
-    }),
-  }).when("registrationDetails", {
-    is: (registrationDetails) => registrationDetails?.msmeRegistered === true,
-    then: (schema) =>
-      schema.shape({
-        msmeCertificate: Yup.object({
-          uploaded: Yup.boolean().isTrue("MSME Certificate is required"),
-          files: Yup.array().min(1, "MSME Certificate is required"),
-        }),
-      }),
   }),
 
   billingCurrency: Yup.object({
@@ -188,48 +152,20 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
       msmeRegistered: directory?.registrationDetails?.msmeRegistered || false,
     },
     kycDocuments: {
-      certificateOfIncorporation: {
+      chaAppointmentForm: {
         uploaded:
+          directory?.kycDocuments?.chaAppointmentForm?.uploaded ||
           directory?.kycDocuments?.certificateOfIncorporation?.uploaded ||
           false,
-        files: directory?.kycDocuments?.certificateOfIncorporation?.files || [],
+        files:
+          directory?.kycDocuments?.chaAppointmentForm?.files ||
+          directory?.kycDocuments?.certificateOfIncorporation?.files ||
+          [],
       },
-      memorandumOfAssociation: {
+      other: {
         uploaded:
-          directory?.kycDocuments?.memorandumOfAssociation?.uploaded || false,
-        files: directory?.kycDocuments?.memorandumOfAssociation?.files || [],
-      },
-      articlesOfAssociation: {
-        uploaded:
-          directory?.kycDocuments?.articlesOfAssociation?.uploaded || false,
-        files: directory?.kycDocuments?.articlesOfAssociation?.files || [],
-      },
-      powerOfAttorney: {
-        uploaded: directory?.kycDocuments?.powerOfAttorney?.uploaded || false,
-        files: directory?.kycDocuments?.powerOfAttorney?.files || [],
-      },
-      copyOfPanAllotment: {
-        uploaded:
-          directory?.kycDocuments?.copyOfPanAllotment?.uploaded || false,
-        files: directory?.kycDocuments?.copyOfPanAllotment?.files || [],
-      },
-      copyOfTelephoneBill: {
-        uploaded:
-          directory?.kycDocuments?.copyOfTelephoneBill?.uploaded || false,
-        files: directory?.kycDocuments?.copyOfTelephoneBill?.files || [],
-      },
-      gstRegistrationCopy: {
-        uploaded:
-          directory?.kycDocuments?.gstRegistrationCopy?.uploaded || false,
-        files: directory?.kycDocuments?.gstRegistrationCopy?.files || [],
-      },
-      balanceSheet: {
-        uploaded: directory?.kycDocuments?.balanceSheet?.uploaded || false,
-        files: directory?.kycDocuments?.balanceSheet?.files || [],
-      },
-      msmeCertificate: {
-        uploaded: directory?.kycDocuments?.msmeCertificate?.uploaded || false,
-        files: directory?.kycDocuments?.msmeCertificate?.files || [],
+          directory?.kycDocuments?.other?.uploaded || false,
+        files: directory?.kycDocuments?.other?.files || [],
       },
     },
     branchInfo: directory?.branchInfo || [
@@ -294,9 +230,16 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
     setSubmitError("");
   };
 
-  const handleFileUpload = (documentType, files, setFieldValue) => {
-    setFieldValue(`kycDocuments.${documentType}.files`, files);
-    setFieldValue(`kycDocuments.${documentType}.uploaded`, files.length > 0);
+  const handleFileUpload = (documentType, files, setFieldValue, values) => {
+    if (documentType === "other") {
+      const existing = values?.kycDocuments?.other?.files || [];
+      const updatedFiles = [...existing, ...files];
+      setFieldValue(`kycDocuments.${documentType}.files`, updatedFiles);
+      setFieldValue(`kycDocuments.${documentType}.uploaded`, updatedFiles.length > 0);
+    } else {
+      setFieldValue(`kycDocuments.${documentType}.files`, files);
+      setFieldValue(`kycDocuments.${documentType}.uploaded`, files.length > 0);
+    }
   };
 
   const handleFileDelete = (documentType, fileIndex, values, setFieldValue) => {
@@ -1050,7 +993,7 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                               fullWidth
                               size="small"
                               name={`branchInfo[${index}].email`}
-                              label="Email"
+                              label="Email *"
                               type="email"
                               value={branch.email}
                               onChange={handleChange}
@@ -1540,33 +1483,17 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                 <Grid container spacing={1}>
                   {[
                     {
-                      key: "certificateOfIncorporation",
-                      label: "Incorporation Cert",
-                    },
-                    { key: "memorandumOfAssociation", label: "MOA" },
-                    { key: "articlesOfAssociation", label: "AOA" },
-                    {
-                      key: "powerOfAttorney",
-                      label: "Power of Attorney",
-                    },
-                    { key: "copyOfPanAllotment", label: "PAN Copy" },
-                    {
-                      key: "copyOfTelephoneBill",
-                      label: "Telephone Bill",
+                      key: "chaAppointmentForm",
+                      label: "CHA Appointment Form",
+                      multiple: false,
                     },
                     {
-                      key: "gstRegistrationCopy",
-                      label: "GST Registration",
-                    },
-                    { key: "balanceSheet", label: "Balance Sheet" },
-                    // ADD MSME Certificate conditionally or always show
-                    {
-                      key: "msmeCertificate",
-                      label: "MSME Certificate",
-                      required: values.registrationDetails.msmeRegistered,
+                      key: "other",
+                      label: "Other",
+                      multiple: true,
                     },
                   ].map((doc) => (
-                    <Grid item xs={6} sm={4} md={3} key={doc.key}>
+                    <Grid item xs={12} sm={6} key={doc.key}>
                       <Box sx={{ p: 0.5 }}>
                         <Typography
                           variant="caption"
@@ -1574,21 +1501,21 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                           gutterBottom
                           sx={{
                             fontWeight: "bold",
-                            fontSize: "0.65rem",
-                            color: doc.required ? "error.main" : "text.primary",
+                            fontSize: "0.75rem",
+                            color: "text.primary",
                             mb: 0.25
                           }}
                         >
-                          {doc.label} {doc.required ? "*" : ""}
+                          {doc.label} {doc.multiple ? "(Multiple Files Allowed)" : ""}
                         </Typography>
                         <FileUpload
                           label={doc.label}
                           onFilesUploaded={(files) =>
-                            handleFileUpload(doc.key, files, setFieldValue)
+                            handleFileUpload(doc.key, files, setFieldValue, values)
                           }
                           bucketPath={`kyc-documents/${doc.key}`}
-                          multiple={false}
-                          acceptedFileTypes={[".pdf", ".jpg", ".jpeg", ".png"]}
+                          multiple={doc.multiple}
+                          acceptedFileTypes={[".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".xls", ".xlsx"]}
                           readOnly={readOnly}
                           existingFiles={values.kycDocuments[doc.key]?.files}
                           onFileDeleted={(fileIndex) =>
@@ -1601,14 +1528,6 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                           }
                           compact
                         />
-                        {/* Show error for MSME if missing and required */}
-                        {doc.key === "msmeCertificate" &&
-                          touched.kycDocuments?.msmeCertificate &&
-                          errors.kycDocuments?.msmeCertificate?.uploaded && (
-                            <FormHelperText error>
-                              {errors.kycDocuments.msmeCertificate.uploaded}
-                            </FormHelperText>
-                          )}
                       </Box>
                     </Grid>
                   ))}
