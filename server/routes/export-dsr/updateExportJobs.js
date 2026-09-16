@@ -201,7 +201,7 @@ function validateSendForBilling(job, updates) {
       String(job.job_no || "").toUpperCase().includes("/AIR/") ||
       String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "AIR";
     const isLCL = String(updates.consignmentType || job.consignmentType || "").toUpperCase() === "LCL";
-    const isGen = String(job.job_no || "").toUpperCase().startsWith("GEN");
+    const isGen = String(job.job_no || "").toUpperCase().startsWith("GEN") || job.isGeneralJob === true || updates.isGeneralJob === true;
     const jobNoStr = String(updates.job_no || job.job_no || "").toUpperCase();
     const isFF = jobNoStr.startsWith("FF") ||
       jobNoStr.includes("FF-") ||
@@ -213,16 +213,33 @@ function validateSendForBilling(job, updates) {
       job.is_freight === true || updates.is_freight === true ||
       job.isFreightForwarding === true || updates.isFreightForwarding === true;
 
-    if (!isAir && !isLCL && !isGen && !isFF) {
+    if (!isGen && !isFF) {
       const ops = updates.operations || job.operations || [];
       const firstOp = ops[0] || {};
       const status = firstOp.statusDetails?.[0] || {};
 
-      const railRoadOutDate = status.handoverConcorTharSanganaRailRoadDate;
-      const reachedDate = status.railOutReachedDate;
+      const handoverDate = status.handoverForwardingNoteDate || job.handover_date || updates.handover_date;
+      const hasHandover = handoverDate && String(handoverDate).trim();
 
-      if (!railRoadOutDate || !String(railRoadOutDate).trim() || !reachedDate || !String(reachedDate).trim()) {
-        return "Cannot send for billing: Rail Out/Road Out date and Reached date are required.";
+      if (!isAir && !isLCL) {
+        const railRoadOutDate = status.handoverConcorTharSanganaRailRoadDate;
+        const reachedDate = status.railOutReachedDate;
+        const hasRailRoad = railRoadOutDate && String(railRoadOutDate).trim();
+        const hasReached = reachedDate && String(reachedDate).trim();
+
+        if (!hasHandover && (!hasRailRoad || !hasReached)) {
+          return "Cannot send for billing: Handover date, Rail Out/Road Out date, and Reached date are required.";
+        }
+        if (!hasHandover) {
+          return "Cannot send for billing: Handover date is required.";
+        }
+        if (!hasRailRoad || !hasReached) {
+          return "Cannot send for billing: Rail Out/Road Out date and Reached date are required.";
+        }
+      } else {
+        if (!hasHandover) {
+          return "Cannot send for billing: Handover date is required.";
+        }
       }
     }
   }
@@ -1816,6 +1833,10 @@ router.get("/exports/:status?", async (req, res) => {
     // Sorting logic
     const { sortKey, sortOrder } = req.query;
     const sort = {};
+    if (status && status.toLowerCase() === "pending") {
+      sort.is_client_job = -1;
+      sort.created_by_client = -1;
+    }
     if (sortKey && sortKey !== "null" && sortKey !== "undefined" && sortKey !== "") {
       sort[sortKey] = sortOrder === "asc" ? 1 : -1;
     } else {
@@ -1938,7 +1959,9 @@ router.get("/exports/:status?", async (req, res) => {
       lockedBy: 1,
       lockedAt: 1,
       is_club_job_parent: 1,
-      parent_club_job: 1
+      parent_club_job: 1,
+      is_client_job: 1,
+      created_by_client: 1
     };
 
     // When search is active, use aggregation to prioritize results by match type

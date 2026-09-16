@@ -1,6 +1,27 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 
+const containerTypes = [
+  "20 Standard Dry",
+  "20 Flat Rack",
+  "20 Collapsible Flat Rack",
+  "20 Reefer",
+  "20 Tank",
+  "20 Open Top",
+  "20 Hard Top",
+  "20 Platform",
+  "40 Standard Dry",
+  "40 Flat Rack",
+  "40 Collapsible Flat Rack",
+  "40 Reefer",
+  "40 Tank",
+  "40 Open Top",
+  "40 Hard Top",
+  "40 High Cube",
+  "40 Reefer High Cube",
+  "40 Platform"
+];
+
 const s = {
   wrapper: {
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
@@ -326,6 +347,8 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
     if (!initial.containers || initial.containers.length === 0) {
       initial.containers = [{
         container_number: "",
+        container_size: "",
+        type: "",
         custom_seal: "",
         line_seal: ""
       }];
@@ -479,6 +502,8 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
     setFormData((prev) => {
       const newRow = {
         container_number: "",
+        container_size: "",
+        type: "",
         custom_seal: "",
         line_seal: ""
       };
@@ -494,6 +519,8 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
       if (prev.containers.length <= 1) {
         const clearedRow = {
           container_number: "",
+          container_size: "",
+          type: "",
           custom_seal: "",
           line_seal: ""
         };
@@ -1429,8 +1456,9 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                   <thead>
                     <tr>
                       <th style={s.th}>Container No.</th>
+                      <th style={s.th}>Container Size</th>
                       <th style={s.th}>Custom Seal</th>
-                      <th style={s.th}>Line seal</th>
+                      <th style={s.th}>Line Seal</th>
                       <th style={{ ...s.th, width: "50px", textAlign: "center" }}>Action</th>
                     </tr>
                   </thead>
@@ -1445,6 +1473,23 @@ function CreateFreightEnquiry({ onCreate, onClose, initialData = null, submitLab
                             onChange={(e) => handleContainerChange(index, "container_number", e.target.value)}
                             placeholder="Container No"
                           />
+                        </td>
+                        <td style={s.td}>
+                          <select
+                            style={s.select}
+                            value={cRow.container_size || cRow.type || ""}
+                            onChange={(e) => {
+                              handleContainerChange(index, "container_size", e.target.value);
+                              handleContainerChange(index, "type", e.target.value);
+                            }}
+                          >
+                            <option value="">Select Container Size</option>
+                            {containerTypes.map((type, tIdx) => (
+                              <option key={tIdx} value={type}>
+                                {type}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td style={s.td}>
                           <input

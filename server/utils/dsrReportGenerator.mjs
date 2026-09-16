@@ -290,6 +290,18 @@ export const generateDSRHTMLTable = async (exporter, onlyPending = true, year = 
           if (cntrNo) cntrLines.push(`Cont: ${cntrNo}`);
           const cleanSize = getCleanContainerSize(c);
           if (cleanSize) cntrLines.push(`Size/Type: ${cleanSize}`);
+
+          const customSeal = (c.sealNo || c.customSealNo || c.custom_seal || "").trim();
+          const lineOrSelf = (c.shippingLineSealNo || c.lineSeal || c.line_seal || c.selfSealNo || c.selfSeal || "").trim();
+          if (customSeal && lineOrSelf) {
+            if (customSeal.toUpperCase() === lineOrSelf.toUpperCase()) {
+              cntrLines.push(`Seal: ${customSeal}`);
+            } else {
+              cntrLines.push(`C.Seal: ${customSeal} | L.Seal: ${lineOrSelf}`);
+            }
+          } else if (customSeal || lineOrSelf) {
+            cntrLines.push(`Seal: ${customSeal || lineOrSelf}`);
+          }
         });
       }
       const containerCell = cntrLines.length > 0 ? cntrLines.join("<br/>") : "-";
@@ -1335,6 +1347,18 @@ export const generateTableDSRBuffer = async (
           if (cntrNo) cntrLines.push(`Cont: ${cntrNo}`);
           const cleanSize = getCleanContainerSize(c);
           if (cleanSize) cntrLines.push(`Size/Type: ${cleanSize}`);
+
+          const customSeal = (c.sealNo || c.customSealNo || c.custom_seal || "").trim();
+          const lineOrSelf = (c.shippingLineSealNo || c.lineSeal || c.line_seal || c.selfSealNo || c.selfSeal || "").trim();
+          if (customSeal && lineOrSelf) {
+            if (customSeal.toUpperCase() === lineOrSelf.toUpperCase()) {
+              cntrLines.push(`Seal: ${customSeal}`);
+            } else {
+              cntrLines.push(`C.Seal: ${customSeal} | L.Seal: ${lineOrSelf}`);
+            }
+          } else if (customSeal || lineOrSelf) {
+            cntrLines.push(`Seal: ${customSeal || lineOrSelf}`);
+          }
         });
       }
 

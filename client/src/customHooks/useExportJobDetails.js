@@ -798,12 +798,12 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         return Promise.reject(new Error("Validation failed: Cancellation reason is required"));
       }
 
-      // Verify Rail Out/Road Out and Reached dates before sending for billing
+      // Verify Handover, Rail Out/Road Out and Reached dates before sending for billing
       const isAir = (values.transportMode || "").toUpperCase() === "AIR" ||
                     (values.job_no || "").toUpperCase().includes("/AIR/") ||
                     (values.consignmentType || "").toUpperCase() === "AIR";
       const isLCL = (values.consignmentType || "").toUpperCase() === "LCL";
-      const isGen = (values.job_no || "").toUpperCase().startsWith("GEN");
+      const isGen = (values.job_no || "").toUpperCase().startsWith("GEN") || values.isGeneralJob === true;
       const isFF = (values.job_no || "").toUpperCase().startsWith("FF") ||
                    (values.job_no || "").toUpperCase().includes("FF-") ||
                    (values.job_no || "").toUpperCase().includes("/FF/") ||
@@ -814,15 +814,35 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
                    values.is_freight === true ||
                    values.isFreightForwarding === true;
 
-      if (values.send_for_billing === true && !isAir && !isLCL && !isGen && !isFF) {
+      if (values.send_for_billing === true && !isGen && !isFF) {
         const firstOp = values.operations?.[0] || {};
         const status = firstOp.statusDetails?.[0] || {};
-        const railRoadOutDate = status.handoverConcorTharSanganaRailRoadDate;
-        const reachedDate = status.railOutReachedDate;
+        const handoverDate = status.handoverForwardingNoteDate || values.handover_date;
+        const hasHandover = handoverDate && String(handoverDate).trim();
 
-        if (!railRoadOutDate || !railRoadOutDate.trim() || !reachedDate || !reachedDate.trim()) {
-          alert("Cannot send for billing: Rail Out/Road Out date and Reached date are required.");
-          return Promise.reject(new Error("Validation failed: Rail Out/Road Out date and Reached date are required."));
+        if (!isAir && !isLCL) {
+          const railRoadOutDate = status.handoverConcorTharSanganaRailRoadDate;
+          const reachedDate = status.railOutReachedDate;
+          const hasRailRoad = railRoadOutDate && String(railRoadOutDate).trim();
+          const hasReached = reachedDate && String(reachedDate).trim();
+
+          if (!hasHandover && (!hasRailRoad || !hasReached)) {
+            alert("Cannot send for billing: Handover date, Rail Out/Road Out date, and Reached date are required.");
+            return Promise.reject(new Error("Validation failed: Handover date, Rail Out/Road Out date, and Reached date are required."));
+          }
+          if (!hasHandover) {
+            alert("Cannot send for billing: Handover date is required.");
+            return Promise.reject(new Error("Validation failed: Handover date is required."));
+          }
+          if (!hasRailRoad || !hasReached) {
+            alert("Cannot send for billing: Rail Out/Road Out date and Reached date are required.");
+            return Promise.reject(new Error("Validation failed: Rail Out/Road Out date and Reached date are required."));
+          }
+        } else {
+          if (!hasHandover) {
+            alert("Cannot send for billing: Handover date is required.");
+            return Promise.reject(new Error("Validation failed: Handover date is required."));
+          }
         }
       }
 
@@ -854,9 +874,14 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
             }
             return dbk;
           }),
-          // Map tareWeightKgs -> sealDeviceId for backend storage
+          // Map tareWeightKgs -> sealDeviceId for backend storage, and sync container field names
           containers: (values.containers || []).map((c) => ({
             ...c,
+            container_number: c.containerNo || c.container_number || "",
+            custom_seal: c.customSealNo || c.custom_seal || "",
+            line_seal: c.shippingLineSealNo || c.line_seal || "",
+            container_size: c.container_size || c.type || "",
+            type: c.type || c.container_size || "",
             sealDeviceId: c.tareWeightKgs || c.sealDeviceId,
           })),
           annexC1Details: {
@@ -1170,6 +1195,11 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         exchange_rate: safeValue(data.exchange_rate),
         containers: safeValue(data.containers, []).map((c) => ({
           ...c,
+          containerNo: c.containerNo || c.container_number || "",
+          customSealNo: c.customSealNo || c.custom_seal || "",
+          shippingLineSealNo: c.shippingLineSealNo || c.line_seal || "",
+          type: c.type || c.container_size || "",
+          container_size: c.container_size || c.type || "",
           tareWeightKgs: c.tareWeightKgs || c.sealDeviceId || 0,
           sealDate: formatDate(safeValue(c.sealDate)),
         })),

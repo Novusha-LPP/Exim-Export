@@ -2079,6 +2079,8 @@ const exportJobSchema = new mongoose.Schema(
         clubbed_jobs: [{ type: String }],
         parent_club_job: { type: String, trim: true },
         tally_club_ref_no: { type: String, trim: true },
+        is_client_job: { type: Boolean, default: false },
+        created_by_client: { type: Boolean, default: false },
     },
 
     {
@@ -2430,6 +2432,7 @@ exportJobSchema.index({
 });
 exportJobSchema.index({ job_no: 1, port_of_loading: 1, year: 1, branch_code: 1 });
 exportJobSchema.index({ job_no: 1, is_club_job_parent: 1 });
+exportJobSchema.index({ status: 1, is_client_job: -1 });
 
 // Create and export the model
 const ExJobModel = mongoose.model("ExportJob", exportJobSchema);

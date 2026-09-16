@@ -407,6 +407,56 @@ const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable =
                 checked={formik.values.send_for_billing || false}
                 onChange={(e) => {
                   const checked = e.target.checked;
+                  if (checked) {
+                    const values = formik.values || {};
+                    const isAir = (values.transportMode || "").toUpperCase() === "AIR" ||
+                                  (values.job_no || "").toUpperCase().includes("/AIR/") ||
+                                  (values.consignmentType || "").toUpperCase() === "AIR";
+                    const isLCL = (values.consignmentType || "").toUpperCase() === "LCL";
+                    const isGen = (values.job_no || "").toUpperCase().startsWith("GEN") || values.isGeneralJob === true;
+                    const isFF = (values.job_no || "").toUpperCase().startsWith("FF") ||
+                                 (values.job_no || "").toUpperCase().includes("FF-") ||
+                                 (values.job_no || "").toUpperCase().includes("/FF/") ||
+                                 (values.job_type || "").toLowerCase().includes("freight") ||
+                                 (values.detailedStatus || "").toLowerCase().includes("freight") ||
+                                 (values.jobCategory || "").toLowerCase().includes("freight") ||
+                                 values.freight === true ||
+                                 values.is_freight === true ||
+                                 values.isFreightForwarding === true;
+
+                    if (!isGen && !isFF) {
+                      const firstOp = values.operations?.[0] || {};
+                      const status = firstOp.statusDetails?.[0] || {};
+                      const handoverDate = status.handoverForwardingNoteDate || values.handover_date;
+                      const hasHandover = handoverDate && String(handoverDate).trim();
+
+                      if (!isAir && !isLCL) {
+                        const railRoadOutDate = status.handoverConcorTharSanganaRailRoadDate;
+                        const reachedDate = status.railOutReachedDate;
+                        const hasRailRoad = railRoadOutDate && String(railRoadOutDate).trim();
+                        const hasReached = reachedDate && String(reachedDate).trim();
+
+                        if (!hasHandover && (!hasRailRoad || !hasReached)) {
+                          alert("Cannot send for billing: Handover date, Rail Out/Road Out date, and Reached date are required.");
+                          return;
+                        }
+                        if (!hasHandover) {
+                          alert("Cannot send for billing: Handover date is required.");
+                          return;
+                        }
+                        if (!hasRailRoad || !hasReached) {
+                          alert("Cannot send for billing: Rail Out/Road Out date and Reached date are required.");
+                          return;
+                        }
+                      } else {
+                        if (!hasHandover) {
+                          alert("Cannot send for billing: Handover date is required.");
+                          return;
+                        }
+                      }
+                    }
+                  }
+
                   formik.setFieldValue("send_for_billing", checked);
                   if (checked) {
                     const d = new Date();

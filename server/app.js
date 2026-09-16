@@ -96,6 +96,7 @@ import tallyRoutes from "./routes/charges/tallyRoutes.mjs";
 import { initDsrCronJob } from "./jobs/dsrJob.mjs"; // Import DSR Job
 import { initSbTrackCronJob, sbTrackJobRouter } from "./jobs/sbTrackJob.mjs"; // SB Track Auto-Poll
 import { initConcorTrackCronJob, concorTrackJobRouter } from "./jobs/concorTrackJob.mjs"; // CONCOR Container Track Auto-Poll
+import { initFreightAutoRejectCronJob, freightAutoRejectRouter } from "./jobs/freightAutoRejectJob.mjs"; // Freight Auto-Reject Stale Enquiries
 import testDsrEmailRoute from "./routes/export-dsr/testDsrEmail.mjs"; // Import Test DSR Route
 import apiKeyRoutes from "./routes/admin/apiKeyRoutes.mjs";
 import freightEnquiryRoutes from "./routes/export-dsr/freightEnquiryRoutes.mjs";
@@ -273,6 +274,7 @@ app.use(testDsrEmailRoute);
 app.use(apiKeyRoutes);
 app.use(sbTrackJobRouter);
 app.use(concorTrackJobRouter);
+app.use(freightAutoRejectRouter);
 app.use("/api", forwarderRoutes);
 app.use("/api", freightEnquiryRoutes);
 app.use(getHistoricalFreight);
@@ -321,9 +323,10 @@ process.on("SIGTERM", async () => {
 const PORT = process.env.PORT || 9002;
 
 // Initialize Cron Jobs
-initDsrCronJob();         // Daily 8 PM DSR email job
-initSbTrackCronJob();     // Daily 12 PM SB Track auto-poll (15-day gate per job)
-initConcorTrackCronJob(); // Daily 12 PM CONCOR Container Track auto-poll
+initDsrCronJob();               // Daily 8 PM DSR email job
+initSbTrackCronJob();           // Daily 12 PM SB Track auto-poll (15-day gate per job)
+initConcorTrackCronJob();       // Daily 12 PM CONCOR Container Track auto-poll
+initFreightAutoRejectCronJob(); // Hourly Freight Auto-Reject job for stale inquiries (> 5 days)
 
 app.listen(PORT, () => {
   console.log(`🟢 Server listening on http://localhost:${PORT}`);

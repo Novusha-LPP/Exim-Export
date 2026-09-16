@@ -34,12 +34,12 @@ router.post(
         });
       }
 
-      const currentYear = new Date().getFullYear();
-      const yearFormat =
-        year ||
-        `${currentYear.toString().slice(-2)}-${(currentYear + 1)
-          .toString()
-          .slice(-2)}`;
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentFullYear = now.getFullYear();
+      const fyStart = currentMonth >= 3 ? currentFullYear : currentFullYear - 1;
+      const defaultYearFormat = `${String(fyStart).slice(-2)}-${String(fyStart + 1).slice(-2)}`;
+      const yearFormat = year || defaultYearFormat;
 
       let newJobNo;
 
@@ -126,6 +126,8 @@ router.post(
         ieCode,
         transportMode,
         branch_code,
+        is_client_job: Boolean(req.body.is_client_job),
+        created_by_client: Boolean(req.body.created_by_client || req.body.is_client_job),
         ...otherFields,
       });
 

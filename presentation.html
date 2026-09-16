@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EXIM Freight Forwarding - Interactive Presentation Deck</title>
+  <!-- Google Fonts & Leaflet CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 26, 44, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #3b82f6;
+      --primary-glow: rgba(59, 130, 246, 0.25);
+      --accent: #10b981;
+      --cyan: #06b6d4;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-main: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Background Ambient Gradients */
+    .bg-glow-1 {
+      position: absolute;
+      top: -10%;
+      left: -10%;
+      width: 45vw;
+      height: 45vw;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, rgba(0, 0, 0, 0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-glow-2 {
+      position: absolute;
+      bottom: -10%;
+      right: -10%;
+      width: 45vw;
+      height: 45vw;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, rgba(0, 0, 0, 0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Presentation Header Bar */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 28px;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #fff;
+      font-size: 14px;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+
+    .slide-counter {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.05);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--card-border);
+    }
+
+    /* Main Container & Slides */
+    .deck-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+    }
+
+    .slide {
+      position: absolute;
+      width: 90vw;
+      max-width: 1280px;
+      height: 78vh;
+      opacity: 0;
+      transform: scale(0.96) translateY(15px);
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .slide.active {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      pointer-events: auto;
+    }
+
+    /* Slide Header */
+    .slide-tag {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .slide-tag::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: var(--cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    .slide-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    /* Layout Grids */
+    .split-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 24px;
+      flex: 1;
+      height: calc(100% - 70px);
+    }
+
+    .content-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .card-heading {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .feature-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+
+    .feature-icon {
+      width: 22px;
+      height: 22px;
+      background: var(--primary-glow);
+      color: var(--primary);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .feature-item.highlight .feature-icon {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--accent);
+    }
+
+    .feature-title {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .feature-desc {
+      color: var(--text-muted);
+    }
+
+    /* Interactive Screenshot Placeholder */
+    .screenshot-placeholder {
+      background: rgba(15, 23, 42, 0.95);
+      border: 2px dashed rgba(59, 130, 246, 0.4);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+
+    .screenshot-placeholder:hover {
+      border-color: var(--primary);
+      background: rgba(15, 23, 42, 1);
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    .ph-badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .ph-icon {
+      font-size: 42px;
+      margin-bottom: 12px;
+      color: var(--primary);
+    }
+
+    .ph-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .ph-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      max-width: 280px;
+      line-height: 1.4;
+    }
+
+    .ph-input {
+      display: none;
+    }
+
+    .uploaded-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    /* Live Map Simulation Container */
+    #live-map {
+      width: 100%;
+      height: 100%;
+      min-height: 240px;
+      border-radius: 12px;
+      z-index: 1;
+    }
+
+    /* 5-Stage Timeline Stepper */
+    .timeline-stepper {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .step-card {
+      flex: 1;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .step-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--primary);
+    }
+
+    .step-card.active-step::before {
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    .step-num {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--cyan);
+    }
+
+    .step-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .step-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* B/L Preview Modal Box */
+    .bl-preview-box {
+      background: #ffffff;
+      color: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border: 2px solid #cbd5e1;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+
+    .bl-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #1e293b;
+      padding-bottom: 8px;
+    }
+
+    .bl-title {
+      font-weight: 900;
+      font-size: 14px;
+      color: #0f172a;
+    }
+
+    .bl-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      border: 1px solid #cbd5e1;
+      padding: 8px;
+      background: #f8fafc;
+    }
+
+    .bl-cell-title {
+      font-size: 9px;
+      font-weight: bold;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+
+    .bl-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+    }
+
+    .bl-table th, .bl-table td {
+      border: 1px solid #cbd5e1;
+      padding: 5px;
+      font-size: 10px;
+      text-align: left;
+    }
+
+    .bl-table th {
+      background: #e2e8f0;
+      font-weight: bold;
+    }
+
+    /* Navigation Footer Controls */
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+      background: rgba(15, 23, 42, 0.9);
+      border-top: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      z-index: 10;
+    }
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    .download-pptx-btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+      text-decoration: none;
+    }
+
+    .download-pptx-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Key Metrics Grid */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      width: 100%;
+    }
+
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .metric-val {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--primary);
+      font-family: var(--font-mono);
+      margin-bottom: 4px;
+    }
+
+    .metric-val.green { color: var(--accent); }
+    .metric-val.cyan { color: var(--cyan); }
+
+    .metric-lbl {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-glow-1"></div>
+  <div class="bg-glow-2"></div>
+
+  <!-- Header Bar -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">EX</div>
+      <div class="brand-title">EXIM Client Dashboard & Freight Forwarding</div>
+    </div>
+    <div class="slide-counter" id="slide-counter">SLIDE 01 / 10</div>
+  </header>
+
+  <!-- Deck Container -->
+  <div class="deck-container">
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active" id="slide-1">
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:20px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:24px; padding:40px;">
+        <div class="slide-tag">Official Platform Presentation</div>
+        <h1 style="font-size: 42px; font-weight:800; line-height:1.2; background: linear-gradient(135deg, #fff 30%, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+          EXIM Freight Forwarding Operations Suite
+        </h1>
+        <p style="font-size: 18px; color: var(--cyan); max-width: 800px; font-weight: 500;">
+          Direct Bill of Lading Generation • Real-Time Movement Timeline & Map • Rate Procurement
+        </p>
+        <p style="font-size: 14px; color: var(--text-muted); max-width: 650px;">
+          Comprehensive breakdown of platform features, automated document workflows, and operational ROI.
+        </p>
+        <div style="display:flex; gap:16px; margin-top:20px;">
+          <button class="nav-btn" onclick="nextSlide()" style="background:var(--primary); border:none;">Start Presentation →</button>
+          <a class="download-pptx-btn" href="./Freight_Forwarding_Exim_Dashboard.pptx" download>📥 Download .PPTX Presentation File</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: Executive Summary -->
+    <div class="slide" id="slide-2">
+      <div class="slide-tag">EXECUTIVE OVERVIEW</div>
+      <div class="slide-title">Freight Forwarding Operations Architecture</div>
+      <div class="split-grid">
+        <div class="content-card">
+          <div class="card-heading">Key Platform Pillars</div>
+          <ul class="feature-list">
+            <li class="feature-item highlight">
+              <div class="feature-icon">⚡</div>
+              <div>
+                <span class="feature-title">Direct B/L Generation:</span>
+                <span class="feature-desc">1-click House B/L and MTD creation from dashboard data.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">🗺️</div>
+              <div>
+                <span class="feature-title">Visual Map Tracking:</span>
+                <span class="feature-desc">Real-time ocean vessel route visualization using Leaflet map engine.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">⏱️</div>
+              <div>
+                <span class="feature-title">5-Stage Movement Timeline:</span>
+                <span class="feature-desc">Milestone status updates from Origin Gate In to Destination Gate Out.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">💰</div>
+              <div>
+                <span class="feature-title">Rate Quotation Engine:</span>
+                <span class="feature-desc">Multi-forwarder rate capture & itemized cost breakdown matrix.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">📁</div>
+              <div>
+                <span class="feature-title">Document Vault:</span>
+                <span class="feature-desc">Freight Certificates, Shipping Bills, and DSR synchronization.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="screenshot-placeholder" onclick="triggerUpload(this)">
+          <div class="ph-badge">SLIDE 2 SCREENSHOT</div>
+          <div class="ph-icon">🖼️</div>
+          <div class="ph-title">Click / Drop Dashboard Overview Screenshot</div>
+          <div class="ph-desc">Recommended image: Freight Forwarding main dashboard overview with job cards and action menu</div>
+          <input type="file" class="ph-input" accept="image/*" onchange="handleImage(this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Rate Procurement -->
+    <div class="slide" id="slide-3">
+      <div class="slide-tag">FEATURE FOCUS 01</div>
+      <div class="slide-title">Freight Rate Procurement & Bidding Engine</div>
+      <div class="split-grid">
+        <div class="content-card">
+          <div class="card-heading">Rate Management Breakdown</div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <div class="feature-icon">📊</div>
+              <div>
+                <span class="feature-title">Multi-Forwarder Enquiries:</span>
+                <span class="feature-desc">Broadcast freight RFQs to multiple carriers and shipping lines simultaneously.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">🧾</div>
+              <div>
+                <span class="feature-title">Itemized Line Items:</span>
+                <span class="feature-desc">Captures Ocean Freight, Origin THC, BL Fee, Destination THC, and Toll surcharges separately.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">🔍</div>
+              <div>
+                <span class="feature-title">Rate Comparison Matrix:</span>
+                <span class="feature-desc">Automated side-by-side bid comparison identifying lowest cost and fastest transit time.</span>
+              </div>
+            </li>
+            <li class="feature-item highlight">
+              <div class="feature-icon">🎯</div>
+              <div>
+                <span class="feature-title">Significance & ROI:</span>
+                <span class="feature-desc">Achieves 15–25% ocean freight cost savings and eliminates hidden surcharges.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="screenshot-placeholder" onclick="triggerUpload(this)">
+          <div class="ph-badge">SLIDE 3 SCREENSHOT</div>
+          <div class="ph-icon">📊</div>
+          <div class="ph-title">Click / Drop Rate Capture Screenshot</div>
+          <div class="ph-desc">Recommended image: Capture Rates modal or Freight Quotation matrix comparison table</div>
+          <input type="file" class="ph-input" accept="image/*" onchange="handleImage(this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Bill of Lading Generation -->
+    <div class="slide" id="slide-4">
+      <div class="slide-tag">FEATURE FOCUS 02</div>
+      <div class="slide-title">Direct Bill of Lading (B/L) Creation from Dashboard</div>
+      <div class="split-grid">
+        <div class="content-card">
+          <div class="card-heading">B/L Generator Capabilities</div>
+          <ul class="feature-list">
+            <li class="feature-item highlight">
+              <div class="feature-icon">📄</div>
+              <div>
+                <span class="feature-title">1-Click Automated Creation:</span>
+                <span class="feature-desc">Generate House B/L and MTD forms straight from EXIM job records.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">🤖</div>
+              <div>
+                <span class="feature-title">Smart Field Sync:</span>
+                <span class="feature-desc">Auto-fills Shipper, Consignee, Notify Party, Vessel/Voyage, POL, POD, and Delivery terms.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">📦</div>
+              <div>
+                <span class="feature-title">Container & Seals Grid:</span>
+                <span class="feature-desc">Tracks Container numbers, Seal numbers, package counts, Gross & Net weight automatically.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">⚖️</div>
+              <div>
+                <span class="feature-title">Legal MTD Clauses:</span>
+                <span class="feature-desc">Pre-loaded Multimodal Transport Operator clauses and document surrender terms.</span>
+              </div>
+            </li>
+            <li class="feature-item highlight">
+              <div class="feature-icon">🚀</div>
+              <div>
+                <span class="feature-title">Business Significance:</span>
+                <span class="feature-desc">Cuts document turnaround by 90% and eliminates re-keying errors.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <!-- Live B/L Interactive Card -->
+        <div class="bl-preview-box">
+          <div class="bl-hdr">
+            <div class="bl-title">MULTIMODAL TRANSPORT DOCUMENT (BILL OF LADING)</div>
+            <div style="font-size:10px; font-weight:bold; color:#2563eb;">DOCUMENT NO: EX/BL/2026/089</div>
+          </div>
+          <div class="bl-grid">
+            <div>
+              <div class="bl-cell-title">SHIPPER / EXPORTER</div>
+              <div style="font-weight:bold;">SURAIYA EXPORTS PVT LTD</div>
+              <div>MUNDRA INDUSTRIAL PARK, GUJARAT</div>
+            </div>
+            <div>
+              <div class="bl-cell-title">CONSIGNEE</div>
+              <div style="font-weight:bold;">AL-JEBEL LOGISTICS LLC</div>
+              <div>JEBEL ALI FREE ZONE, DUBAI, UAE</div>
+            </div>
+          </div>
+          <div class="bl-grid">
+            <div><span class="bl-cell-title">VESSEL / VOYAGE:</span> MSC OSCAR / 2409E</div>
+            <div><span class="bl-cell-title">PORT OF LOADING:</span> MUNDRA (INMUN)</div>
+            <div><span class="bl-cell-title">PORT OF DISCHARGE:</span> JEBEL ALI (AEJEA)</div>
+            <div><span class="bl-cell-title">FREIGHT TERMS:</span> FREIGHT PREPAID</div>
+          </div>
+          <table class="bl-table">
+            <thead>
+              <tr>
+                <th>CONTAINER NO</th>
+                <th>SEAL NO</th>
+                <th>PACKAGES</th>
+                <th>GROSS WEIGHT</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>MSCU8921045 (40HC)</td>
+                <td>SL-994201</td>
+                <td>850 CARTONS</td>
+                <td>18,450.00 KGS</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="font-size:9px; color:#64748b; font-style:italic;">
+            "Taken in charge in apparently good condition at place of receipt. One original MTD must be surrendered in exchange for goods."
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Movement Timeline & Map -->
+    <div class="slide" id="slide-5">
+      <div class="slide-tag">FEATURE FOCUS 03</div>
+      <div class="slide-title">Movement Timeline & Leaflet Tracking Map</div>
+      <div class="split-grid">
+        <div class="content-card">
+          <div class="card-heading">Visual Tracking Engine</div>
+          <ul class="feature-list">
+            <li class="feature-item highlight">
+              <div class="feature-icon">🗺️</div>
+              <div>
+                <span class="feature-title">Leaflet Route Visualization:</span>
+                <span class="feature-desc">Geographic UN/LOCODE port markers connecting POL (Mundra) to POD (Jebel Ali / Rotterdam).</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">🚢</div>
+              <div>
+                <span class="feature-title">Vessel Tracking Pinpoint:</span>
+                <span class="feature-desc">Live vessel markers displaying current position along the maritime route polyline.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">📍</div>
+              <div>
+                <span class="feature-title">UN/LOCODE Geocoding:</span>
+                <span class="feature-desc">Smart port geocoder (INMUN, AEJEA, USNYC, NLRTM) with OpenStreetMap Nominatim fallback.</span>
+              </div>
+            </li>
+            <li class="feature-item highlight">
+              <div class="feature-icon">💡</div>
+              <div>
+                <span class="feature-title">Significance & ROI:</span>
+                <span class="feature-desc">Provides 24/7 self-service tracking to clients, reducing phone/email status queries by 80%.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <!-- Live Leaflet Map Container -->
+        <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:16px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700; color:var(--cyan);">
+            <span>LIVE ROUTE MAP: MUNDRA (INMUN) ➔ JEBEL ALI (AEJEA)</span>
+            <span style="color:var(--accent);">● VESSEL IN TRANSIT</span>
+          </div>
+          <div id="live-map"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: 5-Stage Timeline Stepper -->
+    <div class="slide" id="slide-6">
+      <div class="slide-tag">DEEP DIVE</div>
+      <div class="slide-title">5-Stage Movement Timeline Workflow</div>
+      <div class="timeline-stepper">
+        <div class="step-card active-step">
+          <div class="step-num">STAGE 01</div>
+          <div class="step-title">Origin / Gate In</div>
+          <div class="step-desc">Container gated in at CFS / Port terminal. Tare weight & seal inspection passed.</div>
+        </div>
+        <div class="step-card active-step">
+          <div class="step-num">STAGE 02</div>
+          <div class="step-title">Vessel Loading</div>
+          <div class="step-desc">Stowed on ocean container vessel. Customs Shipping Bill & LEO released.</div>
+        </div>
+        <div class="step-card active-step">
+          <div class="step-num">STAGE 03</div>
+          <div class="step-title">Ocean Transit</div>
+          <div class="step-desc">Vessel departure & ocean leg transit. Real-time Leaflet map position updates.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">STAGE 04</div>
+          <div class="step-title">Discharge POD</div>
+          <div class="step-desc">Vessel arrival at Port of Discharge. Unloaded to container yard.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">STAGE 05</div>
+          <div class="step-title">Final Delivery</div>
+          <div class="step-desc">Destination customs clearance & container gate out for door delivery.</div>
+        </div>
+      </div>
+      <div class="screenshot-placeholder" style="flex:1;" onclick="triggerUpload(this)">
+        <div class="ph-badge">SLIDE 6 SCREENSHOT</div>
+        <div class="ph-icon">⏱️</div>
+        <div class="ph-title">Click / Drop Timeline Modal Screenshot</div>
+        <div class="ph-desc">Recommended image: Movement Timeline modal showing step status badges, date timestamps, and event logs</div>
+        <input type="file" class="ph-input" accept="image/*" onchange="handleImage(this)">
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Job Operations & DSR -->
+    <div class="slide" id="slide-7">
+      <div class="slide-tag">FEATURE FOCUS 04</div>
+      <div class="slide-title">Job Operations & DSR Integration</div>
+      <div class="split-grid">
+        <div class="content-card">
+          <div class="card-heading">Operational Features</div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <div class="feature-icon">🔄</div>
+              <div>
+                <span class="feature-title">Export DSR Synchronization:</span>
+                <span class="feature-desc">Bi-directional data flow between Export DSR and Freight Forwarding modules.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">🏗️</div>
+              <div>
+                <span class="feature-title">Container Allocation Grid:</span>
+                <span class="feature-desc">Manage FCL 20GP, 40HC, and LCL shipments with seal verification.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">📋</div>
+              <div>
+                <span class="feature-title">Shipping Bill Linkage:</span>
+                <span class="feature-desc">Connect Customs Shipping Bills (SB No, Date, LEO) directly to Bills of Lading.</span>
+              </div>
+            </li>
+            <li class="feature-item highlight">
+              <div class="feature-icon">✨</div>
+              <div>
+                <span class="feature-title">One-Click Copy Shortcuts:</span>
+                <span class="feature-desc">Instant clipboard copy buttons for BL numbers, container IDs, and vessel names.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="screenshot-placeholder" onclick="triggerUpload(this)">
+          <div class="ph-badge">SLIDE 7 SCREENSHOT</div>
+          <div class="ph-icon">📋</div>
+          <div class="ph-title">Click / Drop Job Detail Screenshot</div>
+          <div class="ph-desc">Recommended image: Freight Forwarding Job Detail page showing container table & DSR sync status</div>
+          <input type="file" class="ph-input" accept="image/*" onchange="handleImage(this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Document Vault -->
+    <div class="slide" id="slide-8">
+      <div class="slide-tag">FEATURE FOCUS 05</div>
+      <div class="slide-title">Integrated Document Directory & Vault</div>
+      <div class="split-grid">
+        <div class="content-card">
+          <div class="card-heading">Document Management Suite</div>
+          <ul class="feature-list">
+            <li class="feature-item">
+              <div class="feature-icon">📜</div>
+              <div>
+                <span class="feature-title">Freight Certificates:</span>
+                <span class="feature-desc">Generate official Freight Prepaid / Freight Collect certificates instantly.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">📂</div>
+              <div>
+                <span class="feature-title">Centralized Vault:</span>
+                <span class="feature-desc">Single vault storing Delivery Orders (DO), Invoices, Packing Lists, and MTDs.</span>
+              </div>
+            </li>
+            <li class="feature-item">
+              <div class="feature-icon">✏️</div>
+              <div>
+                <span class="feature-title">Inline Editor Dialog:</span>
+                <span class="feature-desc">Edit document fields, addresses, notify parties, and signature blocks live.</span>
+              </div>
+            </li>
+            <li class="feature-item highlight">
+              <div class="feature-icon">🔒</div>
+              <div>
+                <span class="feature-title">Audit Readiness:</span>
+                <span class="feature-desc">Digital archive with version control ensuring zero lost paperwork.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="screenshot-placeholder" onclick="triggerUpload(this)">
+          <div class="ph-badge">SLIDE 8 SCREENSHOT</div>
+          <div class="ph-icon">📂</div>
+          <div class="ph-title">Click / Drop Document Vault Screenshot</div>
+          <div class="ph-desc">Recommended image: Document Directory showing Freight Certificates & B/L download options</div>
+          <input type="file" class="ph-input" accept="image/*" onchange="handleImage(this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Quantitative ROI -->
+    <div class="slide" id="slide-9">
+      <div class="slide-tag">BUSINESS VALUE</div>
+      <div class="slide-title">Quantitative ROI & Business Impact Matrix</div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-val">90%</div>
+          <div class="metric-lbl">Faster B/L Issuance</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">Draft created in < 60 sec</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val green">100%</div>
+          <div class="metric-lbl">Timeline Visibility</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">POL to POD map tracking</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val cyan">25%</div>
+          <div class="metric-lbl">Freight Cost Savings</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">Via rate bidding engine</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val">0</div>
+          <div class="metric-lbl">Data Entry Typos</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">Auto-populates from DSR</div>
+        </div>
+      </div>
+      <div class="content-card" style="flex:1;">
+        <div class="card-heading">Operational Advantages for Exporters & Forwarders</div>
+        <ul class="feature-list" style="grid-template-columns: 1fr 1fr; display:grid;">
+          <li class="feature-item">
+            <div class="feature-icon">💳</div>
+            <div>
+              <span class="feature-title">Accelerated LC Negotiation:</span>
+              <span class="feature-desc">Faster B/L issuance speeds up document presentation to banks under Letter of Credit.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-icon">⚓</div>
+            <div>
+              <span class="feature-title">Demurrage Avoidance:</span>
+              <span class="feature-desc">Map timeline alerts notify managers prior to arrival, preventing port detention fines.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-icon">🤝</div>
+            <div>
+              <span class="feature-title">Enhanced Trust:</span>
+              <span class="feature-desc">Consignees receive live tracking links & automated status update notifications.</span>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-icon">📈</div>
+            <div>
+              <span class="feature-title">Scalable Growth:</span>
+              <span class="feature-desc">Handle 5x shipment volume without increasing administrative staff overhead.</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Conclusion -->
+    <div class="slide" id="slide-10">
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:24px; background:var(--card-bg); border:1px solid var(--primary); border-radius:24px; padding:40px;">
+        <div class="slide-tag">PLATFORM SUMMARY</div>
+        <h2 style="font-size: 38px; font-weight:800; color:var(--text);">
+          Ready for Live Deployment & Integration
+        </h2>
+        <p style="font-size: 16px; color: var(--cyan); max-width: 750px;">
+          The EXIM Freight Forwarding suite combines powerful automation (Bill of Lading) with visual intelligence (Leaflet Route Map) to deliver an unmatchable logistics experience.
+        </p>
+        <div style="display:flex; gap:16px;">
+          <a class="download-pptx-btn" href="./Freight_Forwarding_Exim_Dashboard.pptx" download style="font-size:15px; padding:14px 28px;">
+            📥 Download Official .PPTX File
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Navigation Footer Bar -->
+  <footer>
+    <div style="display:flex; gap:12px;">
+      <button class="nav-btn" onclick="prevSlide()">← Previous</button>
+      <button class="nav-btn" onclick="nextSlide()">Next →</button>
+    </div>
+    <a class="download-pptx-btn" href="./Freight_Forwarding_Exim_Dashboard.pptx" download>
+      📥 Download PowerPoint (.pptx)
+    </a>
+  </footer>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 10;
+    let mapInitialized = false;
+
+    function updateSlide() {
+      document.querySelectorAll('.slide').forEach((s, idx) => {
+        s.classList.toggle('active', idx + 1 === currentSlide);
+      });
+      document.getElementById('slide-counter').innerText = `SLIDE ${String(currentSlide).padStart(2, '0')} / ${totalSlides}`;
+
+      // Initialize map on slide 5
+      if (currentSlide === 5 && !mapInitialized) {
+        initLeafletMap();
+        mapInitialized = true;
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    // Keyboard Arrow navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+
+    // Image Upload Handler for Screenshots
+    function triggerUpload(el) {
+      el.querySelector('.ph-input').click();
+    }
+
+    function handleImage(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const parent = input.closest('.screenshot-placeholder');
+          let img = parent.querySelector('.uploaded-img');
+          if (!img) {
+            img = document.createElement('img');
+            img.className = 'uploaded-img';
+            parent.appendChild(img);
+          }
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    // Leaflet Map Initialization
+    function initLeafletMap() {
+      setTimeout(() => {
+        const map = L.map('live-map').setView([20.0, 60.0], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        const mundra = [22.75, 69.70];
+        const jebelAli = [25.01, 55.06];
+
+        L.marker(mundra).addTo(map).bindPopup('<b>POL: Mundra (INMUN)</b><br>Gate In & Loaded').openPopup();
+        L.marker(jebelAli).addTo(map).bindPopup('<b>POD: Jebel Ali (AEJEA)</b><br>Destination Port');
+
+        const polyline = L.polyline([mundra, [24.0, 62.0], jebelAli], {
+          color: '#3b82f6',
+          weight: 4,
+          dashArray: '8, 8'
+        }).addTo(map);
+
+        // Vessel Icon Marker
+        const vesselPos = [23.5, 64.0];
+        L.circleMarker(vesselPos, {
+          radius: 8,
+          fillColor: '#10b981',
+          color: '#ffffff',
+          weight: 2,
+          fillOpacity: 1
+        }).addTo(map).bindPopup('<b>MSC OSCAR</b><br>Status: In Transit (Speed 18.4 knots)');
+
+        map.fitBounds(polyline.getBounds().pad(0.2));
+      }, 200);
+    }
+  </script>
+</body>
+</html>

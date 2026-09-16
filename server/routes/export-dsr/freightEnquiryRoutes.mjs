@@ -111,12 +111,91 @@ async function syncEnquiryDocuments(enquiry) {
   }
 }
 
+export const getNextFreightEnquiryNo = async (field, prefix, shipment_type, date = new Date()) => {
+  let typeCode = "MISC";
+  if (shipment_type === "Import-Sea") typeCode = "IMP/SEA";
+  else if (shipment_type === "Export-Sea") typeCode = "EXP/SEA";
+  else if (shipment_type === "Import-Air") typeCode = "IMP/AIR";
+  else if (shipment_type === "Export-Air") typeCode = "EXP/AIR";
+
+  const currentFY = getCurrentFinancialYear(date);
+
+  const entries = await FreightEnquiryModel.find({
+    shipment_type,
+    [field]: { $exists: true, $ne: null, $ne: "" }
+  }).select(field).lean();
+
+  let maxNo = 0;
+  entries.forEach((e) => {
+    const val = e[field];
+    if (val) {
+      const parts = val.split("/");
+      const seqPart = parts.find((p) => p.length === 4 && /^\d+$/.test(p));
+      const lastNo = seqPart ? parseInt(seqPart, 10) : 0;
+      if (!isNaN(lastNo) && lastNo > maxNo) {
+        maxNo = lastNo;
+      }
+    }
+  });
+  const nextNo = maxNo + 1;
+  return `${prefix}/${typeCode}/${nextNo.toString().padStart(4, "0")}/${currentFY}`;
+};
+
+export const autoRejectPendingEnquiries = async () => {
+  try {
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    // Find pending enquiries (not converted, not rejected, no success_no, no rejected_no)
+    const pendingEnquiries = await FreightEnquiryModel.find({
+      status: { $nin: ["Success", "success", "Rejected", "rejected", "Converted", "converted", "Job Created"] },
+      success_no: { $in: [null, ""] },
+      rejected_no: { $in: [null, ""] }
+    });
+
+    for (const enq of pendingEnquiries) {
+      let createDate = enq.createdAt ? new Date(enq.createdAt) : null;
+      if (!createDate || isNaN(createDate.getTime())) {
+        if (enq.enquiry_date) {
+          const parts = String(enq.enquiry_date).split(/[-/]/);
+          if (parts.length === 3) {
+            if (parts[0].length === 4) {
+              createDate = new Date(`${parts[0]}-${parts[1]}-${parts[2]}`);
+            } else {
+              createDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            }
+          }
+        }
+      }
+
+      if (createDate && !isNaN(createDate.getTime()) && createDate <= fiveDaysAgo) {
+        const rejected_no = await getNextFreightEnquiryNo("rejected_no", "FF-REJ", enq.shipment_type, createDate);
+        enq.status = "Rejected";
+        enq.rejected_no = rejected_no;
+        if (!enq.delay_reason) {
+          enq.delay_reason = "Auto-rejected: Inquiry pending for more than 5 days";
+        }
+        await enq.save();
+
+        try {
+          await syncFreightEnquiryToCRM(enq, "lost");
+        } catch (crmErr) {
+          console.error(`CRM sync error on auto-rejecting enquiry ${enq.enquiry_no}:`, crmErr);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error in autoRejectPendingEnquiries:", err);
+  }
+};
+
 const router = express.Router();
 
 // Get all enquiries
 router.get("/freight-enquiries", async (req, res) => {
   try {
     const { tab } = req.query;
+
+    // Check and auto-reject stale pending enquiries (>= 5 days)
+    await autoRejectPendingEnquiries();
 
     const enquiries = await FreightEnquiryModel.find().sort({ createdAt: -1 });
     const dataList = enquiries.map(e => e.toObject());

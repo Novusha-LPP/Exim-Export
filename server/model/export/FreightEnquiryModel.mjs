@@ -44,6 +44,8 @@ const freightEnquirySchema = new mongoose.Schema(
     containers: [
       {
         container_number: { type: String, default: "" },
+        container_size: { type: String, default: "" },
+        type: { type: String, default: "" },
         custom_seal: { type: String, default: "" },
         line_seal: { type: String, default: "" }
       }

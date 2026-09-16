@@ -1276,11 +1276,16 @@ const ExportJobsTable = () => {
 
   const sortedJobs = React.useMemo(() => {
     return [...jobs].sort((a, b) => {
+      if (activeTab === "Pending") {
+        const aClient = (a.is_client_job || a.created_by_client) ? 1 : 0;
+        const bClient = (b.is_client_job || b.created_by_client) ? 1 : 0;
+        if (bClient !== aClient) return bClient - aClient;
+      }
       const aHasQuery = jobQueriesStatus[a.job_no]?.hasOpenClientQueries ? 1 : 0;
       const bHasQuery = jobQueriesStatus[b.job_no]?.hasOpenClientQueries ? 1 : 0;
       return bHasQuery - aHasQuery;
     });
-  }, [jobs, jobQueriesStatus]);
+  }, [jobs, jobQueriesStatus, activeTab]);
 
   const groupedJobs = React.useMemo(() => {
     const baseJobs = [...sortedJobs];
@@ -4009,9 +4014,14 @@ const ExportJobsTable = () => {
                                       </Tooltip>
                                     )}
                                   </div>
-                                  {job.is_club_job_parent && (
-                                    <span style={{ fontSize: "9px", background: "#dbeafe", color: "#1e40af", padding: "1px 4px", borderRadius: "4px", fontWeight: "bold" }}>CLUB</span>
-                                  )}
+                                  <div style={{ display: "flex", gap: "4px", marginTop: "2px", alignItems: "center" }}>
+                                    {job.is_club_job_parent && (
+                                      <span style={{ fontSize: "9px", background: "#dbeafe", color: "#1e40af", padding: "1px 5px", borderRadius: "3px", fontWeight: "bold" }}>CLUB</span>
+                                    )}
+                                    {(job.is_client_job || job.created_by_client) && (
+                                      <span style={{ fontSize: "9px", background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a", padding: "1px 5px", borderRadius: "3px", fontWeight: "bold" }}>CLIENT</span>
+                                    )}
+                                  </div>
                                 </div>
                                 {job.isLocked && (
                                   <Tooltip title="Job is Locked">
@@ -4734,7 +4744,7 @@ const ExportJobsTable = () => {
                                                 gap: "4px"
                                               }}
                                             >
-                                              <div style={{ display: "flex", alignItems: "center", gap: "4px", minWidth: 0, flex: 1 }}>
+                                              <div style={{ display: "flex", alignItems: "center", gap: "4px", minWidth: 0, flex: 1, flexWrap: "wrap" }}>
                                                 <a
                                                   href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
                                                   target="_blank"
@@ -4807,6 +4817,94 @@ const ExportJobsTable = () => {
                                                       title={`Size: ${size || '-'}, Type: ${type || '-'}`}
                                                     >
                                                       {badgeText}
+                                                    </span>
+                                                  );
+                                                })()}
+
+                                                {/* Container Seal Display (Customs & Self/Line Seal dedup) */}
+                                                {(() => {
+                                                  const customSeal = (container.sealNo || container.customSealNo || container.custom_seal || "").trim();
+                                                  const lineOrSelf = (container.shippingLineSealNo || container.lineSeal || container.line_seal || container.selfSealNo || container.selfSeal || "").trim();
+                                                  if (!customSeal && !lineOrSelf) return null;
+
+                                                  if (customSeal && lineOrSelf) {
+                                                    if (customSeal.toUpperCase() === lineOrSelf.toUpperCase()) {
+                                                      return (
+                                                        <span
+                                                          style={{
+                                                            fontSize: "8.5px",
+                                                            color: "#475569",
+                                                            backgroundColor: "#f8fafc",
+                                                            border: "1px solid #cbd5e1",
+                                                            borderRadius: "2px",
+                                                            padding: "1px 4px",
+                                                            whiteSpace: "nowrap",
+                                                            display: "inline-flex",
+                                                            alignItems: "center",
+                                                            gap: "2px"
+                                                          }}
+                                                          title={`Seal: ${customSeal}`}
+                                                        >
+                                                          Seal: <strong style={{ color: "#0f172a" }}>{customSeal}</strong>
+                                                          <IconButton size="small" onClick={(e) => handleCopyText(customSeal, e)} style={{ padding: 0 }} title="Copy Seal">
+                                                            <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
+                                                          </IconButton>
+                                                        </span>
+                                                      );
+                                                    }
+                                                    return (
+                                                      <span
+                                                        style={{
+                                                          fontSize: "8.5px",
+                                                          color: "#475569",
+                                                          backgroundColor: "#f8fafc",
+                                                          border: "1px solid #cbd5e1",
+                                                          borderRadius: "2px",
+                                                          padding: "1px 4px",
+                                                          whiteSpace: "nowrap",
+                                                          display: "inline-flex",
+                                                          alignItems: "center",
+                                                          gap: "4px"
+                                                        }}
+                                                        title={`Customs: ${customSeal} | Line: ${lineOrSelf}`}
+                                                      >
+                                                        <span style={{ display: "inline-flex", alignItems: "center", gap: "1px" }}>
+                                                          C.Seal: <strong style={{ color: "#0f172a" }}>{customSeal}</strong>
+                                                          <IconButton size="small" onClick={(e) => handleCopyText(customSeal, e)} style={{ padding: 0 }} title="Copy Custom Seal">
+                                                            <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
+                                                          </IconButton>
+                                                        </span>
+                                                        <span style={{ display: "inline-flex", alignItems: "center", gap: "1px" }}>
+                                                          L.Seal: <strong style={{ color: "#0f172a" }}>{lineOrSelf}</strong>
+                                                          <IconButton size="small" onClick={(e) => handleCopyText(lineOrSelf, e)} style={{ padding: 0 }} title="Copy Line Seal">
+                                                            <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
+                                                          </IconButton>
+                                                        </span>
+                                                      </span>
+                                                    );
+                                                  }
+
+                                                  const single = customSeal || lineOrSelf;
+                                                  return (
+                                                    <span
+                                                      style={{
+                                                        fontSize: "8.5px",
+                                                        color: "#475569",
+                                                        backgroundColor: "#f8fafc",
+                                                        border: "1px solid #cbd5e1",
+                                                        borderRadius: "2px",
+                                                        padding: "1px 4px",
+                                                        whiteSpace: "nowrap",
+                                                        display: "inline-flex",
+                                                        alignItems: "center",
+                                                        gap: "2px"
+                                                      }}
+                                                      title={`Seal: ${single}`}
+                                                    >
+                                                      Seal: <strong style={{ color: "#0f172a" }}>{single}</strong>
+                                                      <IconButton size="small" onClick={(e) => handleCopyText(single, e)} style={{ padding: 0 }} title="Copy Seal">
+                                                        <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
+                                                      </IconButton>
                                                     </span>
                                                   );
                                                 })()}

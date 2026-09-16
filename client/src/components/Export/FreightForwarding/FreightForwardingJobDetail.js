@@ -25,6 +25,27 @@ import ExportJobFooter from "../Export-Dsr/ExportJobFooter.js";
 import ChargesTab from "../Export-Dsr/Charges/ChargesTab.js";
 import DateInput from "../../common/DateInput.js";
 
+const containerTypes = [
+  "20 Standard Dry",
+  "20 Flat Rack",
+  "20 Collapsible Flat Rack",
+  "20 Reefer",
+  "20 Tank",
+  "20 Open Top",
+  "20 Hard Top",
+  "20 Platform",
+  "40 Standard Dry",
+  "40 Flat Rack",
+  "40 Collapsible Flat Rack",
+  "40 Reefer",
+  "40 Tank",
+  "40 Open Top",
+  "40 Hard Top",
+  "40 High Cube",
+  "40 Reefer High Cube",
+  "40 Platform"
+];
+
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
   return (
@@ -588,10 +609,16 @@ function FreightForwardingJobDetail() {
 
   const handleContainerChange = (index, field, value) => {
     const updatedContainers = [...(formik.values.containers || [])];
+    const val = (field === "type" || field === "container_size") ? value : value.toUpperCase();
     updatedContainers[index] = {
       ...updatedContainers[index],
-      [field]: value.toUpperCase()
+      [field]: val
     };
+    if (field === "type") {
+      updatedContainers[index].container_size = value;
+    } else if (field === "container_size") {
+      updatedContainers[index].type = value;
+    }
     formik.setFieldValue("containers", updatedContainers);
   };
 
@@ -599,6 +626,8 @@ function FreightForwardingJobDetail() {
     const updatedContainers = [...(formik.values.containers || [])];
     updatedContainers.push({
       containerNo: "",
+      type: "",
+      container_size: "",
       customSealNo: "",
       shippingLineSealNo: ""
     });
@@ -610,6 +639,8 @@ function FreightForwardingJobDetail() {
     if (updatedContainers.length === 0) {
       updatedContainers.push({
         containerNo: "",
+        type: "",
+        container_size: "",
         customSealNo: "",
         shippingLineSealNo: ""
       });
@@ -1448,6 +1479,7 @@ function FreightForwardingJobDetail() {
                   <thead>
                     <tr>
                       <th style={gridStyles.th}>Container No.</th>
+                      <th style={gridStyles.th}>Container Size</th>
                       <th style={gridStyles.th}>Custom Seal</th>
                       <th style={gridStyles.th}>Line Seal</th>
                       {isEditable && <th style={{ ...gridStyles.th, width: "50px", textAlign: "center" }}>Action</th>}
@@ -1465,6 +1497,24 @@ function FreightForwardingJobDetail() {
                             onChange={(e) => handleContainerChange(index, "containerNo", e.target.value)}
                             placeholder="Container No"
                           />
+                        </td>
+                        <td style={gridStyles.td}>
+                          <select
+                            disabled={!isEditable}
+                            style={gridStyles.select}
+                            value={cRow.type || cRow.container_size || ""}
+                            onChange={(e) => {
+                              handleContainerChange(index, "type", e.target.value);
+                              handleContainerChange(index, "container_size", e.target.value);
+                            }}
+                          >
+                            <option value="">Select Container Size</option>
+                            {containerTypes.map((type, tIdx) => (
+                              <option key={tIdx} value={type}>
+                                {type}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td style={gridStyles.td}>
                           <input

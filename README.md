@@ -169,12 +169,10 @@ The application is structured into four core functional modules, each governed b
 ### 💳 C. Charges & Billing Module (`/export-charges`, `/export-billing`)
 
 #### 1. Mandatory Conditions to Send Job for Billing (`send_for_billing`)
-* **CRITICAL VALIDATION RULE**: For all regular containerized sea export jobs (Non-Air, Non-LCL, Non-General, Non-Freight-Forwarding):
-  * A job **CANNOT** be sent for billing unless BOTH of the following dates are filled:
-    1. **Rail Out / Road Out Date**
-    2. **Reached Date**
-  * If a user attempts to toggle `send_for_billing: true` without these dates, the system raises an alert:
-    > *"Cannot send for billing: Rail Out/Road Out date and Reached date are required."*
+* **CRITICAL VALIDATION RULE**:
+  * For regular export jobs (Non-General, Non-Freight-Forwarding), a job **CANNOT** be sent for billing without **Handover Date** (`handoverForwardingNoteDate` / `handover_date`).
+  * For containerized sea export jobs (Non-Air, Non-LCL), **Rail Out / Road Out Date** and **Reached Date** are also required.
+  * If a user attempts to toggle or submit `send_for_billing: true` without these mandatory dates, the system prevents the update and raises an alert (e.g. > *"Cannot send for billing: Handover date is required."*).
 
 #### 2. Financial Lock & Rejection Rules
 * **Financial Lock**: Setting `send_for_billing: true` records `send_for_billing_date` and locks financial parameters for non-admin users.
