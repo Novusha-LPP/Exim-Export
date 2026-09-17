@@ -289,10 +289,14 @@ export const generateExportChecklist = async (jobNumber) => {
     drawFieldBox(10, yPos, 575, 35, "Factory Address", factoryAddress, 6, 5);
     yPos += 40;
 
-    // ==================== PAGE 2 - ITEM DETAILS ====================
-    doc.addPage();
-    drawHeader(2);
-    yPos = 55;
+    // ==================== ITEM DETAILS ====================
+    if (yPos + 80 > 780) {
+      doc.addPage();
+      drawHeader(2);
+      yPos = 55;
+    } else {
+      yPos += 15;
+    }
 
     yPos = drawSectionHeader(yPos, "ITEM DETAILS");
 

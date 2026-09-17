@@ -158,6 +158,7 @@ const ExportChecklistGenerator = ({
     const rightX = PAGE_CONFIG.width - PAGE_CONFIG.margins.right;
     const leftX = PAGE_CONFIG.margins.left;
     const PAGE_BOTTOM_LIMIT = 760;
+    const drawnHeaders = new Set();
 
     const addHeader = (
       pageNum,
@@ -167,6 +168,9 @@ const ExportChecklistGenerator = ({
       aeoRole,
       dateToPrint,
     ) => {
+      if (drawnHeaders.has(pageNum)) return;
+      drawnHeaders.add(pageNum);
+
       let y = PAGE_CONFIG.margins.top;
 
       // Line 1: Firm Name Center
@@ -230,7 +234,7 @@ const ExportChecklistGenerator = ({
           data?.aeoRole,
           data?.currentDate || currentDate,
         );
-        return 80;
+        return 60;
       }
       return currentY;
     };
@@ -593,10 +597,38 @@ const ExportChecklistGenerator = ({
 
     yPos += 5;
 
-    // Check space for Nature Of Payment, Marks & Nos, Buyer Details, AEO, EOU block (~140pt)
-    yPos = helpers.ensureSpace(140, yPos);
+    // Calculate heights for Marks & Nos, Buyer's Name & Address, and AEO details
+    const marksVal = data.marksAndNos || "";
+    const marksLines = pdf.splitTextToSize(marksVal, rightX - (leftColX + 70));
+    const marksHeight = Math.max(marksLines.length * 10 + 5, 20);
 
-    // Nature Of Payment and Period Of Payment on same line - exactly like first image
+    const buyerLines = pdf.splitTextToSize(data.buyerName || "", colWidth - 20);
+    const buyerBlockHeight = Math.max(buyerLines.length * 10 + 25, 60);
+
+    const rightDetails = [
+      { label: "AEO Code", value: data.buyerAeoCode },
+      { label: "AEO Country", value: data.buyerAeoCountry },
+      { label: "AEO Role", value: data.buyerAeoRole },
+      {
+        label: "Third Party Name & Addr.",
+        value: data.thirdPartyDetails,
+      },
+    ];
+
+    let rightDetailsHeight = 0;
+    rightDetails.forEach((detail) => {
+      if (detail.value) {
+        const valueLines = pdf.splitTextToSize(detail.value, colWidth - 130);
+        rightDetailsHeight += Math.max(valueLines.length * 9, 12);
+      } else {
+        rightDetailsHeight += 12;
+      }
+    });
+
+    const totalBuyerBlockHeight = 15 + marksHeight + Math.max(buyerBlockHeight, rightDetailsHeight) + 10;
+    yPos = helpers.ensureSpace(totalBuyerBlockHeight, yPos);
+
+    // Nature Of Payment and Period Of Payment on same line
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(FONT_SIZES.fieldLabel);
     pdf.text("Nature Of Payment", leftColX, yPos);
@@ -611,18 +643,6 @@ const ExportChecklistGenerator = ({
 
     yPos += 12;
 
-    // Marks & Nos - wrap text to prevent cutting off
-    const marksVal = data.marksAndNos || "";
-    const marksLines = pdf.splitTextToSize(marksVal, rightX - (leftColX + 70));
-    const marksHeight = Math.max(marksLines.length * 10 + 5, 20);
-
-    // Buyer address lines
-    const buyerLines = pdf.splitTextToSize(data.buyerName || "", colWidth - 20);
-    const buyerBlockHeight = Math.max(buyerLines.length * 10 + 25, 60);
-
-    // Check space before Marks & Nos and Buyer's Name & Address
-    yPos = helpers.ensureSpace(marksHeight + buyerBlockHeight, yPos);
-
     pdf.setFont("helvetica", "bold");
     pdf.text("Marks & Nos", leftColX, yPos);
     pdf.setFont("helvetica", "normal");
@@ -630,13 +650,14 @@ const ExportChecklistGenerator = ({
     pdf.text(marksLines, leftColX + 70, yPos);
     yPos += marksHeight;
 
-    // Buyer's Name & Address section - exactly like first image
+    // Buyer's Name & Address section
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(FONT_SIZES.fieldLabel);
     pdf.text("Buyer's Name & Address", leftColX, yPos);
     yPos += 12;
 
     // Buyer address on left side
+    const buyerStartY = yPos;
     buyerLines.forEach((line) => {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(FONT_SIZES.fieldValue);
@@ -644,18 +665,8 @@ const ExportChecklistGenerator = ({
       yPos += 10;
     });
 
-    // AEO details and Third Party on right side - exactly like first image
-    let rightDetailsY = yPos - buyerLines.length * 10 - 5; // Align with buyer details start
-
-    const rightDetails = [
-      { label: "AEO Code", value: data.buyerAeoCode },
-      { label: "AEO Country", value: data.buyerAeoCountry },
-      { label: "AEO Role", value: data.buyerAeoRole },
-      {
-        label: "Third Party Name & Addr.",
-        value: data.thirdPartyDetails,
-      },
-    ];
+    // AEO details and Third Party on right side
+    let rightDetailsY = buyerStartY;
 
     rightDetails.forEach((detail) => {
       pdf.setFont("helvetica", "bold");
@@ -752,8 +763,18 @@ const ExportChecklistGenerator = ({
         5: { cellWidth: 70 },
         6: { cellWidth: 60 },
       },
-      margin: { left: leftX },
+      margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
       tableWidth: rightX - leftX,
+      didDrawPage: () => {
+        helpers.addHeader(
+          pdf.internal.getNumberOfPages(),
+          "?",
+          data?.customStation,
+          data?.aeoRegistrationNo,
+          data?.aeoRole,
+          data?.currentDate,
+        );
+      },
     });
 
     yPos = pdf.lastAutoTable.finalY + 8;
@@ -829,8 +850,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 8.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
@@ -892,8 +923,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 8.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
@@ -951,8 +992,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 8.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
@@ -1012,8 +1063,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 7.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 15;
@@ -1069,8 +1130,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 8.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
@@ -1127,8 +1198,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 8.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
@@ -1214,8 +1295,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 8.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
@@ -1267,8 +1358,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 8.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
@@ -1313,8 +1414,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 8.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
@@ -1364,8 +1475,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 8.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
@@ -1406,8 +1527,18 @@ const ExportChecklistGenerator = ({
           fontStyle: "bold",
           fontSize: 8.5,
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 15;
@@ -1510,8 +1641,18 @@ const ExportChecklistGenerator = ({
           2: { fontStyle: "bold", cellWidth: 45 },
           3: { cellWidth: (rightX - leftX) / 2 - 45 },
         },
-        margin: { left: leftX },
+        margin: { top: 55, bottom: 30, left: leftX, right: PAGE_CONFIG.margins.right },
         tableWidth: rightX - leftX,
+        didDrawPage: () => {
+          helpers.addHeader(
+            pdf.internal.getNumberOfPages(),
+            "?",
+            data?.customStation,
+            data?.aeoRegistrationNo,
+            data?.aeoRole,
+            data?.currentDate,
+          );
+        },
       });
 
       yPos = pdf.lastAutoTable.finalY + 10;
@@ -2578,19 +2719,19 @@ const extractPrimaryJobNo = (input) => {
       );
       let yPos = renderPage1(pdf, helpers, data);
 
-      yPos = helpers.ensureSpace(140, yPos);
+      yPos = helpers.ensureSpace(70, yPos);
       yPos = renderItemDetailsPage(pdf, helpers, data, yPos);
 
-      yPos = helpers.ensureSpace(80, yPos);
+      yPos = helpers.ensureSpace(50, yPos);
       yPos = renderThirdPartyDetails(pdf, helpers, data, yPos);
 
-      yPos = helpers.ensureSpace(80, yPos);
+      yPos = helpers.ensureSpace(50, yPos);
       yPos = renderPage2(pdf, helpers, data, yPos);
 
-      yPos = helpers.ensureSpace(80, yPos);
+      yPos = helpers.ensureSpace(50, yPos);
       yPos = renderPage3(pdf, helpers, data, yPos);
 
-      yPos = helpers.ensureSpace(80, yPos);
+      yPos = helpers.ensureSpace(50, yPos);
       yPos = renderPage4(pdf, helpers, data, yPos);
 
       const totalPages = pdf.internal.getNumberOfPages();

@@ -1121,9 +1121,9 @@ const mapPurchaseEntryData = (data) => {
         revenueAmount: Number(data["Revenue Amount"] || data.revenueAmount || data["Revenue Total"] || data.revenueTotal || 0),
         revenueBasicAmount: Number(data["Revenue Basic Amount"] || data.revenueBasicAmount || 0),
         revenueGstAmount: Number(data["Revenue GST Amount"] || data.revenueGstAmount || 0),
-        revenueCgst: Number(data["Revenue CGST"] || data.revenueCgst || 0),
-        revenueSgst: Number(data["Revenue SGST"] || data.revenueSgst || 0),
-        revenueIgst: Number(data["Revenue IGST"] || data.revenueIgst || 0),
+        revenueCgst: Number(data["Revenue CGST"] || data.revenueCgst || (Array.isArray(data.chargeItems) ? data.chargeItems.reduce((acc, it) => acc + Number(it["Revenue CGST"] || it.revenueCgst || 0), 0) : 0)),
+        revenueSgst: Number(data["Revenue SGST"] || data.revenueSgst || (Array.isArray(data.chargeItems) ? data.chargeItems.reduce((acc, it) => acc + Number(it["Revenue SGST"] || it.revenueSgst || 0), 0) : 0)),
+        revenueIgst: Number(data["Revenue IGST"] || data.revenueIgst || (Array.isArray(data.chargeItems) ? data.chargeItems.reduce((acc, it) => acc + Number(it["Revenue IGST"] || it.revenueIgst || 0), 0) : 0)),
         revenueTotal: Number(data["Revenue Total"] || data.revenueTotal || data["Revenue Amount"] || data.revenueAmount || 0),
         revenueRate: Number(data["Revenue Rate"] || data.revenueRate || 0),
         revenueCurrencyAmount: Number(data["Revenue Currency Amount"] || data.revenueCurrencyAmount || 0),
@@ -1650,6 +1650,59 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 let itemQty = item.qty !== undefined && item.qty !== null ? Number(item.qty) : (itemCostQty !== undefined ? Number(itemCostQty) : finalQty);
                 let itemRate = item.rate !== undefined && item.rate !== null ? Number(item.rate) : (itemCostRate !== undefined ? Number(itemCostRate) : finalRate);
 
+                let itemRevCgst = 0;
+                let itemRevSgst = 0;
+                let itemRevIgst = 0;
+
+                if (isReimbursement) {
+                    itemRevCgst = "";
+                    itemRevSgst = "";
+                    itemRevIgst = "";
+                } else {
+                    const rawItemRevCgst = item["Revenue CGST"] !== undefined ? Number(item["Revenue CGST"]) : (item.revenueCgst !== undefined ? Number(item.revenueCgst) : (itemRevenue.cgst !== undefined ? Number(itemRevenue.cgst) : 0));
+                    const rawItemRevSgst = item["Revenue SGST"] !== undefined ? Number(item["Revenue SGST"]) : (item.revenueSgst !== undefined ? Number(item.revenueSgst) : (itemRevenue.sgst !== undefined ? Number(itemRevenue.sgst) : 0));
+                    const rawItemRevIgst = item["Revenue IGST"] !== undefined ? Number(item["Revenue IGST"]) : (item.revenueIgst !== undefined ? Number(item.revenueIgst) : (itemRevenue.igst !== undefined ? Number(itemRevenue.igst) : 0));
+
+                    if (rawItemRevCgst > 0 || rawItemRevSgst > 0 || rawItemRevIgst > 0) {
+                        itemRevCgst = rawItemRevCgst;
+                        itemRevSgst = rawItemRevSgst;
+                        itemRevIgst = rawItemRevIgst;
+                    } else if (itemRevAmt > 0) {
+                        let revGstRate = Number(item["Revenue GST%"] || item.revenueGstRate || itemRevenue.gstRate || item.gstRate || entry.gstPercent || 0);
+                        if (revGstRate === 0 && (Number(item.cgst || 0) > 0 || Number(item.sgst || 0) > 0 || Number(item.igst || 0) > 0 || Number(entry.cgstAmt || 0) > 0 || Number(entry.igstAmt || 0) > 0)) {
+                            revGstRate = 18;
+                        }
+
+                        if (revGstRate > 0) {
+                            const isCostIgst = Number(item.igst || 0) > 0 || (Number(item.cgst || 0) === 0 && Number(entry.igstAmt || 0) > 0);
+                            const isCostCgst = Number(item.cgst || 0) > 0 || Number(item.sgst || 0) > 0 || Number(entry.cgstAmt || 0) > 0;
+
+                            if (isCostIgst) {
+                                itemRevIgst = Number(((itemRevAmt * revGstRate) / 100).toFixed(2));
+                                itemRevCgst = 0;
+                                itemRevSgst = 0;
+                            } else if (isCostCgst) {
+                                itemRevCgst = Number(((itemRevAmt * (revGstRate / 2)) / 100).toFixed(2));
+                                itemRevSgst = itemRevCgst;
+                                itemRevIgst = 0;
+                            } else {
+                                const gstin = String(entry.gstinNo || entry.gstin || '').trim();
+                                const pos = String(entry.placeOfSupply || entry.state || '').trim().toLowerCase();
+                                const isGujarat = gstin.startsWith("24") || pos.includes("gujarat") || pos === "24";
+                                if (isGujarat) {
+                                    itemRevCgst = Number(((itemRevAmt * (revGstRate / 2)) / 100).toFixed(2));
+                                    itemRevSgst = itemRevCgst;
+                                    itemRevIgst = 0;
+                                } else {
+                                    itemRevIgst = Number(((itemRevAmt * revGstRate) / 100).toFixed(2));
+                                    itemRevCgst = 0;
+                                    itemRevSgst = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 return {
                     "Charge Heading": itemHead,
                     "Description of Services": itemDesc,
@@ -1667,6 +1720,9 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     "Total": Math.round(itemTotal),
                     "Net Amount": Math.round(itemNet),
                     "Revenue Amount": itemRevAmt.toFixed(2),
+                    "Revenue CGST": itemRevCgst,
+                    "Revenue SGST": itemRevSgst,
+                    "Revenue IGST": itemRevIgst,
                     "Revenue Rate": itemRevRate,
                     "Revenue Currency Amount": itemRevCurrencyAmt,
                     "Supplier Inv No": item.invoiceNumber || supplierInvNo || '',
@@ -1708,6 +1764,55 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     }
                 }
 
+                let fallbackRevCgst = 0;
+                let fallbackRevSgst = 0;
+                let fallbackRevIgst = 0;
+
+                if (chargeCategory === 'Reimbursement') {
+                    fallbackRevCgst = "";
+                    fallbackRevSgst = "";
+                    fallbackRevIgst = "";
+                } else {
+                    const rawFbRevCgst = Number(entry.revenueCgst || revObj.cgst || 0);
+                    const rawFbRevSgst = Number(entry.revenueSgst || revObj.sgst || 0);
+                    const rawFbRevIgst = Number(entry.revenueIgst || revObj.igst || 0);
+
+                    if (rawFbRevCgst > 0 || rawFbRevSgst > 0 || rawFbRevIgst > 0) {
+                        fallbackRevCgst = rawFbRevCgst;
+                        fallbackRevSgst = rawFbRevSgst;
+                        fallbackRevIgst = rawFbRevIgst;
+                    } else if (revenueAmount > 0) {
+                        let revGstRate = Number(entry.gstPercent || revObj.gstRate || 0);
+                        if (revGstRate === 0 && (Number(entry.cgstAmt || 0) > 0 || Number(entry.igstAmt || 0) > 0)) {
+                            revGstRate = 18;
+                        }
+                        if (revGstRate > 0) {
+                            if (Number(entry.igstAmt || 0) > 0) {
+                                fallbackRevIgst = Number(((revenueAmount * revGstRate) / 100).toFixed(2));
+                                fallbackRevCgst = 0;
+                                fallbackRevSgst = 0;
+                            } else if (Number(entry.cgstAmt || 0) > 0 || Number(entry.sgstAmt || 0) > 0) {
+                                fallbackRevCgst = Number(((revenueAmount * (revGstRate / 2)) / 100).toFixed(2));
+                                fallbackRevSgst = fallbackRevCgst;
+                                fallbackRevIgst = 0;
+                            } else {
+                                const gstin = String(entry.gstinNo || entry.gstin || '').trim();
+                                const pos = String(entry.placeOfSupply || entry.state || '').trim().toLowerCase();
+                                const isGujarat = gstin.startsWith("24") || pos.includes("gujarat") || pos === "24";
+                                if (isGujarat) {
+                                    fallbackRevCgst = Number(((revenueAmount * (revGstRate / 2)) / 100).toFixed(2));
+                                    fallbackRevSgst = fallbackRevCgst;
+                                    fallbackRevIgst = 0;
+                                } else {
+                                    fallbackRevIgst = Number(((revenueAmount * revGstRate) / 100).toFixed(2));
+                                    fallbackRevCgst = 0;
+                                    fallbackRevSgst = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 return [{
                     "Charge Heading": fallbackHead,
                     "Description of Services": fallbackDesc,
@@ -1725,6 +1830,9 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     "Total": Math.round(formattedData["Total"] !== undefined ? formattedData["Total"] : (grossTotal || 0)),
                     "Net Amount": Math.round(formattedData["Net Amount"] !== undefined ? formattedData["Net Amount"] : (netAmount || 0)),
                     "Revenue Amount": revenueAmount.toFixed(2),
+                    "Revenue CGST": fallbackRevCgst,
+                    "Revenue SGST": fallbackRevSgst,
+                    "Revenue IGST": fallbackRevIgst,
                     "Revenue Rate": revenueRate,
                     "Revenue Currency Amount": revenueCurrencyAmount,
                     "Supplier Inv No": supplierInvNo || '',
