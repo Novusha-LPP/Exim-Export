@@ -1379,20 +1379,33 @@ function FreightForwardingModule() {
               </thead>
               <tbody>
                   {filteredRows.length ? (
-                    filteredRows.map((row, idx) => (
-                      <tr
-                        key={row.enquiry_no}
-                        style={{
-                          borderBottom: "1px solid #e2e8f0",
-                          backgroundColor: idx % 2 === 1 ? "#f8fafc" : "#ffffff",
-                          cursor: isPipelineTab ? "default" : (loadingJob ? "wait" : "pointer"),
-                          opacity: loadingJob ? 0.7 : 1,
-                          transition: "background-color 0.15s ease"
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = idx % 2 === 1 ? "#f8fafc" : "#ffffff")}
-                        onClick={() => !loadingJob && handleRowClick(row)}
-                      >
+                    filteredRows.map((row, idx) => {
+                      let rowBg = idx % 2 === 1 ? "#f8fafc" : "#ffffff";
+                      let rowHover = "#f1f5f9";
+                      const stage = row.computedTab;
+                      
+                      if (stage === "Completed") { rowBg = idx % 2 === 1 ? "#ecfdf5" : "#f0fdf4"; rowHover = "#d1fae5"; }
+                      else if (stage === "Delivery") { rowBg = idx % 2 === 1 ? "#fff7ed" : "#fffcf2"; rowHover = "#ffedd5"; }
+                      else if (stage === "ETA Pending") { rowBg = idx % 2 === 1 ? "#fefce8" : "#fffffa"; rowHover = "#fef08a"; }
+                      else if (stage === "Billing") { rowBg = idx % 2 === 1 ? "#faf5ff" : "#fdfbfe"; rowHover = "#f3e8ff"; }
+                      else if (stage === "SOB") { rowBg = idx % 2 === 1 ? "#eef2ff" : "#f5f7fa"; rowHover = "#e0e7ff"; }
+                      else if (stage === "Draft BL") { rowBg = idx % 2 === 1 ? "#eff6ff" : "#f4fbfe"; rowHover = "#dbeafe"; }
+                      else if (stage === "Rejected") { rowBg = idx % 2 === 1 ? "#fff5f5" : "#fffafa"; rowHover = "#fee2e2"; }
+
+                      return (
+                        <tr
+                          key={row.enquiry_no}
+                          style={{
+                            borderBottom: "1px solid #e2e8f0",
+                            backgroundColor: rowBg,
+                            cursor: isPipelineTab ? "default" : (loadingJob ? "wait" : "pointer"),
+                            opacity: loadingJob ? 0.7 : 1,
+                            transition: "background-color 0.15s ease"
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = rowHover)}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = rowBg)}
+                          onClick={() => !loadingJob && handleRowClick(row)}
+                        >
                         {/* Col 1: Job No / Identifiers / Badges */}
                         <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "160px" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
@@ -1907,7 +1920,8 @@ function FreightForwardingModule() {
                           </div>
                         </td>
                       </tr>
-                    ))
+                    );
+                  })
                   ) : (
                     <tr>
                       <td colSpan={7} style={{ padding: "40px 24px", textAlign: "center", color: "#64748b", fontSize: "13px" }}>
