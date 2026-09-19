@@ -396,12 +396,34 @@ router.get("/api/charges-jobs/:status?", async (req, res) => {
         const sort = {};
         if (sortKey && sortKey !== "null" && sortKey !== "undefined" && sortKey !== "") {
             sort[sortKey] = sortOrder === "asc" ? 1 : -1;
+            if (sortKey !== "createdAt") {
+                sort.createdAt = -1;
+            }
+            sort._id = -1;
         } else {
+            sort.isClientJobRank = -1;
             sort.createdAt = -1;
+            sort._id = -1;
         }
+
+        const clientJobCondition = {
+            $cond: {
+                if: {
+                    $or: [
+                        { $eq: ["$is_client_job", true] },
+                        { $eq: ["$created_by_client", true] },
+                        { $ne: [{ $ifNull: ["$freight_enquiry_id", ""] }, ""] },
+                        { $regexMatch: { input: { $ifNull: ["$detailedStatus", ""] }, regex: "Freight Enquiry", options: "i" } }
+                    ]
+                },
+                then: 1,
+                else: 0
+            }
+        };
 
         const aggPipeline = [
             { $match: filter },
+            { $addFields: { isClientJobRank: clientJobCondition } },
             { $sort: { ...sort } },
             { $project: selectProjection }
         ];

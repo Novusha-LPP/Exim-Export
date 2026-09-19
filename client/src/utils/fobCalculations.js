@@ -23,7 +23,13 @@ export const calculateProductFobINR = (
 
   const C = A / B;
   const charges = activeInvoice.freightInsuranceCharges || {};
-  const invToInrRate = parseFloat(invoiceExchangeRate) || 1;
+  let invToInrRate = parseFloat(invoiceExchangeRate) || 1;
+
+  // Safeguard: If currency is JPY or KRW and rate > 5, it is the rate per 100 units from Customs notification
+  const invCurr = String(activeInvoice.currency || "").toUpperCase();
+  if ((invCurr === "JPY" || invCurr === "KRW") && invToInrRate > 5) {
+    invToInrRate = invToInrRate / 100;
+  }
 
   // The base gross value for evaluating Total FOB is the INVOICE VALUE (matching InvoiceFreightTab.js)
   const grossInvoiceValue = parseFloat(activeInvoice.invoiceValue || activeInvoice.productValue || 0);
@@ -32,11 +38,20 @@ export const calculateProductFobINR = (
   const totalValueInr = grossInvoiceValue * invToInrRate;
   let totalDeductionInr = 0;
 
-  ["freight", "insurance", "commission"].forEach(k => {
+  const invoiceTerms = String(activeInvoice.termsOfInvoice || "").toUpperCase();
+  const deductFreightInsurance = ["CIF", "C&F", "C&I", "CIP", "CPT", "DAP", "DDP", "DPU"].includes(invoiceTerms) || invoiceTerms.includes("CIF") || invoiceTerms.includes("C&F");
+
+  ["freight", "insurance", "discount", "otherDeduction", "commission"].forEach(k => {
     const row = charges[k] || {};
 
-    const fallbackRate = (row.currency || activeInvoice.currency || "INR").toUpperCase() === "INR" ? 1 : invToInrRate;
-    const rowRate = parseFloat(row.exchangeRate) || fallbackRate;
+    const rowCurr = String(row.currency || activeInvoice.currency || "INR").toUpperCase();
+    const fallbackRate = rowCurr === "INR" ? 1 : invToInrRate;
+    let rowRate = parseFloat(row.exchangeRate) || fallbackRate;
+
+    // Safeguard: If row currency is JPY or KRW and rowRate > 5, normalize by dividing by 100
+    if ((rowCurr === "JPY" || rowCurr === "KRW") && rowRate > 5) {
+      rowRate = rowRate / 100;
+    }
 
     const ratePercent = parseFloat(row.rate) || 0;
     let rowAmountInr = 0;
@@ -53,8 +68,12 @@ export const calculateProductFobINR = (
       if (rowAmountInr > threshold) {
         totalDeductionInr += (rowAmountInr - threshold);
       }
-    } else {
+    } else if (k === "discount" || k === "otherDeduction") {
       totalDeductionInr += rowAmountInr;
+    } else if (k === "freight" || k === "insurance") {
+      if (deductFreightInsurance) {
+        totalDeductionInr += rowAmountInr;
+      }
     }
   });
 
@@ -177,6 +196,10 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
         if (pmvCurrency.toUpperCase() !== "INR") {
           if (pmvCurrency.toUpperCase() === String(inv.currency || "").toUpperCase()) {
             rate = parseFloat(exchange_rate) || 1;
+            const pmvCurrUpper = pmvCurrency.toUpperCase();
+            if ((pmvCurrUpper === "JPY" || pmvCurrUpper === "KRW") && rate > 5) {
+              rate = rate / 100;
+            }
           }
         }
 

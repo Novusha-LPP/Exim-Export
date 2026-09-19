@@ -1300,7 +1300,11 @@ function ProductRow({
     const status = product.igstCompensationCess?.igstPaymentStatus;
 
     if (status === "Export Against Payment") {
-      const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+      let invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+      const invCurr = String(invoice?.currency || "").toUpperCase();
+      if ((invCurr === "JPY" || invCurr === "KRW") && invoiceExchangeRate > 5) {
+        invoiceExchangeRate = invoiceExchangeRate / 100;
+      }
       const autoTaxableValue = parseFloat(((parseFloat(product.amount) || 0) * invoiceExchangeRate).toFixed(2));
       const isTaxableManual = !!product.igstCompensationCess?.isTaxableValueManual;
       
@@ -2566,7 +2570,11 @@ const ProductGeneralTab = ({
         const status = prod.igstCompensationCess?.igstPaymentStatus;
 
         if (status === "Export Against Payment") {
-          const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+          let invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+          const invCurr = String(invoice?.currency || "").toUpperCase();
+          if ((invCurr === "JPY" || invCurr === "KRW") && invoiceExchangeRate > 5) {
+            invoiceExchangeRate = invoiceExchangeRate / 100;
+          }
           // Determine the new amount to use for calculation
           const effectiveAmount = field === "amount" ? parseFloat(value) || 0 : parseFloat(prod.amount) || 0;
           const autoTaxableValue = parseFloat((effectiveAmount * invoiceExchangeRate).toFixed(2));

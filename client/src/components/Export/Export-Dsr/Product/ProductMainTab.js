@@ -218,7 +218,11 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
   const syncProductIGST = useCallback((prod, updatedInvoices) => {
     const status = prod.igstCompensationCess?.igstPaymentStatus;
     if (status === "Export Against Payment") {
-      const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+      let invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
+      const invCurr = String(activeInvoice?.currency || "").toUpperCase();
+      if ((invCurr === "JPY" || invCurr === "KRW") && invoiceExchangeRate > 5) {
+        invoiceExchangeRate = invoiceExchangeRate / 100;
+      }
       const amount = parseFloat(prod.amount) || 0;
       const autoTaxableValue = parseFloat((amount * invoiceExchangeRate).toFixed(2));
       

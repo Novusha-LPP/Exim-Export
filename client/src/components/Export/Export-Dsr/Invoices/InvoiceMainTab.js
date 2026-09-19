@@ -170,7 +170,13 @@ const InvoiceMainTab = ({ formik }) => {
         const map = {};
         (json.data.exchange_rates || []).forEach((r) => {
           if (r.currency_code && typeof r.export_rate === "number") {
-            map[r.currency_code.toUpperCase()] = r.export_rate;
+            const unit = parseFloat(r.unit) || 1;
+            let eff = unit > 0 ? r.export_rate / unit : r.export_rate;
+            const curUpper = r.currency_code.toUpperCase();
+            if ((curUpper === "JPY" || curUpper === "KRW") && eff > 5) {
+              eff = eff / 100;
+            }
+            map[curUpper] = eff;
           }
         });
         setRateMap(map);
@@ -481,221 +487,221 @@ const InvoiceMainTab = ({ formik }) => {
                 const diff = rawDiff > 0 ? "+" + rawDiff.toFixed(2) : rawDiff.toFixed(2);
 
                 return (
-                <tr key={index} className="invoice-row">
-                  <td style={styles.td} data-label="Sr No">
-                    {index + 1}
-                  </td>
+                  <tr key={index} className="invoice-row">
+                    <td style={styles.td} data-label="Sr No">
+                      {index + 1}
+                    </td>
 
-                  <td style={styles.td} data-label="Invoice No">
-                    <input
-                      style={styles.input}
-                      value={toUpper(invoice.invoiceNumber || "")}
-                      onChange={(e) =>
-                        handleInvChange(
-                          index,
-                          "invoiceNumber",
-                          e.target.value.toUpperCase().replace(/[^A-Z0-9\-\/]/g, ''),
-                        )
-                      }
-                      placeholder="INVOICE NO"
-                    />
-                  </td>
+                    <td style={styles.td} data-label="Invoice No">
+                      <input
+                        style={styles.input}
+                        value={toUpper(invoice.invoiceNumber || "")}
+                        onChange={(e) =>
+                          handleInvChange(
+                            index,
+                            "invoiceNumber",
+                            e.target.value.toUpperCase().replace(/[^A-Z0-9\-\/]/g, ''),
+                          )
+                        }
+                        placeholder="INVOICE NO"
+                      />
+                    </td>
 
-                  <td style={styles.td} data-label="Invoice Date">
-                    <DateInput
-                      style={styles.inputDate}
-                      value={invoice.invoiceDate || ""}
-                      onChange={(e) =>
-                        handleInvChange(index, "invoiceDate", e.target.value)
-                      }
-                    />
-                  </td>
+                    <td style={styles.td} data-label="Invoice Date">
+                      <DateInput
+                        style={styles.inputDate}
+                        value={invoice.invoiceDate || ""}
+                        onChange={(e) =>
+                          handleInvChange(index, "invoiceDate", e.target.value)
+                        }
+                      />
+                    </td>
 
-                  <td style={styles.td} data-label="TOI">
-                    <select
-                      style={styles.select}
-                      value={invoice.termsOfInvoice || ""}
-                      onChange={(e) =>
-                        handleInvChange(index, "termsOfInvoice", e.target.value)
-                      }
-                    >
-                      <option value="">SELECT</option>
-                      {termsOptions.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+                    <td style={styles.td} data-label="TOI">
+                      <select
+                        style={styles.select}
+                        value={invoice.termsOfInvoice || ""}
+                        onChange={(e) =>
+                          handleInvChange(index, "termsOfInvoice", e.target.value)
+                        }
+                      >
+                        <option value="">SELECT</option>
+                        {termsOptions.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
 
-                  <td style={styles.td} data-label="Currency">
-                    <select
-                      style={styles.select}
-                      value={invoice.currency || ""}
-                      onChange={(e) =>
-                        handleInvChange(index, "currency", e.target.value)
-                      }
-                    >
-                      <option value="">SELECT</option>
-                      {currencyCodes.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+                    <td style={styles.td} data-label="Currency">
+                      <select
+                        style={styles.select}
+                        value={invoice.currency || ""}
+                        onChange={(e) =>
+                          handleInvChange(index, "currency", e.target.value)
+                        }
+                      >
+                        <option value="">SELECT</option>
+                        {currencyCodes.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
 
-                  <td style={styles.td} data-label="Exchange Rate">
-                    <input
-                      type="number"
-                      style={styles.inputNumber}
-                      value={
-                        formik.values.exchange_rate === 0
-                          ? ""
-                          : formik.values.exchange_rate
-                      }
-                      onChange={(e) =>
-                        handleFieldChange(
-                          "exchange_rate",
-                          e.target.value === ""
-                            ? 0
-                            : parseFloat(e.target.value || 0),
-                        )
-                      }
-                      placeholder="0.00"
-                    />
-                  </td>
-
-                  <td style={styles.td} data-label="Price Includes">
-                    <select
-                      style={styles.select}
-                      value={invoice.priceIncludes || "Neither"}
-                      onChange={(e) =>
-                        handleInvChange(index, "priceIncludes", e.target.value)
-                      }
-                    >
-                      {priceIncludesOptions.map((p) => (
-                        <option key={p} value={p}>
-                          {p.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-
-                  <td style={styles.td} data-label="Taxable Base (IGST)">
-                    <select
-                      style={styles.select}
-                      value={formik.values.taxableBase || "Product Value"}
-                      onChange={(e) =>
-                        handleFieldChange("taxableBase", e.target.value)
-                      }
-                    >
-                      {taxableBaseOptions.map((p) => (
-                        <option key={p} value={p}>
-                          {p.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-
-                  <td style={styles.td} data-label="Invoice Value">
-                    <input
-                      type="number"
-                      style={styles.inputNumber}
-                      value={
-                        invoice.invoiceValue === 0 ||
-                          invoice.invoiceValue === ""
-                          ? ""
-                          : invoice.invoiceValue
-                      }
-                      onChange={(e) =>
-                        handleInvChange(
-                          index,
-                          "invoiceValue",
-                          e.target.value === ""
+                    <td style={styles.td} data-label="Exchange Rate">
+                      <input
+                        type="number"
+                        style={styles.inputNumber}
+                        value={
+                          formik.values.exchange_rate === 0
                             ? ""
-                            : parseFloat(e.target.value || 0),
-                        )
-                      }
-                      placeholder="0.00"
-                    />
-                  </td>
+                            : formik.values.exchange_rate
+                        }
+                        onChange={(e) =>
+                          handleFieldChange(
+                            "exchange_rate",
+                            e.target.value === ""
+                              ? 0
+                              : parseFloat(e.target.value || 0),
+                          )
+                        }
+                        placeholder="0.00"
+                      />
+                    </td>
 
-                  <td style={styles.td} data-label="Product Value">
-                    <input
-                      type="number"
-                      style={{
-                        ...styles.inputNumber,
-                        borderColor: mismatch ? "#e53e3e" : "#c4ccd8",
-                        backgroundColor: mismatch ? "#fff5f5" : "#f7fafc",
-                      }}
-                      value={
-                        invoice.productValue === 0 ||
-                          invoice.productValue === ""
-                          ? ""
-                          : invoice.productValue
-                      }
-                      onChange={(e) =>
-                        handleInvChange(
-                          index,
-                          "productValue",
-                          e.target.value === ""
-                            ? ""
-                            : parseFloat(e.target.value || 0),
-                        )
-                      }
-                      placeholder="0.00"
-                    />
-                    {mismatch && (
-                      <div style={{ color: "#e53e3e", fontSize: 10, marginTop: 4, fontWeight: 600 }}>
-                        Mismatch! Diff: {diff}
-                      </div>
-                    )}
-                  </td>
-                  <td style={styles.td} data-label="Packing Charges">
-                    <input
-                      type="number"
-                      style={styles.inputNumber}
-                      value={
-                        invoice.packing_charges === 0 ||
-                          invoice.packing_charges === ""
-                          ? ""
-                          : invoice.packing_charges
-                      }
-                      onChange={(e) =>
-                        handleInvChange(
-                          index,
-                          "packing_charges",
-                          e.target.value === ""
-                            ? ""
-                            : parseFloat(e.target.value || 0),
-                        )
-                      }
-                      placeholder="0.00"
-                    />
-                  </td>
+                    <td style={styles.td} data-label="Price Includes">
+                      <select
+                        style={styles.select}
+                        value={invoice.priceIncludes || "Neither"}
+                        onChange={(e) =>
+                          handleInvChange(index, "priceIncludes", e.target.value)
+                        }
+                      >
+                        {priceIncludesOptions.map((p) => (
+                          <option key={p} value={p}>
+                            {p.toUpperCase()}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
 
-                  <td style={styles.td} data-label="Action">
-                    <button
-                      type="button"
-                      style={styles.smallButton}
-                      onClick={() => copyInvoice(index)}
-                    >
-                      Copy
-                    </button>
-                    {invoices.length > 1 && (
+                    <td style={styles.td} data-label="Taxable Base (IGST)">
+                      <select
+                        style={styles.select}
+                        value={formik.values.taxableBase || "Product Value"}
+                        onChange={(e) =>
+                          handleFieldChange("taxableBase", e.target.value)
+                        }
+                      >
+                        {taxableBaseOptions.map((p) => (
+                          <option key={p} value={p}>
+                            {p.toUpperCase()}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    <td style={styles.td} data-label="Invoice Value">
+                      <input
+                        type="number"
+                        style={styles.inputNumber}
+                        value={
+                          invoice.invoiceValue === 0 ||
+                            invoice.invoiceValue === ""
+                            ? ""
+                            : invoice.invoiceValue
+                        }
+                        onChange={(e) =>
+                          handleInvChange(
+                            index,
+                            "invoiceValue",
+                            e.target.value === ""
+                              ? ""
+                              : parseFloat(e.target.value || 0),
+                          )
+                        }
+                        placeholder="0.00"
+                      />
+                    </td>
+
+                    <td style={styles.td} data-label="Product Value">
+                      <input
+                        type="number"
+                        style={{
+                          ...styles.inputNumber,
+                          borderColor: mismatch ? "#e53e3e" : "#c4ccd8",
+                          backgroundColor: mismatch ? "#fff5f5" : "#f7fafc",
+                        }}
+                        value={
+                          invoice.productValue === 0 ||
+                            invoice.productValue === ""
+                            ? ""
+                            : invoice.productValue
+                        }
+                        onChange={(e) =>
+                          handleInvChange(
+                            index,
+                            "productValue",
+                            e.target.value === ""
+                              ? ""
+                              : parseFloat(e.target.value || 0),
+                          )
+                        }
+                        placeholder="0.00"
+                      />
+                      {mismatch && (
+                        <div style={{ color: "#e53e3e", fontSize: 10, marginTop: 4, fontWeight: 600 }}>
+                          Mismatch! Diff: {diff}
+                        </div>
+                      )}
+                    </td>
+                    <td style={styles.td} data-label="Packing Charges">
+                      <input
+                        type="number"
+                        style={styles.inputNumber}
+                        value={
+                          invoice.packing_charges === 0 ||
+                            invoice.packing_charges === ""
+                            ? ""
+                            : invoice.packing_charges
+                        }
+                        onChange={(e) =>
+                          handleInvChange(
+                            index,
+                            "packing_charges",
+                            e.target.value === ""
+                              ? ""
+                              : parseFloat(e.target.value || 0),
+                          )
+                        }
+                        placeholder="0.00"
+                      />
+                    </td>
+
+                    <td style={styles.td} data-label="Action">
                       <button
                         type="button"
-                        style={styles.linkButton}
-                        onClick={() => removeInvoice(index)}
+                        style={styles.smallButton}
+                        onClick={() => copyInvoice(index)}
                       >
-                        Delete
+                        Copy
                       </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+                      {invoices.length > 1 && (
+                        <button
+                          type="button"
+                          style={styles.linkButton}
+                          onClick={() => removeInvoice(index)}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

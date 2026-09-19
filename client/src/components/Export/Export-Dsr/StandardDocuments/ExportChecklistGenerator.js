@@ -1735,7 +1735,15 @@ const extractPrimaryJobNo = (input) => {
       const getExportRate = (code) => {
         if (!currencyRates || !code) return null;
         const rateObj = currencyRates.find((r) => r.currency_code === code);
-        return rateObj ? rateObj.export_rate : null;
+        if (!rateObj) return null;
+        const raw = rateObj.export_rate ?? rateObj.exportRate ?? rateObj.rate ?? 0;
+        const unit = parseFloat(rateObj.unit) || 1;
+        let effective = unit > 0 ? raw / unit : raw;
+        const upperCode = code.toString().toUpperCase();
+        if ((upperCode === "JPY" || upperCode === "KRW") && effective > 5) {
+          effective = effective / 100;
+        }
+        return effective;
       };
 
       try {
@@ -1868,10 +1876,14 @@ const extractPrimaryJobNo = (input) => {
                 if (currency === "INR") {
                   fobAmount = amount;
                 } else {
-                  const rate =
+                  let rate =
                     getExportRate(currency) ||
                     parseFloat(exportJob.exchange_rate) ||
                     1;
+                  const curUpper = (currency || "").toUpperCase();
+                  if ((curUpper === "JPY" || curUpper === "KRW") && rate > 5) {
+                    rate = rate / 100;
+                  }
                   fobAmount = amount * rate;
                 }
               } else {
@@ -1881,10 +1893,14 @@ const extractPrimaryJobNo = (input) => {
                 if (currency === "INR") {
                   fobAmount = amount;
                 } else {
-                  const rate =
+                  let rate =
                     getExportRate(currency) ||
                     parseFloat(exportJob.exchange_rate) ||
                     1;
+                  const curUpper = (currency || "").toUpperCase();
+                  if ((curUpper === "JPY" || curUpper === "KRW") && rate > 5) {
+                    rate = rate / 100;
+                  }
                   fobAmount = amount * rate;
                 }
               }
@@ -2010,7 +2026,20 @@ const extractPrimaryJobNo = (input) => {
             invoiceCurrency: inv.currency || "",
             natureOfContract: inv.termsOfInvoice || "",
             unitPriceIncludes: inv.priceIncludes || "",
-            exchangeRate: exportJob.exchange_rate || "",
+            exchangeRate: (() => {
+              const curUpper = (inv.currency || "").toUpperCase();
+              let rate = getExportRate(curUpper) || parseFloat(exportJob.exchange_rate) || "";
+              if (rate !== "") {
+                let num = parseFloat(rate);
+                if (!isNaN(num)) {
+                  if ((curUpper === "JPY" || curUpper === "KRW") && num > 5) {
+                    num = num / 100;
+                  }
+                  return parseFloat(num.toFixed(4)).toString();
+                }
+              }
+              return rate;
+            })(),
             expContractNo: exportJob.otherInfo?.exportContractNo || "",
             expContractDate:
               formatDate(exportJob.otherInfo?.exportContractDate) || "",
@@ -2027,7 +2056,11 @@ const extractPrimaryJobNo = (input) => {
               const amountNum = parseFloat(rawAmount) || 0;
               const basePart = `${baseCurrency} ${amountNum.toFixed(2)}`;
               const rateFromApi = getExportRate(baseCurrency);
-              const rate = rateFromApi || exportJob.exchange_rate;
+              let rate = rateFromApi || parseFloat(exportJob.exchange_rate) || 0;
+              const curUpper = (baseCurrency || "").toUpperCase();
+              if ((curUpper === "JPY" || curUpper === "KRW") && rate > 5) {
+                rate = rate / 100;
+              }
               if (!rate) return basePart;
               const inrAmount = (amountNum * rate).toFixed(2);
               return `${basePart} / INR ${inrAmount}`;
@@ -2036,7 +2069,11 @@ const extractPrimaryJobNo = (input) => {
             fobValue: (() => {
               // Calculate FOB per-invoice dynamically to avoid all invoices showing the same total FOB
               const invCurrency = inv.currency || "USD";
-              const invExchRate = getExportRate(invCurrency) || parseFloat(exportJob.exchange_rate) || 1;
+              let invExchRate = getExportRate(invCurrency) || parseFloat(exportJob.exchange_rate) || 1;
+              const curUpper = (invCurrency || "").toUpperCase();
+              if ((curUpper === "JPY" || curUpper === "KRW") && invExchRate > 5) {
+                invExchRate = invExchRate / 100;
+              }
               const grossInvoiceValue = parseFloat(inv.invoiceValue || inv.productValue || 0);
               
               if (!grossInvoiceValue) return "";
@@ -2047,8 +2084,12 @@ const extractPrimaryJobNo = (input) => {
               
               ["freight", "insurance", "commission"].forEach(k => {
                 const row = charges[k] || {};
-                const fallbackRate = (row.currency || invCurrency).toUpperCase() === "INR" ? 1 : invExchRate;
-                const rowRate = parseFloat(row.exchangeRate) || fallbackRate;
+                const rowCurr = (row.currency || invCurrency).toUpperCase();
+                const fallbackRate = rowCurr === "INR" ? 1 : invExchRate;
+                let rowRate = parseFloat(row.exchangeRate) || fallbackRate;
+                if ((rowCurr === "JPY" || rowCurr === "KRW") && rowRate > 5) {
+                  rowRate = rowRate / 100;
+                }
                 const ratePercent = parseFloat(row.rate) || 0;
                 let rowAmountInr = 0;
                 
@@ -2070,7 +2111,7 @@ const extractPrimaryJobNo = (input) => {
               });
               
               const fobInr = totalValueInr - totalDeductionInr;
-              const fobInFC = fobInr / invExchRate;
+              const fobInFC = invExchRate > 0 ? fobInr / invExchRate : fobInr;
               
               return `${invCurrency} ${fobInFC.toFixed(2)} / INR ${fobInr.toFixed(2)}`;
             })(),
@@ -2226,10 +2267,14 @@ const extractPrimaryJobNo = (input) => {
           allProducts?.map((product, index) => {
             const currency = product.invoiceCurrency || "INR";
             const amount = parseFloat(product.amount) || 0;
-            const rate =
+            let rate =
               getExportRate(currency) ||
               parseFloat(exportJob.exchange_rate) ||
               1;
+            const curUpper = (currency || "").toUpperCase();
+            if ((curUpper === "JPY" || curUpper === "KRW") && rate > 5) {
+              rate = rate / 100;
+            }
             // Calculate proper FOB using the utility function
             const invoice =
               exportJob.invoices?.find((inv) =>
@@ -2240,7 +2285,7 @@ const extractPrimaryJobNo = (input) => {
 
             const fobINR = calculateProductFobINR(product, invoice, rate);
 
-            const fobFC = fobINR / rate;
+            const fobFC = rate > 0 ? fobINR / rate : fobINR;
 
             return {
               serialNumber: product.serialNumber,

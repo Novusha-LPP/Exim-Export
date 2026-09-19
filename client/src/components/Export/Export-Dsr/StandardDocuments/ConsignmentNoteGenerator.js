@@ -219,7 +219,14 @@ const ConsignmentNoteGenerator = ({ jobNo, children }) => {
             (r) => r.currency_code === (invoice.currency || "USD")
           );
           if (rateObj) {
-            rate = rateObj.export_rate || rateObj.import_rate || 1;
+            const raw = rateObj.export_rate || rateObj.import_rate || 1;
+            const unit = parseFloat(rateObj.unit) || 1;
+            let eff = unit > 0 ? raw / unit : raw;
+            const code = (invoice.currency || "USD").toUpperCase();
+            if ((code === "JPY" || code === "KRW") && eff > 5) {
+              eff = eff / 100;
+            }
+            rate = eff;
           }
         }
       } catch (err) {

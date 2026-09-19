@@ -202,7 +202,7 @@ function FreightForwardingDashboard({ onSelectTab, onOpenCreate }) {
     const total = filteredData.length;
     const open = filteredData.filter(e => e.status === "Open").length;
     const rejected = filteredData.filter(e => e.status === "Rejected").length;
-    const completed = filteredData.filter(e => e.status === "Converted" || e.pipeline_status === "Completed").length;
+    const completed = filteredData.filter(e => e.computedTab === "Completed").length;
     const pendingOps = total - (open + rejected + completed);
 
     return {
@@ -242,20 +242,20 @@ function FreightForwardingDashboard({ onSelectTab, onOpenCreate }) {
   const pipelineStageData = useMemo(() => {
     const stages = {
       "Enquiry": 0,
-      "Pending": 0,
       "Draft BL": 0,
       "SOB": 0,
       "Billing": 0,
+      "ETA Pending": 0,
+      "Delivery": 0,
       "Completed": 0,
     };
 
     filteredData.forEach(item => {
-      if (item.status === "Open") stages["Enquiry"]++;
-      else if (item.status === "Rejected") { }
-      else {
-        const stage = item.pipeline_stage || "Pending";
-        if (stages[stage] !== undefined) stages[stage]++;
-        else stages["Pending"]++;
+      if (item.status === "Rejected") return;
+      if (stages[item.computedTab] !== undefined) {
+        stages[item.computedTab]++;
+      } else if (item.status === "Open") {
+        stages["Enquiry"]++;
       }
     });
 

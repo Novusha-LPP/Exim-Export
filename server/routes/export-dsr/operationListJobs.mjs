@@ -493,9 +493,30 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         const sort = {};
         if (sortKey && sortKey !== "null" && sortKey !== "undefined" && sortKey !== "") {
             sort[sortKey] = sortOrder === "asc" ? 1 : -1;
+            if (sortKey !== "createdAt") {
+                sort.createdAt = -1;
+            }
+            sort._id = -1;
         } else {
+            sort.isClientJobRank = -1;
             sort.createdAt = -1;
+            sort._id = -1;
         }
+
+        const clientJobCondition = {
+            $cond: {
+                if: {
+                    $or: [
+                        { $eq: ["$is_client_job", true] },
+                        { $eq: ["$created_by_client", true] },
+                        { $ne: [{ $ifNull: ["$freight_enquiry_id", ""] }, ""] },
+                        { $regexMatch: { input: { $ifNull: ["$detailedStatus", ""] }, regex: "Freight Enquiry", options: "i" } }
+                    ]
+                },
+                then: 1,
+                else: 0
+            }
+        };
 
 
         const selectProjection = {
@@ -593,6 +614,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 {
                     $addFields: {
                         hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] },
+                        isClientJobRank: clientJobCondition,
                         _searchPriority: {
                             $switch: {
                                 branches: [
@@ -621,7 +643,8 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                 { $match: filter },
                 {
                     $addFields: {
-                        hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] }
+                        hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] },
+                        isClientJobRank: clientJobCondition
                     }
                 },
                 { $sort: { ...sort } },

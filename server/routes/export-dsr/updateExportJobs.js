@@ -157,6 +157,9 @@ async function findJobByJobNoOrEnquiry(job_no) {
           port_of_loading: enquiry.port_of_loading,
           port_of_discharge: enquiry.port_of_destination,
           isGeneralJob: true,
+          is_client_job: true,
+          created_by_client: true,
+          freight_enquiry_id: enquiry.enquiry_no || enquiry.success_no || "",
           status: "Pending",
           detailedStatus: "Created from Freight Enquiry",
           movement_type: enquiry.movement_type,
@@ -1833,14 +1836,16 @@ router.get("/exports/:status?", async (req, res) => {
     // Sorting logic
     const { sortKey, sortOrder } = req.query;
     const sort = {};
-    if (status && status.toLowerCase() === "pending") {
-      sort.is_client_job = -1;
-      sort.created_by_client = -1;
-    }
     if (sortKey && sortKey !== "null" && sortKey !== "undefined" && sortKey !== "") {
       sort[sortKey] = sortOrder === "asc" ? 1 : -1;
+      if (sortKey !== "createdAt") {
+        sort.createdAt = -1;
+      }
+      sort._id = -1;
     } else {
-      sort.createdAt = -1; // Default sort
+      sort.isClientJobRank = -1;
+      sort.createdAt = -1;
+      sort._id = -1;
     }
 
 
@@ -1964,6 +1969,21 @@ router.get("/exports/:status?", async (req, res) => {
       created_by_client: 1
     };
 
+    const clientJobCondition = {
+      $cond: {
+        if: {
+          $or: [
+            { $eq: ["$is_client_job", true] },
+            { $eq: ["$created_by_client", true] },
+            { $ne: [{ $ifNull: ["$freight_enquiry_id", ""] }, ""] },
+            { $regexMatch: { input: { $ifNull: ["$detailedStatus", ""] }, regex: "Freight Enquiry", options: "i" } }
+          ]
+        },
+        then: 1,
+        else: 0
+      }
+    };
+
     // When search is active, use aggregation to prioritize results by match type
     // Priority: 1=job_no, 2=sb_no, 3=container, 4=invoice, 5=exporter/other
     let finalJobs = [];
@@ -1976,6 +1996,7 @@ router.get("/exports/:status?", async (req, res) => {
         {
           $addFields: {
             hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] },
+            isClientJobRank: clientJobCondition,
             _searchPriority: {
               $switch: {
                 branches: [
@@ -2003,7 +2024,8 @@ router.get("/exports/:status?", async (req, res) => {
         { $match: filter },
         {
           $addFields: {
-            hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] }
+            hasOpenClientQuery: { $in: ["$job_no", openClientQueryJobs] },
+            isClientJobRank: clientJobCondition
           }
         },
         { $sort: { ...sort } },
@@ -2992,6 +3014,9 @@ router.get("/:job_no(.*)", async (req, res, next) => {
             port_of_loading: enquiry.port_of_loading,
             port_of_discharge: enquiry.port_of_destination,
             isGeneralJob: true,
+            is_client_job: true,
+            created_by_client: true,
+            freight_enquiry_id: enquiry.enquiry_no || enquiry.success_no || "",
             status: "Pending",
             detailedStatus: "Created from Freight Enquiry",
             movement_type: enquiry.movement_type,

@@ -694,7 +694,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
 
     const sortCriteria = normalizedTab === "general-jobs"
       ? { job_no: 1 }
-      : { updatedAt: -1, job_date: -1 };
+      : { createdAt: -1, updatedAt: -1, _id: -1 };
 
     let jobs = await ExportJobModel.find(baseFilter)
       .select(projection)

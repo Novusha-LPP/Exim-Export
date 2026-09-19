@@ -762,6 +762,8 @@ router.post("/freight-enquiries", async (req, res) => {
           consignmentType: savedEnquiry.consignment_type || "",
           goods_stuffed_at: savedEnquiry.goods_stuffed?.includes("DOCK") ? "DOCK" : (savedEnquiry.goods_stuffed?.includes("FACTORY") ? "FACTORY" : ""),
           containers: savedEnquiry.containers || [],
+          is_client_job: true,
+          created_by_client: true,
           freight_enquiry_id: savedEnquiry.success_no || savedEnquiry.enquiry_no,
           source_job_no: savedEnquiry.source_job_no || ""
         });
@@ -955,6 +957,9 @@ router.put("/freight-enquiries/:id", async (req, res) => {
           destination_port: updated.port_of_destination,
           place_of_delivery: updated.port_of_destination,
           isGeneralJob: false,
+          is_client_job: true,
+          created_by_client: true,
+          freight_enquiry_id: updated.success_no || updated.enquiry_no || "",
           status: "Pending",
           detailedStatus: "Created from Freight Enquiry",
           movement_type: updated.movement_type,

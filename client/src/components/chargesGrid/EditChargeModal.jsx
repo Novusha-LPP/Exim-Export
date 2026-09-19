@@ -360,7 +360,13 @@ const EditChargeModal = ({
           const map = {};
           (json.data.exchange_rates || []).forEach((r) => {
             if (r.currency_code && typeof r.export_rate === "number") {
-              map[r.currency_code.toUpperCase()] = r.export_rate;
+              const unit = parseFloat(r.unit) || 1;
+              let eff = unit > 0 ? r.export_rate / unit : r.export_rate;
+              const curUpper = r.currency_code.toUpperCase();
+              if ((curUpper === "JPY" || curUpper === "KRW") && eff > 5) {
+                eff = eff / 100;
+              }
+              map[curUpper] = eff;
             }
           });
           setRateMap(map);

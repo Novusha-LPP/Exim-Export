@@ -75,7 +75,7 @@ router.get("/api/operation-pending-jobs", async (req, res) => {
         };
 
         // Get jobs that match this base condition
-        let jobs = await ExJobModel.find(matchQuery).lean();
+        let jobs = await ExJobModel.find(matchQuery).sort({ createdAt: -1, _id: -1 }).lean();
 
         // In-memory filtering for negative conditions
         jobs = jobs.filter((job) => {
