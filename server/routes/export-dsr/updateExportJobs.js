@@ -2513,7 +2513,11 @@ router.post("/impexcube/export-jobs/send", auditMiddleware("Job"), async (req, r
 
     const payload = exportJob.toImpexCubeExportPayload(req.body?.options || {});
     const accessToken = await getImpexCubeAccessToken(payload.CHADetails?.Financial_Year, exportJob.branch_code);
-    console.log("[IMEXCUBE EXPORT DSR] Sending payload to ImpexCube:\n", JSON.stringify(payload, null, 2));
+    console.log("==========================================================");
+    console.log("[IMEXCUBE EXPORT DSR] SENDING PAYLOAD TO IMPEXCUBE API:");
+    console.log(`JOB NO: ${jobNo}`);
+    console.log(JSON.stringify(payload, null, 2));
+    console.log("==========================================================");
     const impexCubeResponse = await axios.post(
       buildImpexCubeUrl(IMPEXCUBE_EXPORT_CREATE_PATH),
       payload,
@@ -2726,7 +2730,11 @@ router.post("/impexcube/export-jobs/fetch", auditMiddleware("Job"), async (req, 
         };
 
         try {
-          console.log(`[IMEXCUBE EXPORT DSR] Trying fetch for candNo '${candNo}' on URL: ${targetUrl}`);
+          console.log("==========================================================");
+          console.log(`[IMEXCUBE EXPORT DSR] FETCHING JOB DETAILS FROM IMPEXCUBE API:`);
+          console.log(`URL: ${targetUrl}`);
+          console.log(`PAYLOAD SENT:`, JSON.stringify(payload, null, 2));
+          console.log("==========================================================");
 
           let res = null;
           // 1. Try GET method with JSON body payload (as per ImpexCube vendor specification)

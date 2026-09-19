@@ -5173,7 +5173,7 @@ const ExportJobsTable = () => {
                                               <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{outLbl.toUpperCase()}</span>
                                               <span style={{ fontWeight: "600", color: "#1e293b" }}>
                                                 {formatDate(
-                                                  opDetails.handoverConcorTharSanganaRailRoadDate || (opDetails.railOutReachedDate ? getPreviousDayDate(opDetails.railOutReachedDate) : ""),
+                                                  opDetails.handoverConcorTharSanganaRailRoadDate,
                                                   "dd-MM-yy"
                                                 )}
                                               </span>

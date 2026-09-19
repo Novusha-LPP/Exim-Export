@@ -1709,17 +1709,6 @@ const StatusSection = ({
                   "railOutReachedDate",
                   reachedVal,
                 );
-                if (reachedVal && !item.handoverConcorTharSanganaRailRoadDate) {
-                  const prevDate = getPreviousDayDate(reachedVal);
-                  if (prevDate) {
-                    onUpdate(
-                      section,
-                      rowIdx,
-                      "handoverConcorTharSanganaRailRoadDate",
-                      prevDate,
-                    );
-                  }
-                }
               }}
               style={{
                 ...styles.cellInput,
