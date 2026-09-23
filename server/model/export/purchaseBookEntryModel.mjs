@@ -47,6 +47,7 @@ const purchaseBookEntrySchema = new mongoose.Schema({
     isClubJob: { type: Boolean, default: false },
     clubbedJobs: { type: [String], default: [] },
     virtualBalanceTerminal: { type: String, default: '' },
+    virtualBalanceType: { type: String, enum: ['TERMINAL', 'CFS', ''], default: '' },
     jobDetails: { type: Array, default: [] },
     isMultiCharge: { type: Boolean, default: false },
     chargeItems: { type: Array, default: [] },

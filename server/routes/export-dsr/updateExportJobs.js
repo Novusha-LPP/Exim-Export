@@ -14,6 +14,18 @@ function escapeRegex(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function isFreightForwardingJob(job) {
+  const jobNo = String(job?.job_no || job?.jobNumber || "").toUpperCase();
+  return jobNo.startsWith("FF") ||
+    jobNo.includes("FF-") ||
+    jobNo.includes("/FF/") ||
+    job?.freight === true ||
+    job?.is_freight === true ||
+    job?.isFreightForwarding === true ||
+    String(job?.job_type || "").toLowerCase().includes("freight") ||
+    String(job?.jobCategory || "").toLowerCase().includes("freight");
+}
+
 // Helper function to check if only billing-related fields are being updated
 function isBillingOnlyUpdate(updateObject) {
   // Billing-allowed field path patterns
@@ -3453,7 +3465,7 @@ router.put(
         const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
         const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
 
-        if (existingJob.send_for_billing && !isAdmin) {
+        if (existingJob.send_for_billing && !isAdmin && !isFreightForwardingJob(existingJob)) {
           return res.status(403).json({
             message: "This job has been sent for billing. Only Admins can modify it."
           });
@@ -3501,7 +3513,7 @@ router.put(
         const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
         const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
 
-        if (existingJob.send_for_billing && !isAdmin) {
+        if (existingJob.send_for_billing && !isAdmin && !isFreightForwardingJob(existingJob)) {
           return res.status(403).json({
             message: "This job has been sent for billing. Only Admins can modify it."
           });
@@ -3613,7 +3625,7 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
       const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
       const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
 
-      if (existingJob.send_for_billing && !isAdmin) {
+      if (existingJob.send_for_billing && !isAdmin && !isFreightForwardingJob(existingJob)) {
         // Check if only billing-related fields are being updated
         if (!isBillingOnlyUpdate(req.body)) {
           return res.status(403).json({
@@ -3893,7 +3905,7 @@ router.patch(
         const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
         const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
 
-        if (existingJob.send_for_billing && !isAdmin) {
+        if (existingJob.send_for_billing && !isAdmin && !isFreightForwardingJob(existingJob)) {
           // Check if only billing-related fields are being updated
           const { fieldUpdates } = req.body;
           const updateObject = {};
@@ -3989,7 +4001,7 @@ router.patch(
         const requester = usernameHeader ? await UserModel.findOne({ username: usernameHeader }) : null;
         const isAdmin = requester?.role === "Admin" || userRoleHeader === "Admin";
 
-        if (existingJob.send_for_billing && !isAdmin) {
+        if (existingJob.send_for_billing && !isAdmin && !isFreightForwardingJob(existingJob)) {
           // Check if only billing-related fields are being updated
           const { fieldUpdates } = req.body;
           const updateObject = {};

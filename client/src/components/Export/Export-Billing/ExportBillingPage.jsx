@@ -84,6 +84,8 @@ const PAYMENT_TABS = [
   { key: "payment-completed", label: "Payment Completed" },
   { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
+  { key: "terminal-virtual-balance", label: "Terminal Virtual Balance" },
+  { key: "cfs-virtual-balance", label: "CFS Virtual Balance" },
 ];
 
 const PURCHASE_TABS = [
@@ -93,6 +95,8 @@ const PURCHASE_TABS = [
   { key: "purchase-book-completed", label: "Purchase Book Completed" },
   { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
+  { key: "terminal-virtual-balance", label: "Terminal Virtual Balance" },
+  { key: "cfs-virtual-balance", label: "CFS Virtual Balance" },
 ];
 
 function getCurrentFinancialYear() {
@@ -1317,7 +1321,8 @@ function ExportBillingPage() {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
   const [workMode, setWorkMode] = useState(() => {
-    return localStorage.getItem("billing_workMode") || "payment";
+    const saved = localStorage.getItem("billing_workMode");
+    return saved && saved !== "virtual-balance" ? saved : "payment";
   });
   const [tabIndex, setTabIndex] = useState(() => {
     const saved = localStorage.getItem("billing_tabIndex");
@@ -1509,6 +1514,9 @@ function ExportBillingPage() {
   ]);
 
   const fetchRows = useCallback(async () => {
+    if (activeTab === "terminal-virtual-balance" || activeTab === "cfs-virtual-balance") {
+      return;
+    }
     setLoading(true);
     fetchTabCounts();
     try {
@@ -2293,34 +2301,33 @@ function ExportBillingPage() {
           pb: 0.5
         }}
       >
-        {workMode !== "virtual-balance" && (
-          <Tabs
-            value={tabIndex}
-            onChange={(event, value) => {
-              setTabIndex(value);
-              setPage(1);
-            }}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
+        <Tabs
+          value={tabIndex}
+          onChange={(event, value) => {
+            setTabIndex(value);
+            setPage(1);
+          }}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            minHeight: 40,
+            '& .MuiTabs-indicator': { backgroundColor: '#2563eb', height: 3 },
+            '& .MuiTab-root': {
+              fontSize: '12px',
+              textTransform: 'none',
+              fontWeight: 600,
               minHeight: 40,
-              '& .MuiTabs-indicator': { backgroundColor: '#2563eb', height: 3 },
-              '& .MuiTab-root': {
-                fontSize: '12px',
-                textTransform: 'none',
-                fontWeight: 600,
-                minHeight: 40,
-                color: '#64748b',
-                '&.Mui-selected': { color: '#2563eb' }
-              }
-            }}
-          >
-            {tabs.map((tab) => {
-              const count = tabCounts[tab.key] ?? 0;
-              return <Tab key={tab.key} label={`${tab.label} (${count})`} />;
-            })}
-          </Tabs>
-        )}
+              color: '#64748b',
+              '&.Mui-selected': { color: '#2563eb' }
+            }
+          }}
+        >
+          {tabs.map((tab) => {
+            const count = tabCounts[tab.key];
+            const label = count !== undefined ? `${tab.label} (${count})` : tab.label;
+            return <Tab key={tab.key} label={label} />;
+          })}
+        </Tabs>
  
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
           <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", fontSize: '11px', letterSpacing: '0.5px' }}>
@@ -2335,7 +2342,6 @@ function ExportBillingPage() {
           >
             <ToggleButton value="payment">PAYMENT</ToggleButton>
             <ToggleButton value="purchase-book">PURCHASE BOOK</ToggleButton>
-            <ToggleButton value="virtual-balance">VIRTUAL BALANCE</ToggleButton>
           </ToggleButtonGroup>
 
           <Button
@@ -2364,8 +2370,10 @@ function ExportBillingPage() {
         </Box>
       </Box>
 
-      {workMode === "virtual-balance" ? (
-        <VirtualBalanceList />
+      {activeTab === "terminal-virtual-balance" ? (
+        <VirtualBalanceList balanceType="terminal" />
+      ) : activeTab === "cfs-virtual-balance" ? (
+        <VirtualBalanceList balanceType="cfs" />
       ) : (
         <>
           <MaterialReactTable

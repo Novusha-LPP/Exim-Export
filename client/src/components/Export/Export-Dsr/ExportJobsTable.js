@@ -1795,7 +1795,7 @@ const ExportJobsTable = () => {
 
   // Fetch Filtered Exporters based on other criteria
   useEffect(() => {
-    if (activeTab === "Virtual Balance") return;
+    if (activeTab === "Virtual Balance" || activeTab === "Terminal Virtual Balance" || activeTab === "CFS Virtual Balance") return;
     const fetchFilteredExporters = async () => {
       try {
         const response = await axios.get(
@@ -1990,7 +1990,7 @@ const ExportJobsTable = () => {
 
   // --- Fetch Jobs ---
   const fetchJobs = async () => {
-    if (activeTab === "Virtual Balance") {
+    if (activeTab === "Virtual Balance" || activeTab === "Terminal Virtual Balance" || activeTab === "CFS Virtual Balance") {
       setLoading(false);
       setJobs([]);
       fetchTabCounts();
@@ -3278,11 +3278,19 @@ const ExportJobsTable = () => {
                 </button>
                 <button
                   style={
-                    activeTab === "Virtual Balance" ? { ...s.tab, ...s.activeTab } : s.tab
+                    activeTab === "Terminal Virtual Balance" ? { ...s.tab, ...s.activeTab } : s.tab
                   }
-                  onClick={() => setActiveTab("Virtual Balance")}
+                  onClick={() => setActiveTab("Terminal Virtual Balance")}
                 >
-                  Virtual Balance
+                  Terminal Virtual Balance
+                </button>
+                <button
+                  style={
+                    activeTab === "CFS Virtual Balance" ? { ...s.tab, ...s.activeTab } : s.tab
+                  }
+                  onClick={() => setActiveTab("CFS Virtual Balance")}
+                >
+                  CFS Virtual Balance
                 </button>
               </>
             )}
@@ -3444,7 +3452,7 @@ const ExportJobsTable = () => {
           )}
 
           {/* Filters */}
-          {activeTab !== "Virtual Balance" && (
+          {activeTab !== "Virtual Balance" && activeTab !== "Terminal Virtual Balance" && activeTab !== "CFS Virtual Balance" && (
             <div style={s.toolbar} className="toolbar-responsive">
               {/* Year Filter */}
               <select
@@ -3852,9 +3860,13 @@ const ExportJobsTable = () => {
           )}
 
           {/* Table */}
-          {activeTab === "Virtual Balance" ? (
+          {activeTab === "Terminal Virtual Balance" ? (
             <div style={{ padding: "20px 0" }}>
-              <VirtualBalanceList isJobs={true} />
+              <VirtualBalanceList isJobs={true} balanceType="terminal" />
+            </div>
+          ) : activeTab === "CFS Virtual Balance" ? (
+            <div style={{ padding: "20px 0" }}>
+              <VirtualBalanceList isJobs={true} balanceType="cfs" />
             </div>
           ) : (
             <>
@@ -4050,37 +4062,6 @@ const ExportJobsTable = () => {
                                 {formatDate(job.job_date)}
                               </div>
                               {(() => {
-                                const { egmNo, egmDate } = getJobScrollAndEgmInfo(job);
-                                return (
-                                  <>
-                                    {(egmNo || egmDate) && (
-                                      <div
-                                        style={{
-                                          marginTop: "4px",
-                                          padding: "2px 6px",
-                                          borderRadius: "4px",
-                                          fontSize: "9px",
-                                          fontWeight: "700",
-                                          color: "#b45309",
-                                          backgroundColor: "#fff7ed",
-                                          border: "1px solid #ffedd5",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          width: "fit-content",
-                                          gap: "3px",
-                                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
-                                          whiteSpace: "nowrap"
-                                        }}
-                                        title="EGM No & Date"
-                                      >
-                                        <span style={{ fontSize: "10px" }}>✈️</span>
-                                        <span>EGM: {egmNo || "N/A"} {egmDate ? `(${formatDate(egmDate)})` : ""}</span>
-                                      </div>
-                                    )}
-                                  </>
-                                );
-                              })()}
-                              {(() => {
                                 const docClicks = job.docClicks || {};
                                 const checklistUser = docClicks.checklist?.clickedBy;
                                 const fileCoverUser = docClicks.file_cover?.clickedBy;
@@ -4230,7 +4211,7 @@ const ExportJobsTable = () => {
                               )}
 
                               {/* EGM No & Date */}
-                              {job.egm_no && (
+                              {(job.egm_no || job.egm_date) && (
                                 <div
                                   style={{
                                     fontSize: "10px",
@@ -4242,20 +4223,22 @@ const ExportJobsTable = () => {
                                     gap: "2px",
                                   }}
                                 >
-                                  <span>EGM: {job.egm_no}</span>
+                                  <span>EGM: {job.egm_no || "N/A"}</span>
                                   {job.egm_date && (
                                     <span style={{ color: "#ef4444", fontWeight: "500" }}>
                                       ({formatDate(job.egm_date)})
                                     </span>
                                   )}
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => handleCopyText(job.egm_no, e)}
-                                    style={{ padding: 0, marginLeft: 2 }}
-                                    title="Copy EGM No"
-                                  >
-                                    <ContentCopyIcon style={{ fontSize: 9, color: "#dc2626" }} />
-                                  </IconButton>
+                                  {job.egm_no && (
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyText(job.egm_no, e)}
+                                      style={{ padding: 0, marginLeft: 2 }}
+                                      title="Copy EGM No"
+                                    >
+                                      <ContentCopyIcon style={{ fontSize: 9, color: "#dc2626" }} />
+                                    </IconButton>
+                                  )}
                                 </div>
                               )}
 

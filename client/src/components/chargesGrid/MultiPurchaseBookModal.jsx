@@ -290,6 +290,7 @@ const MultiPurchaseBookModal = ({ isOpen, onClose, chargesData, jobNumber, jobDi
                 isClubJob: firstCharge.isClubJob || false,
                 clubbedJobs: firstCharge.clubbedJobs || [],
                 "Virtual Balance Terminal": firstCharge.virtualBalanceTerminal || '',
+                "Virtual Balance Type": firstCharge.virtualBalanceType || '',
                 "Qty": firstCharge.qty !== undefined && firstCharge.qty !== null ? firstCharge.qty : 1,
                 "Rate": firstCharge.rate !== undefined && firstCharge.rate !== null ? firstCharge.rate : (firstCharge.amount || 0),
                 "Currency": firstCharge.costCurrency || (firstCharge.cost && firstCharge.cost.currency) || firstCharge.currency || (Number(firstCharge.exchangeRate || firstCharge.exRate || 1) > 1 ? 'USD' : 'INR'),

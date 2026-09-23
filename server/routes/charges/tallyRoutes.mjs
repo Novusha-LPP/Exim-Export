@@ -1134,6 +1134,7 @@ const mapPurchaseEntryData = (data) => {
         isClubJob: data.isClubJob !== undefined ? data.isClubJob : false,
         clubbedJobs: Array.isArray(data.clubbedJobs) ? data.clubbedJobs : [],
         virtualBalanceTerminal: data["Virtual Balance Terminal"] || data["Virtual Balance"] || data.virtualBalanceTerminal || data.virtualBalance || '',
+        virtualBalanceType: (data["Virtual Balance Type"] || data.virtualBalanceType || (data["Virtual Balance Terminal"] || data.virtualBalanceTerminal ? 'TERMINAL' : '')).toUpperCase(),
         isMultiCharge: data.isMultiCharge !== undefined ? data.isMultiCharge : false,
         chargeItems: Array.isArray(data.chargeItems) ? data.chargeItems : [],
         chargeRefs: Array.isArray(data.chargeRefs) ? data.chargeRefs : [],

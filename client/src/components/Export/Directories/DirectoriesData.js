@@ -26,6 +26,7 @@ export const viewMasterList = [
   "Shipping Line",
   "Transporter",
   "Terminal Code",
+  "CFS Code",
   "General Org",
   "Forwarder",
   "Drawback",

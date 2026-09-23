@@ -90,7 +90,12 @@ const s = {
   },
 };
 
-export default function VirtualBalanceList({ isJobs = false }) {
+export default function VirtualBalanceList({ isJobs = false, balanceType = "terminal" }) {
+  const isCfsBalance = balanceType === "cfs";
+  const balanceApi = isCfsBalance ? "cfs-virtual-balance" : "virtual-balance";
+  const directoryApi = isCfsBalance ? "cfsCodes" : "terminalCodes";
+  const balanceLabel = isCfsBalance ? "CFS Virtual Balance" : "Terminal Virtual Balance";
+  const holderLabel = isCfsBalance ? "CFS" : "Terminal";
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -102,6 +107,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [uploadingRowId, setUploadingRowId] = useState(null);
+  const [summary, setSummary] = useState({ totalDeposited: 0, totalSpent: 0, untaggedDeposits: 0 });
   const limit = 15;
 
   const [jobsList, setJobsList] = useState([]);
@@ -146,7 +152,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
   const fetchEntries = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/virtual-balance`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${balanceApi}`, {
         params: {
           page,
           limit,
@@ -157,16 +163,23 @@ export default function VirtualBalanceList({ isJobs = false }) {
         },
       });
       if (res.data.success) {
-        setEntries(res.data.data.entries);
-        setTotal(res.data.data.total);
-        setTotalPages(res.data.data.totalPages);
+        const rawData = res.data.data;
+        const entriesData = Array.isArray(rawData) ? rawData : (rawData?.entries || []);
+        const totalCount = res.data.pagination?.totalRecords ?? rawData?.total ?? entriesData.length;
+        const totalP = res.data.pagination?.totalPages ?? rawData?.totalPages ?? 1;
+        setEntries(entriesData);
+        setTotal(totalCount);
+        setTotalPages(totalP);
+        if (res.data.summary || rawData?.summary) {
+          setSummary(res.data.summary || rawData?.summary);
+        }
       }
     } catch (err) {
-      console.error("Error fetching virtual balances:", err);
+      console.error(`Error fetching ${balanceLabel}:`, err);
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter, startDate, endDate]);
+  }, [page, debouncedSearch, statusFilter, startDate, endDate, balanceApi, balanceLabel]);
 
   const handleInlineFileUpload = async (e, rowId) => {
     const file = e.target.files?.[0];
@@ -174,7 +187,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
     setUploadingRowId(rowId);
     try {
       const result = await uploadFileToS3(file, "export_docs");
-      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/virtual-balance/${rowId}`, {
+      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/${balanceApi}/${rowId}`, {
         fileUrl: result.Location,
       });
       if (res.data.success) {
@@ -190,7 +203,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
 
   const handleExportExcel = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/virtual-balance`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${balanceApi}`, {
         params: {
           page: 1,
           limit: 1000000,
@@ -200,13 +213,14 @@ export default function VirtualBalanceList({ isJobs = false }) {
           endDate,
         },
       });
-      if (res.data.success && Array.isArray(res.data.data.entries)) {
+      const rawEntries = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.entries || []);
+      if (res.data.success && Array.isArray(rawEntries)) {
         const XLSX = await import("xlsx");
         
-        const dataToExport = res.data.data.entries.map((row) => ({
+        const dataToExport = rawEntries.map((row) => ({
           "Create Date": row.createdAt ? new Date(row.createdAt).toLocaleDateString("en-IN") : "-",
           "Ref No": row.referenceNo || "",
-          "Terminal Name": row.cfsName || "",
+          [`${holderLabel} Name`]: row.cfsName || "",
           "Job No": row.jobNo || "",
           "Exporter Name": row.partyName || "",
           "Opening Bal": row.openingBalance || 0,
@@ -223,7 +237,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
 
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Virtual Balance");
+        XLSX.utils.book_append_sheet(workbook, worksheet, balanceLabel);
         
         const maxLen = {};
         dataToExport.forEach((row) => {
@@ -234,7 +248,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
         });
         worksheet["!cols"] = Object.keys(maxLen).map((key) => ({ wch: maxLen[key] + 3 }));
 
-        XLSX.writeFile(workbook, `Virtual_Balance_${new Date().toISOString().split("T")[0]}.xlsx`);
+        XLSX.writeFile(workbook, `${balanceLabel.replace(/\s+/g, '_')}_${new Date().toISOString().split("T")[0]}.xlsx`);
       }
     } catch (err) {
       console.error("Excel export error:", err);
@@ -246,22 +260,24 @@ export default function VirtualBalanceList({ isJobs = false }) {
     fetchEntries();
   }, [fetchEntries]);
 
-  // Fetch CFS list
+  // Fetch Directory list (Terminals or CFS)
   useEffect(() => {
     const fetchCfs = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/terminalCodes`, {
+        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${directoryApi}`, {
           params: { limit: 1000 },
         });
         if (res.data.success && Array.isArray(res.data.data)) {
           setCfsList(res.data.data);
+        } else if (Array.isArray(res.data)) {
+          setCfsList(res.data);
         }
       } catch (err) {
-        console.error("Error fetching CFS list:", err);
+        console.error(`Error fetching ${holderLabel} list:`, err);
       }
     };
     fetchCfs();
-  }, []);
+  }, [directoryApi, holderLabel]);
 
   const [jobSearch, setJobSearch] = useState("");
   const [jobsLoading, setJobsLoading] = useState(false);
@@ -272,7 +288,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
     const fetchJobs = async () => {
       setJobsLoading(true);
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/virtual-balance/jobs`, {
+        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${balanceApi}/jobs`, {
           params: { search: jobSearch },
           signal: controller.signal,
         });
@@ -290,7 +306,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [jobSearch]);
+  }, [jobSearch, balanceApi]);
 
 
   // Handle jobNo blur to auto-fill exporter name
@@ -299,7 +315,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
     if (!jobNo) return;
     setPartyLoading(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/virtual-balance/job-details/${encodeURIComponent(jobNo)}`);
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${balanceApi}/job-details/${encodeURIComponent(jobNo)}`);
       if (res.data.success) {
         setFormValues((prev) => ({ ...prev, partyName: res.data.partyName }));
       }
@@ -314,7 +330,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
   const handleToggleStatus = async (row) => {
     const newStatus = row.status === "paid" ? "unpaid" : "paid";
     try {
-      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/virtual-balance/${row._id}`, {
+      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/${balanceApi}/${row._id}`, {
         status: newStatus,
       });
       if (res.data.success) {
@@ -345,7 +361,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this entry?")) return;
     try {
-      const res = await axios.delete(`${import.meta.env.VITE_API_STRING}/virtual-balance/${id}`);
+      const res = await axios.delete(`${import.meta.env.VITE_API_STRING}/${balanceApi}/${id}`);
       if (res.data.success) {
         fetchEntries();
       }
@@ -358,7 +374,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
   const fetchPartyNameForJob = async (jobNo) => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/virtual-balance/job-details/${encodeURIComponent(jobNo)}`
+        `${import.meta.env.VITE_API_STRING}/${balanceApi}/job-details/${encodeURIComponent(jobNo)}`
       );
       if (res.data.success && res.data.partyName) return res.data.partyName;
     } catch (err) {
@@ -446,9 +462,9 @@ export default function VirtualBalanceList({ isJobs = false }) {
 
     try {
       if (editId) {
-        await axios.put(`${import.meta.env.VITE_API_STRING}/virtual-balance/${editId}`, payload);
+        await axios.put(`${import.meta.env.VITE_API_STRING}/${balanceApi}/${editId}`, payload);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_STRING}/virtual-balance`, payload);
+        await axios.post(`${import.meta.env.VITE_API_STRING}/${balanceApi}`, payload);
       }
       setFormOpen(false);
       fetchEntries();
@@ -463,7 +479,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
     setCompareOpen(true);
     setCompareLoading(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/virtual-balance/job-purchase-books`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${balanceApi}/job-purchase-books`, {
         params: {
           jobNo: entry.jobNo,
           cfsName: entry.cfsName,
@@ -483,6 +499,57 @@ export default function VirtualBalanceList({ isJobs = false }) {
 
   return (
     <Box sx={{ p: 2, backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+      {/* Dashboard Summary Cards */}
+      {!isJobs && (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ ...s.card, background: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)", color: "#fff" }}>
+              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                  <AccountBalanceWalletIcon fontSize="small" sx={{ opacity: 0.8 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, opacity: 0.9 }}>
+                    Total Deposited
+                  </Typography>
+                </Stack>
+                <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                  ₹ {summary.totalDeposited.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ ...s.card, background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "#fff" }}>
+              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                  <CheckCircleOutlineIcon fontSize="small" sx={{ opacity: 0.8 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, opacity: 0.9 }}>
+                    Total Spent / Utilized
+                  </Typography>
+                </Stack>
+                <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                  ₹ {summary.totalSpent.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ ...s.card, background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", color: "#fff" }}>
+              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                  <AccessTimeIcon fontSize="small" sx={{ opacity: 0.8 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, opacity: 0.9 }}>
+                    Untagged Deposits (No Jobs)
+                  </Typography>
+                </Stack>
+                <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                  ₹ {summary.untaggedDeposits.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
       {/* Top Filter and Search Bar */}
       <Stack
         direction={{ xs: "column", md: "row" }}
@@ -604,7 +671,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
             <TableRow>
               <TableCell sx={s.headerCell}>Create Date</TableCell>
               <TableCell sx={s.headerCell}>Ref No</TableCell>
-              <TableCell sx={s.headerCell}>Terminal Name</TableCell>
+              <TableCell sx={s.headerCell}>{holderLabel} Name</TableCell>
               <TableCell sx={s.headerCell}>Job No</TableCell>
               <TableCell sx={s.headerCell}>Exporter Name</TableCell>
               <TableCell sx={s.headerCell}>Opening Bal</TableCell>
@@ -827,7 +894,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
         PaperProps={{ sx: { borderRadius: "12px" } }}
       >
         <DialogTitle sx={{ bgcolor: "#1e3a8a", color: "#fff", fontWeight: 700, px: 3, py: 2 }}>
-          {editId ? "Edit Virtual Balance Entry" : "Create Virtual Balance Entry"}
+          {editId ? `Edit ${balanceLabel} Entry` : `Create ${balanceLabel} Entry`}
         </DialogTitle>
         <DialogContent sx={{ px: 3, py: 2 }}>
           <Grid container spacing={2.5} sx={{ pt: 2 }}>
@@ -839,7 +906,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
                 onChange={(event, newValue) => {
                   setFormValues((prev) => ({ ...prev, cfsName: newValue || "" }));
                 }}
-                renderInput={(params) => <TextField {...params} label="CFS (Terminal) *" />}
+                renderInput={(params) => <TextField {...params} label={`${holderLabel} Name *`} />}
                 ListboxProps={{ style: { maxHeight: "250px" } }}
               />
             </Grid>
@@ -1069,7 +1136,7 @@ export default function VirtualBalanceList({ isJobs = false }) {
           <Stack direction="row" spacing={1.5} alignItems="center">
             <AccountBalanceWalletIcon />
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Virtual Balance Comparison Dashboard
+              {balanceLabel} Comparison Dashboard
             </Typography>
           </Stack>
           <IconButton size="small" onClick={() => setCompareOpen(false)} sx={{ color: "#fff" }}>

@@ -1,0 +1,160 @@
+import React, { useState, useEffect } from "react";
+import {
+  Paper, Button, Box, IconButton,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Dialog, DialogContent, TextField, InputAdornment, Chip, Snackbar, Alert,
+  Pagination
+} from "@mui/material";
+import {
+  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
+  Search as SearchIcon
+} from "@mui/icons-material";
+import { CfsCodeService } from "./MasterDirectoryService";
+import MasterDirectoryForm from "./MasterDirectoryForm";
+
+const CfsCodeMaster = () => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+
+  useEffect(() => {
+    fetchItems();
+  }, [page, searchTerm]);
+
+  const fetchItems = async () => {
+    try {
+      setLoading(true);
+      const res = await CfsCodeService.getAll({
+        page,
+        limit: 10,
+        search: searchTerm
+      });
+      setData(res.data || []);
+      setTotalPages(res.pagination?.totalPages || 1);
+      setTotalRecords(res.pagination?.totalRecords || 0);
+    } catch (err) {
+      showSnackbar("Error fetching data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showSnackbar = (message, severity = "success") => setSnackbar({ open: true, message, severity });
+
+  const handleSave = async (formData) => {
+    try {
+      if (selectedItem) {
+        await CfsCodeService.update(selectedItem._id, formData);
+        showSnackbar("Updated successfully");
+      } else {
+        await CfsCodeService.create(formData);
+        showSnackbar("Created successfully");
+      }
+      setOpenDialog(false);
+      fetchItems();
+    } catch (err) {
+      showSnackbar("Error saving: " + (err.message || "Unknown error"), "error");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Delete this CFS entry?")) {
+      try {
+        await CfsCodeService.delete(id);
+        showSnackbar("Deleted successfully");
+        fetchItems();
+      } catch (err) {
+        showSnackbar("Error deleting", "error");
+      }
+    }
+  };
+
+  return (
+    <Box>
+      <Paper sx={{ p: 2, mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <TextField
+          size="small" placeholder="Search CFS Codes..."
+          value={searchTerm} 
+          onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
+          sx={{ width: 300 }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
+        />
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setSelectedItem(null); setOpenDialog(true); }}>
+          Add CFS Code
+        </Button>
+      </Paper>
+
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead sx={{ bgcolor: '#f8fafc' }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Active</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Branches</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>TDS %</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Opening Balance</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={6} align="center">Loading...</TableCell></TableRow>
+            ) : data.length === 0 ? (
+              <TableRow><TableCell colSpan={6} align="center">No data found</TableCell></TableRow>
+            ) : (
+              data.map((item) => (
+                <TableRow key={item._id} hover>
+                  <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
+                  <TableCell>
+                    <Chip label={item.active} size="small" color={item.active === "Yes" ? "success" : "default"} />
+                  </TableCell>
+                  <TableCell>{item.branches?.length || 0}</TableCell>
+                  <TableCell>{item.tds_percent}%</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>₹ {Number(item.openingBalance || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                  <TableCell align="right">
+                    <IconButton size="small" color="primary" onClick={() => { setSelectedItem(item); setOpenDialog(true); }}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDelete(item._id)}><DeleteIcon fontSize="small" /></IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Box display="flex" justifyContent="center" alignItems="center" mt={2} mb={2}>
+        <Pagination
+          count={totalPages}
+          page={page}
+          onChange={(event, value) => setPage(value)}
+          color="primary"
+          showFirstButton
+          showLastButton
+        />
+      </Box>
+
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
+        <DialogContent sx={{ p: 0 }}>
+          <MasterDirectoryForm 
+            title={selectedItem ? "Edit CFS Code" : "Add CFS Code"}
+            data={selectedItem} 
+            onSave={handleSave} 
+            onCancel={() => setOpenDialog(false)} 
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>{snackbar.message}</Alert>
+      </Snackbar>
+    </Box>
+  );
+};
+
+export default CfsCodeMaster;

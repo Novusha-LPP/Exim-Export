@@ -31,6 +31,24 @@ export const calculateProductFobINR = (
     invToInrRate = invToInrRate / 100;
   }
 
+  // If Invoice FOB is already computed and stored in charges.fobValue, use it directly
+  const existingFob = charges.fobValue;
+  if (existingFob) {
+    let storedFobInr = parseFloat(existingFob.amountINR) || 0;
+    if (!storedFobInr && existingFob.amount) {
+      const fobCurr = String(existingFob.currency || activeInvoice.currency || "INR").toUpperCase();
+      let fobRate = fobCurr === "INR" ? 1 : (parseFloat(existingFob.exchangeRate) || invToInrRate);
+      if ((fobCurr === "JPY" || fobCurr === "KRW") && fobRate > 5) {
+        fobRate = fobRate / 100;
+      }
+      storedFobInr = parseFloat(existingFob.amount) * fobRate;
+    }
+    if (storedFobInr > 0) {
+      const productFobInr = C * storedFobInr;
+      return parseFloat(productFobInr.toFixed(2));
+    }
+  }
+
   // The base gross value for evaluating Total FOB is the INVOICE VALUE (matching InvoiceFreightTab.js)
   const grossInvoiceValue = parseFloat(activeInvoice.invoiceValue || activeInvoice.productValue || 0);
 
@@ -41,7 +59,8 @@ export const calculateProductFobINR = (
   const invoiceTerms = String(activeInvoice.termsOfInvoice || "").toUpperCase();
   const deductFreightInsurance = ["CIF", "C&F", "C&I", "CIP", "CPT", "DAP", "DDP", "DPU"].includes(invoiceTerms) || invoiceTerms.includes("CIF") || invoiceTerms.includes("C&F");
 
-  ["freight", "insurance", "discount", "otherDeduction", "commission"].forEach(k => {
+  // Note: Discount is NOT deducted from Invoice FOB, so it is not deducted here (matching InvoiceFreightTab.js)
+  ["freight", "insurance", "commission"].forEach(k => {
     const row = charges[k] || {};
 
     const rowCurr = String(row.currency || activeInvoice.currency || "INR").toUpperCase();
@@ -68,8 +87,6 @@ export const calculateProductFobINR = (
       if (rowAmountInr > threshold) {
         totalDeductionInr += (rowAmountInr - threshold);
       }
-    } else if (k === "discount" || k === "otherDeduction") {
-      totalDeductionInr += rowAmountInr;
     } else if (k === "freight" || k === "insurance") {
       if (deductFreightInsurance) {
         totalDeductionInr += rowAmountInr;

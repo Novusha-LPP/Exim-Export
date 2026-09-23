@@ -16,10 +16,176 @@ const CONCOR_TIMEOUT_MS = 30000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Parses date from DETAILS string (e.g. "Departed from Gate <b>KHODIYAR</b> on 20/07/2026 23:52:00</b>" or "Arrived at <b>MUNDRA</b> on 21/07/2026 08:30:00")
- * Returns { isDeparted: boolean, isArrived: boolean, dateStr: "DD-MM-YYYY" } or null
+ * Extracts the arrival location name from CONCOR DETAILS string or mapData endPoint.
  */
-function parseConcorDetails(details) {
+function extractArrivedLocation(details, info = null) {
+    if (typeof details === "string") {
+        // e.g. "Arrived at <b>MUNDRA PORT</b> on 11/09/2026..." or "Arrived at KHODIYAR on..."
+        const match = details.match(/Arrived\s+at\s+(?:<b>)?(.*?)(?:<\/b>)?\s+on\s+/i);
+        if (match && match[1]) {
+            const loc = match[1].replace(/<[^>]*>/g, "").trim();
+            if (loc) return loc;
+        }
+    }
+
+    if (info?.mapData?.endPoint?.terminal_name) {
+        return String(info.mapData.endPoint.terminal_name).trim();
+    }
+
+    if (info?.containerTrack?.CURRENT_LOCATION) {
+        const match = info.containerTrack.CURRENT_LOCATION.match(/Arrived\s+at\s+(?:<b>)?(.*?)(?:<\/b>)?\s+on\s+/i);
+        if (match && match[1]) {
+            return match[1].replace(/<[^>]*>/g, "").trim();
+        }
+    }
+
+    return "";
+}
+
+/**
+ * Checks if an arrived location represents a seaport and NOT an inland ICD/CFS/Terminal.
+ * In Export forwarding, "Rail Reached" strictly means the container has arrived at the Seaport (Port of Loading).
+ * Inland arrivals (e.g. Khodiyar, Sabarmati, Sanand, Varnama) are ICD movements and must NOT be treated as Rail Reached.
+ */
+export function isPortLocation(locationStr, job = null) {
+    if (!locationStr || typeof locationStr !== "string") return false;
+    const loc = locationStr.trim().toUpperCase();
+
+    // 1. Explicit negative check: If it has ICD, CFS, DRY PORT, GOODS SHED, etc.
+    if (/\b(ICD|CFS|DRY\s*PORT|GOODS\s*SHED|GOODS\s*MULTI|VEHICLE)\b/i.test(loc)) {
+        return false;
+    }
+
+    // Known inland ICD locations in India
+    const KNOWN_ICDS = [
+        "KHODIYAR",
+        "SABARMATI",
+        "SANAND",
+        "VARNAMA",
+        "THAR",
+        "SANGANA",
+        "BARODA",
+        "VADODARA",
+        "ANKLESHWAR",
+        "MORBI",
+        "SACHIN",
+        "SURAT",
+        "TUGHLAKABAD",
+        "TKD",
+        "DADRI",
+        "PATLI",
+        "GARHI HARSARU",
+        "LUDHIANA",
+        "SAHNEWAL",
+        "DHANDARI KALAN",
+        "KANAKPURA",
+        "JAIPUR",
+        "JODHPUR",
+        "BHAGAT KI KOTHI",
+        "KOTA",
+        "MALANPUR",
+        "MORADABAD",
+        "REWARI",
+        "KHATUWAS",
+        "KANPUR",
+        "JUHI",
+        "PANTNAGAR",
+        "TIHI",
+        "INDORE",
+        "DHANNAD",
+        "PITHAMPUR",
+        "WHITEFIELD",
+        "BANGALORE",
+        "SANATNAGAR",
+        "HYDERABAD",
+        "BALLABGARH",
+        "CHAWAPAYAL",
+        "PANIPAT",
+        "PIYALA"
+    ];
+
+    for (const icd of KNOWN_ICDS) {
+        if (loc.includes(icd) && !loc.includes("PORT")) {
+            return false;
+        }
+    }
+
+    // 2. Explicit positive keyword: contains "PORT"
+    // e.g. "MUNDRA PORT", "PORT PIPAVAV", "NHAVA SHEVA PORT", "HAZIRA PORT", "PORT OF NHAVA SHEVA"
+    if (/\bPORT\b/i.test(loc)) {
+        return true;
+    }
+
+    // 3. Known Indian Seaports & marine container terminals
+    const KNOWN_SEAPORTS = [
+        "MUNDRA",
+        "MICT",
+        "AICT",
+        "ACMT",
+        "CT2",
+        "CT3",
+        "CT4",
+        "PIPAVAV",
+        "APMT",
+        "NHAVA SHEVA",
+        "JNPT",
+        "JNPCT",
+        "NSICT",
+        "NSIGT",
+        "BMCT",
+        "GTI",
+        "BPT",
+        "MUMBAI PORT",
+        "HAZIRA",
+        "KANDLA",
+        "DEENDAYAL",
+        "COCHIN",
+        "KOCHI",
+        "VALLARPADAM",
+        "TUTICORIN",
+        "VOC",
+        "CHIDAMBARANAR",
+        "CHENNAI",
+        "CCTPL",
+        "CITPL",
+        "VISAKHAPATNAM",
+        "VIZAG",
+        "VCTPL",
+        "KATTUPALLI",
+        "KRISHNAPATNAM",
+        "ENNORE",
+        "KAMARAJAR",
+        "HALDIA",
+        "KOLKATA PORT",
+        "MORMUGAO",
+        "MANGALORE"
+    ];
+
+    for (const port of KNOWN_SEAPORTS) {
+        if (loc.includes(port)) {
+            return true;
+        }
+    }
+
+    // 4. Cross-check with job's port_of_loading if available
+    if (job) {
+        const pol = String(job.port_of_loading || "").trim().toUpperCase();
+        if (pol) {
+            const polClean = pol.replace(/^[A-Z0-9]+\s*-\s*/, "").trim();
+            if (polClean && polClean.length >= 3 && loc.includes(polClean)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Parses date from DETAILS string (e.g. "Departed from Gate <b>KHODIYAR</b> on 20/07/2026 23:52:00</b>" or "Arrived at <b>MUNDRA PORT</b> on 21/07/2026 08:30:00")
+ * Returns { isDeparted: boolean, isArrived: boolean, isArrivedAtPort: boolean, arrivedLocation: string, dateStr: "DD-MM-YYYY" } or null
+ */
+function parseConcorDetails(details, info = null, job = null) {
     if (!details || typeof details !== "string") return null;
 
     const isDeparted = /Departed/i.test(details);
@@ -38,9 +204,19 @@ function parseConcorDetails(details) {
     // Standardize to DD-MM-YYYY format used across Export DSR modules
     const formattedDate = `${day}-${month}-${year}`;
 
+    // Verify if arrived location is an actual seaport and not an inland ICD
+    let isArrivedAtPort = false;
+    let arrivedLocation = "";
+    if (isArrived) {
+        arrivedLocation = extractArrivedLocation(details, info);
+        isArrivedAtPort = isPortLocation(arrivedLocation, job);
+    }
+
     return {
         isDeparted,
         isArrived,
+        isArrivedAtPort,
+        arrivedLocation,
         dateStr: formattedDate
     };
 }
@@ -112,7 +288,7 @@ export async function runConcorTrackJob(force = false) {
                     const details = info?.containerTrack?.DETAILS;
                     if (!details) continue;
 
-                    const parsed = parseConcorDetails(details);
+                    const parsed = parseConcorDetails(details, info);
                     if (!parsed) continue;
                     matchedCount++;
 
@@ -132,17 +308,31 @@ export async function runConcorTrackJob(force = false) {
                         const statusObj = dbJob.operations[0].statusDetails[0];
                         let modified = false;
 
+                        // Re-evaluate with dbJob context for port_of_loading matching
+                        const jobParsed = parseConcorDetails(details, info, dbJob) || parsed;
+
                         // Only set handoverConcorTharSanganaRailRoadDate (Rail Out) when CONCOR reports Departed
-                        if (parsed.isDeparted && !statusObj.handoverConcorTharSanganaRailRoadDate) {
-                            statusObj.handoverConcorTharSanganaRailRoadDate = parsed.dateStr;
+                        if (jobParsed.isDeparted && !statusObj.handoverConcorTharSanganaRailRoadDate) {
+                            statusObj.handoverConcorTharSanganaRailRoadDate = jobParsed.dateStr;
                             modified = true;
                         }
-                        // Only set railOutReachedDate when CONCOR explicitly reports Arrived
-                        if (parsed.isArrived && !statusObj.railOutReachedDate) {
-                            statusObj.railOutReachedDate = parsed.dateStr;
-                            modified = true;
+
+                        // Only set railOutReachedDate when CONCOR explicitly reports Arrived at a PORT (not an ICD)
+                        if (jobParsed.isArrivedAtPort) {
+                            if (!statusObj.railOutReachedDate) {
+                                statusObj.railOutReachedDate = jobParsed.dateStr;
+                                modified = true;
+                            }
+                        } else if (jobParsed.isArrived && !jobParsed.isArrivedAtPort) {
+                            // Container arrived at an ICD (e.g. Khodiyar/Sabarmati), NOT a port!
+                            // If railOutReachedDate was previously erroneously set to this ICD arrival date, clear it
+                            if (statusObj.railOutReachedDate === jobParsed.dateStr) {
+                                statusObj.railOutReachedDate = "";
+                                modified = true;
+                            }
                         }
-                        if ((parsed.isDeparted || parsed.isArrived) && statusObj.railRoad !== "rail") {
+
+                        if ((jobParsed.isDeparted || jobParsed.isArrivedAtPort) && statusObj.railRoad !== "rail") {
                             statusObj.railRoad = "rail";
                             modified = true;
                         }
@@ -154,19 +344,30 @@ export async function runConcorTrackJob(force = false) {
 
                             // If parent club job, also update clubbed child jobs
                             if (dbJob.is_club_job_parent && Array.isArray(dbJob.clubbed_jobs) && dbJob.clubbed_jobs.length > 0) {
-                                const updatePayload = { "operations.0.statusDetails.0.railRoad": "rail" };
-                                if (parsed.isDeparted) {
-                                    updatePayload["operations.0.statusDetails.0.handoverConcorTharSanganaRailRoadDate"] = parsed.dateStr;
+                                const updatePayload = {};
+                                if (jobParsed.isDeparted) {
+                                    updatePayload["operations.0.statusDetails.0.railRoad"] = "rail";
+                                    updatePayload["operations.0.statusDetails.0.handoverConcorTharSanganaRailRoadDate"] = jobParsed.dateStr;
                                 }
-                                if (parsed.isArrived) {
-                                    updatePayload["operations.0.statusDetails.0.railOutReachedDate"] = parsed.dateStr;
+                                if (jobParsed.isArrivedAtPort) {
+                                    updatePayload["operations.0.statusDetails.0.railRoad"] = "rail";
+                                    updatePayload["operations.0.statusDetails.0.railOutReachedDate"] = jobParsed.dateStr;
+                                } else if (jobParsed.isArrived && !jobParsed.isArrivedAtPort) {
+                                    for (const cJobNo of dbJob.clubbed_jobs) {
+                                        await ExJobModel.updateOne(
+                                            { job_no: cJobNo, "operations.0.statusDetails.0.railOutReachedDate": jobParsed.dateStr },
+                                            { $set: { "operations.0.statusDetails.0.railOutReachedDate": "" } }
+                                        );
+                                    }
                                 }
 
-                                for (const cJobNo of dbJob.clubbed_jobs) {
-                                    await ExJobModel.updateOne(
-                                        { job_no: cJobNo },
-                                        { $set: updatePayload }
-                                    );
+                                if (Object.keys(updatePayload).length > 0) {
+                                    for (const cJobNo of dbJob.clubbed_jobs) {
+                                        await ExJobModel.updateOne(
+                                            { job_no: cJobNo },
+                                            { $set: updatePayload }
+                                        );
+                                    }
                                 }
                             }
                         }

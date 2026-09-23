@@ -207,6 +207,7 @@ const ChargesGrid = ({
         isClubJob: c.isClubJob || false,
         clubbedJobs: c.clubbedJobs || [],
         virtualBalanceTerminal: cost.virtualBalanceTerminal || '',
+        virtualBalanceType: cost.virtualBalanceType || '',
         currency: costCurrency,
         currencyAmount: costCurrAmt,
         exchangeRate: costCurrency !== 'INR' ? costExRate : revExRate,

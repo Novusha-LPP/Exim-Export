@@ -62,6 +62,18 @@ function TabPanel(props) {
 
 const toUpper = (str) => (str || "").toUpperCase();
 
+const isFreightForwardingJob = (job) => {
+  const jobNo = String(job?.job_no || job?.jobNumber || "").toUpperCase();
+  return jobNo.startsWith("FF") ||
+    jobNo.includes("FF-") ||
+    jobNo.includes("/FF/") ||
+    job?.freight === true ||
+    job?.is_freight === true ||
+    job?.isFreightForwarding === true ||
+    String(job?.job_type || "").toLowerCase().includes("freight") ||
+    String(job?.jobCategory || "").toLowerCase().includes("freight");
+};
+
 function ExportJobsModule() {
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
@@ -92,13 +104,16 @@ function ExportJobsModule() {
 
   const isNewJob = !data?.job_no;
 
-  // Auto-lock when SB Date is present or job is sent for billing (unless user is Admin)
+  // Freight-forwarding jobs continue through operations after billing submission.
   useEffect(() => {
     if (data && !loading && isLocked) {
       const isSentForBilling = formik.values.send_for_billing === true;
       const isAdmin = user?.role === "Admin";
+      const isFreightForwarding = isFreightForwardingJob(data);
 
-      if (isSentForBilling && !isAdmin) {
+      if (isSentForBilling && isFreightForwarding) {
+        setIsEditable(true);
+      } else if (isSentForBilling && !isAdmin) {
         setIsEditable(false);
       } else if (formik.values.sb_date && !isNewJob) {
         setIsEditable(false);

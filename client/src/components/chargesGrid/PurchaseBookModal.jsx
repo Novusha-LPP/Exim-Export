@@ -200,6 +200,7 @@ const PurchaseBookModal = ({ isOpen, onClose, initialData, jobNumber, jobDisplay
                         isClubJob: initialData.isClubJob || false,
                         clubbedJobs: initialData.clubbedJobs || [],
                         "Virtual Balance Terminal": initialData.virtualBalanceTerminal || '',
+                        "Virtual Balance Type": initialData.virtualBalanceType || '',
                         "Currency": initialData.costCurrency || (initialData.cost && initialData.cost.currency) || 'INR',
                         "Currency Amount": initialData.currencyAmount || initialData.foreignCurrencyAmount || (initialData.currency && initialData.currency !== 'INR' ? (initialData.amount || initialData.basicAmount || '') : ''),
                         "Exchange Rate": initialData.exchangeRate || initialData.exRate || 1,

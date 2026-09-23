@@ -1546,6 +1546,8 @@ const chargeSchema = new Schema(
             basis: { type: String, trim: true },
             qty: { type: Number, default: 1 },
             rate: { type: Number, default: 0 },
+            virtualBalanceTerminal: { type: String, trim: true, default: '' },
+            virtualBalanceType: { type: String, enum: ['TERMINAL', 'CFS', ''], default: '' },
         },
         copyToCost: { type: Boolean, default: true },
         parentId: { type: Schema.Types.ObjectId },
