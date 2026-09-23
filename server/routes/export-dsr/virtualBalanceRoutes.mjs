@@ -3,6 +3,7 @@ import ExJobModel from "../../model/export/ExJobModel.mjs";
 import VirtualBalanceModel from "../../model/export/virtualBalanceModel.mjs";
 import PurchaseBookEntryModel from "../../model/export/purchaseBookEntryModel.mjs";
 import TerminalCodeModel from "../../model/Directorties/TerminalCode.js";
+import EmptyYardDirectoryModel from "../../model/Directorties/EmptyYardDirectory.js";
 import CfsDirectoryModel from "../../model/Directorties/CfsDirectory.js";
 import { auditMiddleware } from "../../middleware/auditTrail.mjs";
 
@@ -70,7 +71,7 @@ router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res
     });
 
     // 4. Fetch all directory opening balances
-    const cfsList = type === "CFS" ? await CfsDirectoryModel.find().lean() : await TerminalCodeModel.find().lean();
+    const cfsList = type === "CFS" ? await CfsDirectoryModel.find().lean() : await EmptyYardDirectoryModel.find().lean();
     const cfsOpeningMap = {};
     cfsList.forEach((c) => {
       if (c.name) {
@@ -384,7 +385,9 @@ router.get([
   "/virtual-balance/created-terminals",
   "/api/virtual-balance/created-terminals",
   "/cfs-virtual-balance/created-names",
-  "/api/cfs-virtual-balance/created-names"
+  "/api/cfs-virtual-balance/created-names",
+  "/empty-yard-virtual-balance/created-names",
+  "/api/empty-yard-virtual-balance/created-names"
 ], async (req, res) => {
   try {
     const distinctTerminals = await VirtualBalanceModel.distinct("cfsName", balanceFilter(req));

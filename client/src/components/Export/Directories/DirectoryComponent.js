@@ -10,6 +10,7 @@ import District from "./District.js";
 import ShippingLineMaster from "./ShippingLineMaster.js";
 import TransporterMaster from "./TransporterMaster.js";
 import TerminalCodeMaster from "./TerminalCodeMaster.js";
+import EmptyYardCodeMaster from "./EmptyYardCodeMaster.js";
 import CfsCodeMaster from "./CfsCodeMaster.js";
 import GeneralOrgDirectory from "./GeneralOrgDirectory.js";
 import ForwarderDirectory from "../FreightForwarding/ForwarderDirectory.js";
@@ -40,6 +41,8 @@ function DirectoryComponent({ directoryType }) {
         return <TransporterMaster />;
       case "Terminal Code":
         return <TerminalCodeMaster />;
+      case "Empty Yard":
+        return <EmptyYardCodeMaster />;
       case "CFS Code":
         return <CfsCodeMaster />;
       case "General Org":

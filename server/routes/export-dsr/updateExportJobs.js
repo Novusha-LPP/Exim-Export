@@ -1431,10 +1431,8 @@ router.get("/exports/:status?", async (req, res) => {
       filter.$and.push({ isGeneralJob: { $ne: true } });
     }
 
-    // Exclude Freight Forwarding jobs (FF) from Export module
-    if (!isCompletedTab && !isAllTab) {
-      filter.$and.push({ job_no: { $not: /^FF/i } });
-    }
+    // Exclude Freight Forwarding jobs (FF) from Export module on every tab
+    filter.$and.push({ job_no: { $not: /^FF/i } });
 
 
 

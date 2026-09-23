@@ -52,6 +52,7 @@ const EditChargeModal = ({
   const [cfsList, setCfsList] = useState([]);
   const [transporters, setTransporters] = useState([]);
   const [terminalCodes, setTerminalCodes] = useState([]);
+  const [emptyYardList, setEmptyYardList] = useState([]);
   const [createdVirtualTerminals, setCreatedVirtualTerminals] = useState([]);
   const [createdVirtualCfs, setCreatedVirtualCfs] = useState([]);
   const [generalOrgList, setGeneralOrgList] = useState([]);
@@ -147,7 +148,7 @@ const EditChargeModal = ({
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
-        const [slRes, supRes, orgRes, cfsRes, transRes, termRes, genOrgRes, fwdRes, vbRes, cfsVbRes] = await Promise.all([
+        const [slRes, supRes, orgRes, cfsRes, transRes, termRes, genOrgRes, fwdRes, vbRes, cfsVbRes, eyRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-suppliers`),
           axios.get(`${import.meta.env.VITE_API_STRING}/organization`),
@@ -157,7 +158,8 @@ const EditChargeModal = ({
           axios.get(`${import.meta.env.VITE_API_STRING}/get-general-orgs`, { params: { limit: 1000 } }),
           axios.get(`${import.meta.env.VITE_API_STRING}/get-forwarders`),
           axios.get(`${import.meta.env.VITE_API_STRING}/virtual-balance/created-terminals`).catch(() => ({ data: { data: [] } })),
-          axios.get(`${import.meta.env.VITE_API_STRING}/cfs-virtual-balance/created-names`).catch(() => ({ data: { data: [] } }))
+          axios.get(`${import.meta.env.VITE_API_STRING}/cfs-virtual-balance/created-names`).catch(() => ({ data: { data: [] } })),
+          axios.get(`${import.meta.env.VITE_API_STRING}/get-empty-yard-directory-list`).catch(() => ({ data: [] }))
         ]);
         setShippingLines(addSourceLabel(slRes.data, 'Shipping Line'));
         setSuppliers(addSourceLabel(supRes.data, 'Vendor'));
@@ -165,6 +167,7 @@ const EditChargeModal = ({
         setCfsList(addSourceLabel(cfsRes.data, 'CFS'));
         setTransporters(addSourceLabel(transRes.data, 'Transporter'));
         setTerminalCodes(addSourceLabel(termRes.data, 'Terminal'));
+        setEmptyYardList(addSourceLabel(eyRes.data || [], 'Empty Yard'));
         setGeneralOrgList(addSourceLabel(genOrgRes.data.data || [], 'General Org'));
         setForwarders(addSourceLabel(fwdRes.data || [], 'Forwarder'));
         if (vbRes?.data?.success && Array.isArray(vbRes.data.data)) {
@@ -395,6 +398,20 @@ const EditChargeModal = ({
     return allMatches.find(p => (p.branches?.length > 0 && p.branches[0]?.gst) || (p.branchInfo?.length > 0 && p.branchInfo[0]?.gstNo)) || allMatches[0];
   };
 
+  const isTerminalOrSuraj = (partyName, partyType, partyDir) => {
+    if (!partyName) return false;
+    if (partyName.toLowerCase().includes('suraj forwarders')) return true;
+    const pType = (partyType || '').toUpperCase();
+    if (pType === 'TERMINAL' || pType === 'CFS' || pType === 'EMPTY YARD' || pType === 'EMPTY_YARD') return true;
+    const pDir = (partyDir || '').toUpperCase();
+    if (pDir === 'TERMINAL' || pDir === 'CFS' || pDir === 'EMPTY YARD' || pDir === 'EMPTY_YARD') return true;
+    const norm = normalize(partyName);
+    return (emptyYardList || []).some(t => normalize(t.name || t.organization) === norm) ||
+           (terminalCodes || []).some(t => normalize(t.name || t.organization) === norm) ||
+           (cfsList || []).some(t => normalize(t.name || t.organization) === norm) ||
+           (createdVirtualTerminals || []).some(t => normalize(t) === norm);
+  };
+
   const extractFileName = (url) => {
     try {
       if (!url) return "File";
@@ -599,6 +616,7 @@ const EditChargeModal = ({
 
   const handleSelectParty = (index, section, item) => {
     handleFieldChange(index, 'partyName', item.name || item.organization, section);
+    handleFieldChange(index, 'partyDirectory', item.sourceLabel || item.directoryType || '', section);
     // Initialize branch index and trigger recalc
     const updated = [...formData];
     updated[index][section].branchIndex = 0;
@@ -1309,17 +1327,28 @@ const EditChargeModal = ({
 
                                 {/* VIRTUAL BALANCE SOURCE & TERMINAL/CFS SELECTOR */}
                                 {(() => {
-                                  if (row.cost?.partyName) {
-                                    const sourceType = (row.cost?.virtualBalanceType || 'TERMINAL').toUpperCase();
-                                    const isCfsSource = sourceType === 'CFS';
-                                    const allAvailableNames = [...new Set([
-                                       ...(isCfsSource ? createdVirtualCfs : createdVirtualTerminals),
-                                       ...(row.cost?.virtualBalanceTerminal ? [row.cost.virtualBalanceTerminal] : [])
-                                     ])].filter(Boolean);
+                                  const partyName = row.cost?.partyName || '';
+                                  if (!partyName) return null;
+
+                                  const isSurajForwarders = partyName.toLowerCase().includes('suraj forwarders');
+                                  const showTerminalBalance = isTerminalOrSuraj(partyName, row.cost?.partyType, row.cost?.partyDirectory);
+                                  const showVirtualBalanceSource = isSurajForwarders;
+
+                                  if (!showTerminalBalance) return null;
+
+                                  const sourceType = isSurajForwarders
+                                    ? (row.cost?.virtualBalanceType || 'TERMINAL').toUpperCase()
+                                    : 'TERMINAL';
+                                  const isCfsSource = sourceType === 'CFS';
+                                  const allAvailableNames = [...new Set([
+                                     ...(isCfsSource ? createdVirtualCfs : createdVirtualTerminals),
+                                     ...(row.cost?.virtualBalanceTerminal ? [row.cost.virtualBalanceTerminal] : [])
+                                   ])].filter(Boolean);
 
                                     return (
                                       <>
-                                        <div className="ep-row" style={{ position: 'relative', zIndex: 10 }}>
+                                        {showVirtualBalanceSource && (
+                                          <div className="ep-row" style={{ position: 'relative', zIndex: 10 }}>
                                           <span className="ep-label" style={{ fontWeight: 'bold', color: '#0284c7' }}>Virtual Balance Source</span>
                                           <select
                                             className="form-input"
@@ -1330,19 +1359,20 @@ const EditChargeModal = ({
                                               handleFieldChange(i, 'virtualBalanceTerminal', '', 'cost');
                                             }}
                                           >
-                                            <option value="TERMINAL">Terminal</option>
-                                            <option value="CFS">CFS</option>
+                                            <option value="TERMINAL">Empty-Yards</option>
+                                            <option value="CFS">CFS-SFSA</option>
                                           </select>
                                         </div>
+                                        )}
                                         <div className="ep-row" style={{ position: 'relative', zIndex: 10 }}>
-                                          <span className="ep-label" style={{ fontWeight: 'bold', color: '#0284c7' }}>{isCfsSource ? 'CFS' : 'Terminal'} Balance</span>
+                                          <span className="ep-label" style={{ fontWeight: 'bold', color: '#0284c7' }}>{isCfsSource ? 'CFS-SFSA' : 'Empty-Yards'} Balance</span>
                                           <select
                                             className="form-input"
                                             style={{ borderColor: '#38bdf8', backgroundColor: '#f0f9ff', fontWeight: '500' }}
                                             value={row.cost?.virtualBalanceTerminal || ''}
                                             onChange={e => handleFieldChange(i, 'virtualBalanceTerminal', e.target.value, 'cost')}
                                           >
-                                            <option value="">Select {isCfsSource ? 'CFS' : 'Terminal'}</option>
+                                            <option value="">Select {isCfsSource ? 'CFS-SFSA' : 'Empty Yard'}</option>
                                             {allAvailableNames.map((name, nameIndex) => (
                                               <option key={nameIndex} value={name}>{name}</option>
                                             ))}
@@ -1350,7 +1380,6 @@ const EditChargeModal = ({
                                         </div>
                                       </>
                                     );
-                                  }
                                   return null;
                                 })()}
 
@@ -1490,8 +1519,8 @@ const EditChargeModal = ({
                                                 branchIndex: cost.branchIndex || 0,
                                                 isClubJob: row.isClubJob || false,
                                                 clubbedJobs: row.clubbedJobs || [],
-                                                virtualBalanceTerminal: cost.virtualBalanceTerminal || '',
-                                                virtualBalanceType: cost.virtualBalanceType || '',
+                                                virtualBalanceTerminal: isTerminalOrSuraj(cost.partyName, cost.partyType, cost.partyDirectory) ? (cost.virtualBalanceTerminal || '') : '',
+                                                virtualBalanceType: isTerminalOrSuraj(cost.partyName, cost.partyType, cost.partyDirectory) ? (cost.virtualBalanceType || 'TERMINAL') : '',
                                                 costCurrency: cost.currency || 'INR',
                                                 currency: cost.currency || 'INR',
                                                 currencyAmount: (cost.currency && cost.currency !== 'INR') ? (cost.amount !== undefined && cost.amount !== null ? cost.amount : (cost.qty && cost.rate ? Number(cost.qty) * Number(cost.rate) : '')) : (cost.currencyAmount || cost.foreignCurrencyAmount || ''),
@@ -1534,8 +1563,8 @@ const EditChargeModal = ({
                                               chargeHead: row.name || row.chargeHead,
                                               chargeId: row._id,
                                               jobId: parentId,
-                                              virtualBalanceTerminal: row.cost?.virtualBalanceTerminal || '',
-                                              virtualBalanceType: row.cost?.virtualBalanceType || ''
+                                              virtualBalanceTerminal: isTerminalOrSuraj(partyName, row.cost?.partyType, row.cost?.partyDirectory) ? (row.cost?.virtualBalanceTerminal || '') : '',
+                                              virtualBalanceType: isTerminalOrSuraj(partyName, row.cost?.partyType, row.cost?.partyDirectory) ? (row.cost?.virtualBalanceType || 'TERMINAL') : ''
                                             });
                                           }}
                                         >

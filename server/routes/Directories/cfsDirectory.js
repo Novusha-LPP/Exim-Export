@@ -1,7 +1,13 @@
 import express from 'express';
+import axios from 'axios';
 import CfsDirectory from "../../model/Directorties/CfsDirectory.js";
 
 const router = express.Router();
+
+const getImportApiUrl = () => {
+  return process.env.IMPORT_API_URL || 
+    (process.env.NODE_ENV === "production" ? "https://eximbot.alvision.in/import/api" : "http://localhost:9006/api");
+};
 
 // GET /api/cfsCodes - Get all CFS directory entries with pagination and search
 router.get('/', async (req, res) => {
@@ -54,6 +60,16 @@ router.get('/', async (req, res) => {
 // GET /get-cfs-directory-list - Fast dropdown list of CFS entries
 router.get(['/get-cfs-directory-list', '/api/get-cfs-directory-list'], async (req, res) => {
   try {
+    try {
+      const apiUrl = `${getImportApiUrl()}/get-cfs-directory-list`;
+      const response = await axios.get(apiUrl, { timeout: 5000 });
+      if (Array.isArray(response.data)) {
+        return res.json(response.data);
+      }
+    } catch (apiErr) {
+      // Fallback to direct import DB query
+    }
+
     const items = await CfsDirectory.find().sort({ name: 1 }).lean();
     const mapped = items.map((i) => ({
       _id: i._id,

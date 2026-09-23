@@ -3278,19 +3278,19 @@ const ExportJobsTable = () => {
                 </button>
                 <button
                   style={
-                    activeTab === "Terminal Virtual Balance" ? { ...s.tab, ...s.activeTab } : s.tab
+                    activeTab === "Empty-Yards Virtual Balance" ? { ...s.tab, ...s.activeTab } : s.tab
                   }
-                  onClick={() => setActiveTab("Terminal Virtual Balance")}
+                  onClick={() => setActiveTab("Empty-Yards Virtual Balance")}
                 >
-                  Terminal Virtual Balance
+                  Empty-Yards Virtual Balance
                 </button>
                 <button
                   style={
-                    activeTab === "CFS Virtual Balance" ? { ...s.tab, ...s.activeTab } : s.tab
+                    activeTab === "CFS-SFSA Virtual Balance" ? { ...s.tab, ...s.activeTab } : s.tab
                   }
-                  onClick={() => setActiveTab("CFS Virtual Balance")}
+                  onClick={() => setActiveTab("CFS-SFSA Virtual Balance")}
                 >
-                  CFS Virtual Balance
+                  CFS-SFSA Virtual Balance
                 </button>
               </>
             )}
@@ -3860,11 +3860,11 @@ const ExportJobsTable = () => {
           )}
 
           {/* Table */}
-          {activeTab === "Terminal Virtual Balance" ? (
+          {activeTab === "Empty-Yards Virtual Balance" ? (
             <div style={{ padding: "20px 0" }}>
               <VirtualBalanceList isJobs={true} balanceType="terminal" />
             </div>
-          ) : activeTab === "CFS Virtual Balance" ? (
+          ) : activeTab === "CFS-SFSA Virtual Balance" ? (
             <div style={{ padding: "20px 0" }}>
               <VirtualBalanceList isJobs={true} balanceType="cfs" />
             </div>

@@ -7,7 +7,7 @@ export default defineConfig({
     {
       name: "treat-js-files-as-jsx",
       async transform(code, id) {
-        if (!id.endsWith(".js")) return null;
+        if (!id.endsWith(".js") || id.includes("node_modules")) return null;
         return transformWithEsbuild(code, id, {
           loader: "jsx",
           jsx: "automatic",

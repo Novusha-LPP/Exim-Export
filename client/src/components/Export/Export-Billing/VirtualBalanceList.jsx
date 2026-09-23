@@ -93,9 +93,9 @@ const s = {
 export default function VirtualBalanceList({ isJobs = false, balanceType = "terminal" }) {
   const isCfsBalance = balanceType === "cfs";
   const balanceApi = isCfsBalance ? "cfs-virtual-balance" : "virtual-balance";
-  const directoryApi = isCfsBalance ? "cfsCodes" : "terminalCodes";
-  const balanceLabel = isCfsBalance ? "CFS Virtual Balance" : "Terminal Virtual Balance";
-  const holderLabel = isCfsBalance ? "CFS" : "Terminal";
+  const directoryApi = isCfsBalance ? "cfsCodes" : "emptyYardCodes";
+  const balanceLabel = isCfsBalance ? "CFS-SFSA Virtual Balance" : "Empty-Yards Virtual Balance";
+  const holderLabel = isCfsBalance ? "CFS-SFSA" : "Empty Yard";
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);

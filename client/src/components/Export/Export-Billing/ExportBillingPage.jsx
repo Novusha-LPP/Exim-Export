@@ -84,8 +84,8 @@ const PAYMENT_TABS = [
   { key: "payment-completed", label: "Payment Completed" },
   { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
-  { key: "terminal-virtual-balance", label: "Terminal Virtual Balance" },
-  { key: "cfs-virtual-balance", label: "CFS Virtual Balance" },
+  { key: "terminal-virtual-balance", label: "Empty-Yards Virtual Balance" },
+  { key: "cfs-virtual-balance", label: "CFS-SFSA Virtual Balance" },
 ];
 
 const PURCHASE_TABS = [
@@ -95,8 +95,8 @@ const PURCHASE_TABS = [
   { key: "purchase-book-completed", label: "Purchase Book Completed" },
   { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
-  { key: "terminal-virtual-balance", label: "Terminal Virtual Balance" },
-  { key: "cfs-virtual-balance", label: "CFS Virtual Balance" },
+  { key: "terminal-virtual-balance", label: "Empty-Yards Virtual Balance" },
+  { key: "cfs-virtual-balance", label: "CFS-SFSA Virtual Balance" },
 ];
 
 function getCurrentFinancialYear() {
