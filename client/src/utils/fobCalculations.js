@@ -17,7 +17,15 @@ export const calculateProductFobINR = (
   if (!product || !activeInvoice) return 0;
 
   const A = parseFloat(product.amount || 0);
-  const B = parseFloat(activeInvoice.productValue || 0);
+
+  // Derive total product amount across all products belonging to this invoice
+  let B = 0;
+  if (Array.isArray(activeInvoice.products) && activeInvoice.products.length > 0) {
+    B = activeInvoice.products.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
+  }
+  if (!B || B <= 0) {
+    B = parseFloat(activeInvoice.productValue || activeInvoice.invoiceValue || 0);
+  }
 
   if (B <= 0 || A <= 0) return 0;
 
@@ -59,8 +67,8 @@ export const calculateProductFobINR = (
   const invoiceTerms = String(activeInvoice.termsOfInvoice || "").toUpperCase();
   const deductFreightInsurance = ["CIF", "C&F", "C&I", "CIP", "CPT", "DAP", "DDP", "DPU"].includes(invoiceTerms) || invoiceTerms.includes("CIF") || invoiceTerms.includes("C&F");
 
-  // Note: Discount and Commission are NOT deducted from Invoice FOB, so they are not deducted here (matching InvoiceFreightTab.js)
-  ["freight", "insurance"].forEach(k => {
+  // Note: Discount is NOT deducted from Invoice FOB, so it is not deducted here (matching InvoiceFreightTab.js)
+  ["freight", "insurance", "commission"].forEach(k => {
     const row = charges[k] || {};
 
     const rowCurr = String(row.currency || activeInvoice.currency || "INR").toUpperCase();
@@ -82,8 +90,15 @@ export const calculateProductFobINR = (
       rowAmountInr = explicitAmount * rowRate;
     }
 
-    if (deductFreightInsurance) {
-      totalDeductionInr += rowAmountInr;
+    if (k === "commission") {
+      const threshold = 0.125 * totalValueInr;
+      if (rowAmountInr > threshold) {
+        totalDeductionInr += (rowAmountInr - threshold);
+      }
+    } else if (k === "freight" || k === "insurance") {
+      if (deductFreightInsurance) {
+        totalDeductionInr += rowAmountInr;
+      }
     }
   });
 
