@@ -59,8 +59,8 @@ export const calculateProductFobINR = (
   const invoiceTerms = String(activeInvoice.termsOfInvoice || "").toUpperCase();
   const deductFreightInsurance = ["CIF", "C&F", "C&I", "CIP", "CPT", "DAP", "DDP", "DPU"].includes(invoiceTerms) || invoiceTerms.includes("CIF") || invoiceTerms.includes("C&F");
 
-  // Note: Discount is NOT deducted from Invoice FOB, so it is not deducted here (matching InvoiceFreightTab.js)
-  ["freight", "insurance", "commission"].forEach(k => {
+  // Note: Discount and Commission are NOT deducted from Invoice FOB, so they are not deducted here (matching InvoiceFreightTab.js)
+  ["freight", "insurance"].forEach(k => {
     const row = charges[k] || {};
 
     const rowCurr = String(row.currency || activeInvoice.currency || "INR").toUpperCase();
@@ -82,15 +82,8 @@ export const calculateProductFobINR = (
       rowAmountInr = explicitAmount * rowRate;
     }
 
-    if (k === "commission") {
-      const threshold = 0.125 * totalValueInr;
-      if (rowAmountInr > threshold) {
-        totalDeductionInr += (rowAmountInr - threshold);
-      }
-    } else if (k === "freight" || k === "insurance") {
-      if (deductFreightInsurance) {
-        totalDeductionInr += rowAmountInr;
-      }
+    if (deductFreightInsurance) {
+      totalDeductionInr += rowAmountInr;
     }
   });
 

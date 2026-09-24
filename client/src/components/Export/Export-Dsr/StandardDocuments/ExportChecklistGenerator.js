@@ -2082,7 +2082,7 @@ const extractPrimaryJobNo = (input) => {
               let totalDeductionInr = 0;
               const charges = inv.freightInsuranceCharges || {};
               
-              ["freight", "insurance", "commission"].forEach(k => {
+              ["freight", "insurance"].forEach(k => {
                 const row = charges[k] || {};
                 const rowCurr = (row.currency || invCurrency).toUpperCase();
                 const fallbackRate = rowCurr === "INR" ? 1 : invExchRate;
@@ -2100,14 +2100,7 @@ const extractPrimaryJobNo = (input) => {
                   rowAmountInr = explicitAmount * rowRate;
                 }
                 
-                if (k === "commission") {
-                  const threshold = 0.125 * totalValueInr;
-                  if (rowAmountInr > threshold) {
-                    totalDeductionInr += (rowAmountInr - threshold);
-                  }
-                } else {
-                  totalDeductionInr += rowAmountInr;
-                }
+                totalDeductionInr += rowAmountInr;
               });
               
               const fobInr = totalValueInr - totalDeductionInr;

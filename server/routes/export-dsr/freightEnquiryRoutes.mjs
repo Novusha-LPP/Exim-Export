@@ -466,7 +466,42 @@ router.get("/freight-enquiries", async (req, res) => {
     let deliveryCount = 0;
     let completedCount = 0;
 
-    const processedList = dataList.map((e) => {
+    // Filter by search, shipment_type, and status before computing counts so all tabs reflect filters
+    const needle = (req.query.search || "").trim().toUpperCase();
+    const reqShipmentType = (req.query.shipment_type || "").trim();
+    const reqStatus = (req.query.status || "").trim();
+
+    const matchesFilter = (e) => {
+      const matchSearch =
+        !needle ||
+        [
+          e.enquiry_no,
+          e.success_no,
+          e.rejected_no,
+          e.organization_name,
+          e.port_of_loading,
+          e.port_of_destination,
+          e.shipper_name,
+          e.consignee_name,
+          e.hbl_no,
+          e.mbl_no,
+          e.booking_no,
+          e.sb_no,
+        ]
+          .filter(Boolean)
+          .some((val) => String(val).toUpperCase().includes(needle));
+
+      const matchShipment = !reqShipmentType || e.shipment_type === reqShipmentType;
+      const matchStatus = !reqStatus || e.status === reqStatus;
+
+      return matchSearch && matchShipment && matchStatus;
+    };
+
+    const filteredDataList = (needle || reqShipmentType || reqStatus)
+      ? dataList.filter(matchesFilter)
+      : dataList;
+
+    const processedList = filteredDataList.map((e) => {
       const computedTab = getPipelineStage(e);
       const isPreEta = PRE_ETA_STAGES.has(computedTab);
 

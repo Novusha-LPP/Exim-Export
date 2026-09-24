@@ -358,14 +358,7 @@ const InvoiceFreightTab = ({ formik }) => {
       const amountInInvoice = rowToInvoiceCurrency(rowAmount, rowRate);
 
       if (k === "commission") {
-        const baseValueRowCur = getBaseValue(k, row);
-        const baseValueInInvoice = (baseValueRowCur * rowRate) / invoiceExchangeRate;
-        const threshold = (12.5 / 100) * baseValueInInvoice;
-
-        if (amountInInvoice > threshold) {
-          const excess = amountInInvoice - threshold;
-          totalNonFOBInInvoice += excess;
-        }
+        // Commission is not deducted from FOB calculation
       } else {
         totalNonFOBInInvoice += amountInInvoice;
       }

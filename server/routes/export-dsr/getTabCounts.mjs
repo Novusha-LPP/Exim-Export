@@ -696,10 +696,12 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
           const tabKeyLower = tabKey.toLowerCase();
           const isCompletedTab = tabKeyLower === "completed";
 
+          // Exclude Freight Forwarding jobs from all tabs in Jobs module
+          filter.$and.push({ job_no: { $not: /^FF/i } });
+
           // General conditions for Jobs module
           if (!isCompletedTab) {
             filter.$and.push({ isGeneralJob: { $ne: true } });
-            filter.$and.push({ job_no: { $not: /^FF/i } });
           }
           if (tabKeyLower === "pending") {
             filter.$and.push({

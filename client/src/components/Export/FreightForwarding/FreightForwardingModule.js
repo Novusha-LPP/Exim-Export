@@ -928,8 +928,11 @@ function FreightForwardingModule() {
   }, []);
 
   useEffect(() => {
-    fetchEnquiries(activeTab);
-  }, [activeTab]);
+    const timer = setTimeout(() => {
+      fetchEnquiries(activeTab, filters);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [activeTab, filters.search, filters.shipment_type, filters.status]);
 
   useEffect(() => {
     localStorage.setItem("ff_active_tab", activeTab);
@@ -939,10 +942,15 @@ function FreightForwardingModule() {
     localStorage.setItem("ff_filters", JSON.stringify(filters));
   }, [filters]);
 
-  const fetchEnquiries = async (tabToFetch = activeTab) => {
+  const fetchEnquiries = async (tabToFetch = activeTab, currentFilters = filters) => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_STRING}/freight-enquiries`, {
-        params: { tab: tabToFetch }
+        params: {
+          tab: tabToFetch,
+          search: currentFilters.search?.trim() || "",
+          shipment_type: currentFilters.shipment_type || "",
+          status: currentFilters.status || "",
+        }
       });
       if (res.data.success) {
         setRows(res.data.data);
@@ -1189,10 +1197,7 @@ function FreightForwardingModule() {
 
           const getCount = () => {
             if (tab === "Historic Rates") return null;
-            if (hasActiveFilter && tab === activeTab) {
-              return filteredRows.length;
-            }
-            return serverCounts[tab] !== undefined ? serverCounts[tab] : (tab === "Enquiry" ? enquiryCount : (tab === "Rejected" ? rejectedCount : 0));
+            return serverCounts[tab] !== undefined ? serverCounts[tab] : 0;
           };
           return (
             <button
