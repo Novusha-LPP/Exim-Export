@@ -373,6 +373,14 @@ const InvoiceMainTab = ({ formik }) => {
       });
 
       updatedInvoice.freightInsuranceCharges = nextCharges;
+
+      if (Array.isArray(updatedInvoice.products)) {
+        updatedInvoice.products = updatedInvoice.products.map((p) => ({
+          ...p,
+          priceUnit: code,
+          amountUnit: code,
+        }));
+      }
     }
 
     updatedInvoices[index] = updatedInvoice;

@@ -31,19 +31,17 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import LockIcon from "@mui/icons-material/Lock"; // Import LockIcon
+import LockIcon from "@mui/icons-material/Lock";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import GavelIcon from "@mui/icons-material/Gavel"; // Import GavelIcon
+import GavelIcon from "@mui/icons-material/Gavel";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 import LanguageIcon from "@mui/icons-material/Language";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LaunchIcon from "@mui/icons-material/Launch";
-import DescriptionIcon from "@mui/icons-material/Description";
 import { uploadFileToS3 } from "../../../utils/awsFileUpload";
 import AddExJobs from "./AddExJobs";
-import VirtualBalanceList from "../Export-Billing/VirtualBalanceList";
 import { formatDate } from "../../../utils/dateUtils";
 import { priorityFilter } from "../../../utils/filterUtils";
 
@@ -3276,22 +3274,6 @@ const ExportJobsTable = () => {
                     {tabCounts["club-jobs"] ?? 0}
                   </span>
                 </button>
-                <button
-                  style={
-                    activeTab === "Empty-Yards Virtual Balance" ? { ...s.tab, ...s.activeTab } : s.tab
-                  }
-                  onClick={() => setActiveTab("Empty-Yards Virtual Balance")}
-                >
-                  Empty-Yards Virtual Balance
-                </button>
-                <button
-                  style={
-                    activeTab === "CFS-SFSA Virtual Balance" ? { ...s.tab, ...s.activeTab } : s.tab
-                  }
-                  onClick={() => setActiveTab("CFS-SFSA Virtual Balance")}
-                >
-                  CFS-SFSA Virtual Balance
-                </button>
               </>
             )}
             <button
@@ -3860,17 +3842,7 @@ const ExportJobsTable = () => {
           )}
 
           {/* Table */}
-          {activeTab === "Empty-Yards Virtual Balance" ? (
-            <div style={{ padding: "20px 0" }}>
-              <VirtualBalanceList isJobs={true} balanceType="terminal" />
-            </div>
-          ) : activeTab === "CFS-SFSA Virtual Balance" ? (
-            <div style={{ padding: "20px 0" }}>
-              <VirtualBalanceList isJobs={true} balanceType="cfs" />
-            </div>
-          ) : (
-            <>
-              <div style={s.tableContainer} className="table-container-responsive">
+          <div style={s.tableContainer} className="table-container-responsive">
                 <table style={s.table}>
                   <colgroup>
                     <col style={{ minWidth: "175px" }} />
@@ -5626,8 +5598,6 @@ const ExportJobsTable = () => {
                   size="small"
                 />
               </div>
-            </>
-          )}
         </div>
       </div >
 

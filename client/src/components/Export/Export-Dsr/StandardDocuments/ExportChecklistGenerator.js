@@ -741,7 +741,7 @@ const ExportChecklistGenerator = ({
     const itemRows = (data.products || []).map((product, index) => [
       `${product.serialNumber || (index + 1)}\n${product.quantity || ""}\n${product.qtyUnit || product.unit || ""}`,
       `${product.ritc || ""}\n${product.eximCode || ""}\n${product.nfeiCategory || ""}\n${product.rewardItem ? "Yes" : "No"}`,
-      `${product.description || ""}\n${product.unitPrice || ""}/${product.priceUnit || product.qtyUnit || "PCS"}/${product.per || "1"}\n${product.fobValueFC || product.amount || ""}`,
+      `${product.description || ""}\n${product.unitPrice || ""}/${product.priceUnit || product.invoiceCurrency || product.qtyUnit || "PCS"}/${product.per || "1"}\n${product.fobValueFC || product.amount || ""}`,
       product.fobValueINR || "",
       `${product.amount || ""}\n${product.igstPaymentStatus || product.igstCompensationCess?.igstPaymentStatus || ""}`,
       `${product.pmvPerUnit || product.pmvInfo?.pmvPerUnit || ""}\n${product.taxableValueINR || product.igstCompensationCess?.taxableValueINR || ""}`,
@@ -2295,7 +2295,7 @@ const extractPrimaryJobNo = (input) => {
               qtyUnit: product.qtyUnit,
               per: product.per,
               unitPrice: product.unitPrice,
-              priceUnit: product.priceUnit || product.amountUnit,
+              priceUnit: product.invoiceCurrency || product.priceUnit || product.amountUnit,
               amount: product.amount,
               pmvPerUnit: product.pmvInfo?.pmvPerUnit,
               totalPMV: product.pmvInfo?.totalPMV,
