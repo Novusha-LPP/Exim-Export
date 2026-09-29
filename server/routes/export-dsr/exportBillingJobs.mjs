@@ -606,6 +606,7 @@ router.get("/api/export-billing-jobs", async (req, res) => {
       baseFilter.$and = baseFilter.$and || [];
       baseFilter.$and.push({
         status: { $ne: "Completed" },
+        detailedStatus: { $ne: "Billing Done" },
         send_for_billing: true,
         $or: [
           { is_club_job_parent: true },

@@ -691,7 +691,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={17} align="center" sx={{ py: 6 }}>
+                <TableCell colSpan={isCfsBalance ? 20 : 17} align="center" sx={{ py: 6 }}>
                   <CircularProgress size={28} sx={{ color: "#1e3a8a" }} />
                   <Typography variant="body2" sx={{ mt: 1, color: "text.secondary", fontWeight: 500 }}>
                     Loading virtual balances...
@@ -700,7 +700,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
               </TableRow>
             ) : entries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={17} align="center" sx={{ py: 6, color: "text.secondary" }}>
+                <TableCell colSpan={isCfsBalance ? 20 : 17} align="center" sx={{ py: 6, color: "text.secondary" }}>
                   No virtual balance entries found.
                 </TableCell>
               </TableRow>

@@ -479,6 +479,8 @@ const LogisysEditableHeader = ({
             "eSanchitDocuments", "operations", "financial_lock", "send_for_billing",
             "send_for_billing_date", "ap_invoices", "sb_no", "sb_date",
             "sb_submitted_date", "sb_status",
+            "egm_no", "egm_date", "drawback_scroll_no", "drawback_scroll_date",
+            "rosctl_scroll_no", "rosctl_scroll_date",
             "is_club_job_parent", "clubbed_jobs", "parent_club_job", "tally_club_ref_no"
           ];
 

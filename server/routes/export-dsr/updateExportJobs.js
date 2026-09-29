@@ -26,6 +26,16 @@ function isFreightForwardingJob(job) {
     String(job?.jobCategory || "").toLowerCase().includes("freight");
 }
 
+function hasClubBillingDate(job) {
+  return (job?.operations || []).some((operation) =>
+    (operation?.statusDetails || []).some((details) =>
+      details.billingDocsSentDt ||
+      details.billing_details?.agency_bill_date ||
+      details.billing_details?.reimbursement_bill_date
+    )
+  );
+}
+
 // Helper function to check if only billing-related fields are being updated
 function isBillingOnlyUpdate(updateObject) {
   // Billing-allowed field path patterns
@@ -1328,6 +1338,24 @@ router.get("/global-search-jobs", async (req, res) => {
   }
 });
 
+const CLUB_JOB_BILLING_COMPLETE_FILTER = {
+  $and: [
+    {
+      $or: [
+        { "operations.statusDetails.billingDocsSentDt": { $exists: true, $nin: [null, ""] } },
+        { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
+        { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
+      ],
+    },
+    {
+      $or: [
+        { is_club_job_parent: true },
+        { parent_club_job: { $exists: true, $nin: [null, ""] } },
+      ],
+    },
+  ],
+};
+
 // GET /exports - List all exports with pagination & filtering
 // Updated exports API with status filtering
 // If jobTracking is enabled and all milestones are completed, status is treated as "completed"
@@ -1452,6 +1480,7 @@ router.get("/exports/:status?", async (req, res) => {
             { isJobCanceled: { $ne: true } },
           ],
         });
+        filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
       } else if (statusLower === "completed") {
         // Completed: Explicit status is completed OR final milestone reached
         filter.$and.push({
@@ -1468,6 +1497,7 @@ router.get("/exports/:status?", async (req, res) => {
               $or: [
                 { status: { $regex: "^completed$", $options: "i" } },
                 { detailedStatus: "Billing Done" },
+                CLUB_JOB_BILLING_COMPLETE_FILTER,
               ],
             },
           ],
@@ -1594,7 +1624,23 @@ router.get("/exports/:status?", async (req, res) => {
             { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
           ]
         });
-        filter.$and.push({ isJobCanceled: { $ne: true } });
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+            { status: { $not: { $regex: "^completed$", $options: "i" } } },
+            { detailedStatus: { $ne: "Billing Done" } },
+            { isJobCanceled: { $ne: true } },
+          ],
+        });
+        filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
       } else {
         filter.$and.push({
           status: { $regex: `^${status}$`, $options: "i" },
@@ -2072,8 +2118,18 @@ router.get("/exports/:status?", async (req, res) => {
           const finalParents = [];
           Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(pid => {
             if (groups[pid].parent) {
-              groups[pid].parent.subRows = groups[pid].children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
-              finalParents.push(groups[pid].parent);
+              const p = groups[pid].parent;
+              const isCompleted = p.detailedStatus === "Billing Done" || 
+                String(p.status || "").toLowerCase() === "completed" || 
+                hasClubBillingDate(p) ||
+                p.isJobCanceled === true || 
+                String(p.status || "").toLowerCase() === "cancelled";
+              if (!isCompleted) {
+                groups[pid].parent.subRows = groups[pid].children
+                  .filter((child) => !hasClubBillingDate(child))
+                  .sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+                finalParents.push(groups[pid].parent);
+              }
             }
           });
           finalJobs = finalParents;
@@ -2088,7 +2144,9 @@ router.get("/exports/:status?", async (req, res) => {
                 const parentGroup = groups[pid];
                 if (parentGroup && parentGroup.parent) {
                   const parentJob = { ...parentGroup.parent };
-                  parentJob.subRows = parentGroup.children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+                  parentJob.subRows = parentGroup.children
+                    .filter((child) => String(status || "").toLowerCase() !== "pending" || !hasClubBillingDate(child))
+                    .sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
                   newJobs.push(parentJob);
                 } else {
                   newJobs.push(job);
@@ -2313,7 +2371,22 @@ router.get("/filtered-exporters", async (req, res) => {
             { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
           ]
         });
-        filter.$and.push({ isJobCanceled: { $ne: true } });
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+            { status: { $not: { $regex: "^completed$", $options: "i" } } },
+            { detailedStatus: { $ne: "Billing Done" } },
+            { isJobCanceled: { $ne: true } },
+          ],
+        });
       } else {
         filter.$and.push({
           status: { $regex: `^${status}$`, $options: "i" },

@@ -68,6 +68,15 @@ const getPreviousDayDate = (dateVal) => {
   return `${year}-${month}-${day}`;
 };
 
+const hasClubBillingDate = (job) =>
+  (job?.operations || []).some((operation) =>
+    (operation?.statusDetails || []).some((details) =>
+      details.billingDocsSentDt ||
+      details.billing_details?.agency_bill_date ||
+      details.billing_details?.reimbursement_bill_date
+    )
+  );
+
 // Lazy-loaded standard document generators
 const ExportChecklistGenerator = lazy(() => import("./StandardDocuments/ExportChecklistGenerator"));
 const ConsignmentNoteGenerator = lazy(() => import("./StandardDocuments/ConsignmentNoteGenerator"));
@@ -1286,7 +1295,17 @@ const ExportJobsTable = () => {
   }, [jobs, jobQueriesStatus, activeTab]);
 
   const groupedJobs = React.useMemo(() => {
-    const baseJobs = [...sortedJobs];
+    let baseJobs = [...sortedJobs];
+    if (activeTab === "club-jobs") {
+      baseJobs = baseJobs.filter(job => {
+        const isCompleted = job.detailedStatus === "Billing Done" || 
+          String(job.status || "").toLowerCase() === "completed" || 
+          hasClubBillingDate(job) ||
+          job.isJobCanceled === true || 
+          String(job.status || "").toLowerCase() === "cancelled";
+        return !isCompleted;
+      });
+    }
 
     // Map to find parents by job_no
     const parentMap = {};
@@ -1318,6 +1337,20 @@ const ExportJobsTable = () => {
       if (job.is_club_job_parent) {
         // Sort subRows by job_no to ensure consistent ordering of child jobs under parent
         const parent = parentMap[job.job_no];
+        if (activeTab === "club-jobs") {
+          parent.subRows = parent.subRows.filter(subJob =>
+            !hasClubBillingDate(subJob) &&
+            subJob.detailedStatus !== "Billing Done" &&
+            String(subJob.status || "").toLowerCase() !== "completed" &&
+            String(subJob.status || "").toLowerCase() !== "cancelled"
+          );
+          const isParentCompleted = parent.detailedStatus === "Billing Done" || 
+            String(parent.status || "").toLowerCase() === "completed" || 
+            hasClubBillingDate(parent) ||
+            parent.isJobCanceled === true || 
+            String(parent.status || "").toLowerCase() === "cancelled";
+          if (isParentCompleted) return;
+        }
         parent.subRows.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
         topLevelJobs.push(parent);
       } else {
@@ -3908,7 +3941,8 @@ const ExportJobsTable = () => {
                         }
                         return acc;
                       }, []).map((job, idx) => {
-                        const currentStatus = (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
+                        const isClubJobBilled = Boolean(job.is_club_job_parent || job.parent_club_job) && hasClubBillingDate(job);
+                        const currentStatus = isClubJobBilled ? "Billing Done" : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
                           ? job.detailedStatus[job.detailedStatus.length - 1]
                           : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "";
                         const theme = getStatusTheme(currentStatus);

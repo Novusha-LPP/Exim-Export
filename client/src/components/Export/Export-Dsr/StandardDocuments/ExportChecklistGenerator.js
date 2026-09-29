@@ -1823,6 +1823,45 @@ const extractPrimaryJobNo = (input) => {
         })),
       );
 
+      const calculateInvoiceFobInr = (invoice) => {
+        const invoiceCurrency = String(invoice.currency || "USD").toUpperCase();
+        let invoiceRate = getExportRate(invoiceCurrency) || parseFloat(exportJob.exchange_rate) || 1;
+        if ((invoiceCurrency === "JPY" || invoiceCurrency === "KRW") && invoiceRate > 5) {
+          invoiceRate /= 100;
+        }
+
+        const invoiceValue = parseFloat(invoice.invoiceValue || invoice.productValue || 0);
+        const totalValueInr = invoiceValue * invoiceRate;
+        let totalDeductionInr = 0;
+        const charges = invoice.freightInsuranceCharges || {};
+
+        ["freight", "insurance", "commission"].forEach((key) => {
+          const charge = charges[key] || {};
+          const chargeCurrency = String(charge.currency || invoiceCurrency).toUpperCase();
+          const fallbackRate = chargeCurrency === "INR" ? 1 : invoiceRate;
+          let chargeRate = parseFloat(charge.exchangeRate) || fallbackRate;
+          if ((chargeCurrency === "JPY" || chargeCurrency === "KRW") && chargeRate > 5) {
+            chargeRate /= 100;
+          }
+
+          const ratePercent = parseFloat(charge.rate) || 0;
+          const amountInr = ratePercent > 0
+            ? totalValueInr * (ratePercent / 100)
+            : (parseFloat(charge.amount) || 0) * chargeRate;
+
+          if (key === "commission") {
+            const commissionThreshold = 0.125 * totalValueInr;
+            if (amountInr > commissionThreshold) {
+              totalDeductionInr += amountInr - commissionThreshold;
+            }
+          } else {
+            totalDeductionInr += amountInr;
+          }
+        });
+
+        return { amountInr: totalValueInr - totalDeductionInr, invoiceRate };
+      };
+
       // Prepare comprehensive data object with all fields from PDF
       const data = {
         // Basic Information
@@ -1900,48 +1939,9 @@ const extractPrimaryJobNo = (input) => {
           : "0.000 KGS"),
 
         // Financial Details - Calculate from products and invoices
-        totalFobInr:
-          (exportJob.invoices || [])
-            .reduce((sum, inv) => {
-              const fob = inv.freightInsuranceCharges?.fobValue;
-              let fobAmount = 0;
-              if (fob) {
-                const currency = fob.currency || inv.currency || "INR";
-                const amount = parseFloat(fob.amount) || 0;
-                if (currency === "INR") {
-                  fobAmount = amount;
-                } else {
-                  let rate =
-                    getExportRate(currency) ||
-                    parseFloat(exportJob.exchange_rate) ||
-                    1;
-                  const curUpper = (currency || "").toUpperCase();
-                  if ((curUpper === "JPY" || curUpper === "KRW") && rate > 5) {
-                    rate = rate / 100;
-                  }
-                  fobAmount = amount * rate;
-                }
-              } else {
-                const currency = inv.currency || "INR";
-                const amount =
-                  parseFloat(inv.invoiceValue || inv.invoice_value) || 0;
-                if (currency === "INR") {
-                  fobAmount = amount;
-                } else {
-                  let rate =
-                    getExportRate(currency) ||
-                    parseFloat(exportJob.exchange_rate) ||
-                    1;
-                  const curUpper = (currency || "").toUpperCase();
-                  if ((curUpper === "JPY" || curUpper === "KRW") && rate > 5) {
-                    rate = rate / 100;
-                  }
-                  fobAmount = amount * rate;
-                }
-              }
-              return sum + fobAmount;
-            }, 0)
-            .toFixed(2) || "0.00",
+        totalFobInr: (exportJob.invoices || [])
+          .reduce((sum, invoice) => sum + calculateInvoiceFobInr(invoice).amountInr, 0)
+          .toFixed(2),
         igstTaxableValue:
           allProducts
             ?.reduce((sum, p) => {
@@ -2102,53 +2102,11 @@ const extractPrimaryJobNo = (input) => {
             })(),
 
             fobValue: (() => {
-              // Calculate FOB per-invoice dynamically to avoid all invoices showing the same total FOB
+              const { amountInr, invoiceRate } = calculateInvoiceFobInr(inv);
+              if (!parseFloat(inv.invoiceValue || inv.productValue || 0)) return "";
+              const fobInFC = invoiceRate > 0 ? amountInr / invoiceRate : amountInr;
               const invCurrency = inv.currency || "USD";
-              let invExchRate = getExportRate(invCurrency) || parseFloat(exportJob.exchange_rate) || 1;
-              const curUpper = (invCurrency || "").toUpperCase();
-              if ((curUpper === "JPY" || curUpper === "KRW") && invExchRate > 5) {
-                invExchRate = invExchRate / 100;
-              }
-              const grossInvoiceValue = parseFloat(inv.invoiceValue || inv.productValue || 0);
-              
-              if (!grossInvoiceValue) return "";
-              
-              const totalValueInr = grossInvoiceValue * invExchRate;
-              let totalDeductionInr = 0;
-              const charges = inv.freightInsuranceCharges || {};
-              
-              ["freight", "insurance", "commission"].forEach(k => {
-                const row = charges[k] || {};
-                const rowCurr = (row.currency || invCurrency).toUpperCase();
-                const fallbackRate = rowCurr === "INR" ? 1 : invExchRate;
-                let rowRate = parseFloat(row.exchangeRate) || fallbackRate;
-                if ((rowCurr === "JPY" || rowCurr === "KRW") && rowRate > 5) {
-                  rowRate = rowRate / 100;
-                }
-                const ratePercent = parseFloat(row.rate) || 0;
-                let rowAmountInr = 0;
-                
-                if (ratePercent > 0) {
-                  rowAmountInr = totalValueInr * (ratePercent / 100);
-                } else {
-                  const explicitAmount = parseFloat(row.amount) || 0;
-                  rowAmountInr = explicitAmount * rowRate;
-                }
-                
-                if (k === "commission") {
-                  const threshold = 0.125 * totalValueInr;
-                  if (rowAmountInr > threshold) {
-                    totalDeductionInr += (rowAmountInr - threshold);
-                  }
-                } else {
-                  totalDeductionInr += rowAmountInr;
-                }
-              });
-              
-              const fobInr = totalValueInr - totalDeductionInr;
-              const fobInFC = invExchRate > 0 ? fobInr / invExchRate : fobInr;
-              
-              return `${invCurrency} ${fobInFC.toFixed(2)} / INR ${fobInr.toFixed(2)}`;
+              return `${invCurrency} ${fobInFC.toFixed(2)} / INR ${amountInr.toFixed(2)}`;
             })(),
 
             insuranceData: (() => {

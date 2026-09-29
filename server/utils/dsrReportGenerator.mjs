@@ -640,6 +640,7 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
       { header: "EGM No", key: "egm_no", width: 18 },
       { header: "EGM Date", key: "egm_date", width: 15 },
       { header: "Cntr 20 / 40", key: "cntr_size", width: 15 },
+      { header: "Container No / Size", key: "container_details", width: 30 },
       { header: "Exporter", key: "exporter", width: 25 },
       { header: "FWDR Name", key: "fwdr_name", width: 25 },
       { header: "3rd Party", key: "third_party", width: 25 },
@@ -742,6 +743,15 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
           cntrSize = type;
         }
       }
+      const containerDetails = (job.containers || [])
+        .map((container) => {
+          const number = container.containerNo || container.container_number || "";
+          const size = getCleanContainerSize(container);
+          if (!number) return "";
+          return size ? `${number} (${size})` : number;
+        })
+        .filter(Boolean)
+        .join("\n");
 
       const sb_date = formatDate(job.sb_date);
       const gateInDate = formatDate(status.gateInDate);
@@ -913,6 +923,7 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
         egm_no: scrollAndEgm.egmNo,
         egm_date: formatDate(scrollAndEgm.egmDate),
         cntr_size: cntrSize,
+        container_details: containerDetails,
         exporter: job.exporter || "",
         fwdr_name: scrollAndEgm.fwdrName,
         third_party: scrollAndEgm.thirdPartyName,

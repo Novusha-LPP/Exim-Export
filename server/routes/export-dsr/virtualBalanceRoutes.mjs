@@ -73,9 +73,21 @@ router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res
     // 4. Fetch all directory opening balances
     const cfsList = type === "CFS" ? await CfsDirectoryModel.find().lean() : await EmptyYardDirectoryModel.find().lean();
     const cfsOpeningMap = {};
+    const cfsBankMap = {};
     cfsList.forEach((c) => {
       if (c.name) {
-        cfsOpeningMap[c.name.trim().toUpperCase()] = c.openingBalance || 0;
+        const key = c.name.trim().toUpperCase();
+        cfsOpeningMap[key] = c.openingBalance || 0;
+        if (Array.isArray(c.branches)) {
+          const acc = c.branches.flatMap((b) => b.accounts || []).find((a) => a && (a.accountNo || a.bankName));
+          if (acc) {
+            cfsBankMap[key] = {
+              accountNo: acc.accountNo || "",
+              bankName: acc.bankName || "",
+              ifsc: acc.ifsc || "",
+            };
+          }
+        }
       }
     });
 
@@ -103,12 +115,20 @@ router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res
       // Update running balance for next entry of this CFS
       cfsRunningMap[cfsKey] = remainingBalance;
 
+      const bankInfo = cfsBankMap[cfsKey] || {};
+      const bankAccountNo = entry.bankAccountNo || bankInfo.accountNo || "";
+      const bankName = entry.bankName || bankInfo.bankName || "";
+      const bankIfsc = entry.bankIfsc || bankInfo.ifsc || "";
+
       return {
         ...entry,
         openingBalance,
         availableBalance,
         spentAmount,
         remainingBalance,
+        bankAccountNo,
+        bankName,
+        bankIfsc,
       };
     });
 
@@ -193,7 +213,7 @@ router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res
 // POST /api/virtual-balance & /api/cfs-virtual-balance - Create a new virtual balance entry
 router.post(["/api/virtual-balance", "/api/cfs-virtual-balance"], auditMiddleware("Billing"), async (req, res) => {
   try {
-    const { cfsName, jobNo, amountPaid, utr, fromBank, remarks, status = "unpaid", fileUrl } = req.body;
+    const { cfsName, jobNo, amountPaid, utr, fromBank, remarks, status = "unpaid", fileUrl, bankAccountNo, bankName, bankIfsc } = req.body;
     const type = getBalanceType(req);
 
     if (!cfsName || amountPaid === undefined) {
@@ -239,6 +259,9 @@ router.post(["/api/virtual-balance", "/api/cfs-virtual-balance"], auditMiddlewar
       status: status.toLowerCase(),
       paymentDate,
       fileUrl,
+      bankAccountNo: bankAccountNo || "",
+      bankName: bankName || "",
+      bankIfsc: bankIfsc || "",
     });
 
     await newEntry.save();
@@ -275,6 +298,9 @@ router.put(["/api/virtual-balance/:id", "/api/cfs-virtual-balance/:id"], auditMi
     if (fromBank !== undefined) entry.fromBank = fromBank;
     if (remarks !== undefined) entry.remarks = remarks;
     if (fileUrl !== undefined) entry.fileUrl = fileUrl;
+    if (req.body.bankAccountNo !== undefined) entry.bankAccountNo = req.body.bankAccountNo;
+    if (req.body.bankName !== undefined) entry.bankName = req.body.bankName;
+    if (req.body.bankIfsc !== undefined) entry.bankIfsc = req.body.bankIfsc;
 
     if (status && status.toLowerCase() !== entry.status) {
       const prevStatus = entry.status;

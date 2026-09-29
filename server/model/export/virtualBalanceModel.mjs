@@ -13,6 +13,9 @@ const virtualBalanceSchema = new mongoose.Schema({
   remarks: { type: String, trim: true },
   status: { type: String, enum: ["paid", "unpaid"], default: "unpaid", lowercase: true },
   fileUrl: { type: String, trim: true },
+  bankAccountNo: { type: String, trim: true },
+  bankName: { type: String, trim: true },
+  bankIfsc: { type: String, trim: true },
 }, { timestamps: true });
 
 const VirtualBalanceModel = mongoose.model("virtualBalance", virtualBalanceSchema);

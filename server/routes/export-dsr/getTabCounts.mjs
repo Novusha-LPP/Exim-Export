@@ -384,7 +384,9 @@ function matchesTab(job, workMode, tab, jobTypeFilter = "", startDate = "", endD
   if (tab === "club-jobs") {
     const isParent = job.is_club_job_parent === true;
     const isChild = !!job.parent_club_job;
-    return isParent || isChild;
+    if (!isParent && !isChild) return false;
+    if (isCompleted || hasBillingDone) return false;
+    return true;
   }
 
   return true;
@@ -569,6 +571,24 @@ function applyCommonFilters(filter, query) {
   }
 }
 
+const CLUB_JOB_BILLING_COMPLETE_FILTER = {
+  $and: [
+    {
+      $or: [
+        { "operations.statusDetails.billingDocsSentDt": { $exists: true, $nin: [null, ""] } },
+        { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
+        { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
+      ],
+    },
+    {
+      $or: [
+        { is_club_job_parent: true },
+        { parent_club_job: { $exists: true, $nin: [null, ""] } },
+      ],
+    },
+  ],
+};
+
 router.get("/api/export-jobs-tab-counts", async (req, res) => {
   try {
     const { module = "jobs", pendingQueries = false, currentModule = "export-dsr", workMode = "payment", jobTypeFilter = "", startDate = "", endDate = "" } = req.query;
@@ -709,6 +729,7 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
               detailedStatus: { $ne: "Billing Done" },
               isJobCanceled: { $ne: true },
             });
+            filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
           } else if (tabKeyLower === "booking pending") {
             filter.$and.push({
               $and: [
@@ -785,12 +806,30 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
               is_club_job_parent: true
             });
             filter.$and.push({
-              isJobCanceled: { $ne: true }
+              $and: [
+                {
+                  $or: [
+                    { status: { $regex: "^pending$", $options: "i" } },
+                    { status: { $exists: false } },
+                    { status: null },
+                    { status: "" },
+                  ],
+                },
+                { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+                { status: { $not: { $regex: "^completed$", $options: "i" } } },
+                { detailedStatus: { $ne: "Billing Done" } },
+                { isJobCanceled: { $ne: true } },
+              ],
             });
+            filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
           } else if (tabKeyLower === "completed") {
             filter.$and.push({
               $and: [{ status: { $regex: "^(?!cancelled$).*", $options: "i" } }, { isJobCanceled: { $ne: true } }],
-              $or: [{ status: { $regex: "^completed$", $options: "i" } }, { detailedStatus: "Billing Done" }]
+              $or: [
+                { status: { $regex: "^completed$", $options: "i" } },
+                { detailedStatus: "Billing Done" },
+                CLUB_JOB_BILLING_COMPLETE_FILTER,
+              ]
             });
           } else if (tabKeyLower === "cancelled") {
             filter.$and.push({

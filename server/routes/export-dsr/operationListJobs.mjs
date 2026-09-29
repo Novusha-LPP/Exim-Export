@@ -310,6 +310,22 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                      { parent_club_job: { $exists: true, $ne: null, $ne: "" } }
                  ]
              });
+             filter.$and.push({
+                 $and: [
+                     {
+                         $or: [
+                             { status: { $regex: "^pending$", $options: "i" } },
+                             { status: { $exists: false } },
+                             { status: null },
+                             { status: "" },
+                         ],
+                     },
+                     { status: { $regex: "^(?!cancelled$).*", $options: "i" } },
+                     { status: { $not: { $regex: "^completed$", $options: "i" } } },
+                     { detailedStatus: { $ne: "Billing Done" } },
+                     { isJobCanceled: { $ne: true } },
+                 ],
+             });
         } else if (normalizedStatus === "cancelled") {
             // Cancelled jobs shouldn't filter out anything specific by default, 
             // but we might want to exclude billed ones if desired. Usually cancelled just means status = cancelled.
@@ -681,8 +697,15 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
                     const finalParents = [];
                     Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(pid => {
                         if (groups[pid].parent) {
-                            groups[pid].parent.subRows = groups[pid].children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
-                            finalParents.push(groups[pid].parent);
+                            const p = groups[pid].parent;
+                            const isCompleted = p.detailedStatus === "Billing Done" || 
+                                String(p.status || "").toLowerCase() === "completed" || 
+                                p.isJobCanceled === true || 
+                                String(p.status || "").toLowerCase() === "cancelled";
+                            if (!isCompleted) {
+                                groups[pid].parent.subRows = groups[pid].children.sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+                                finalParents.push(groups[pid].parent);
+                            }
                         }
                     });
                     finalJobs = finalParents;
