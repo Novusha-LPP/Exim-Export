@@ -13,3 +13,5 @@ build/
 local-signer/config.properties
 scratch/
 local-signer/PKIComponent/
+local-signer/
+
