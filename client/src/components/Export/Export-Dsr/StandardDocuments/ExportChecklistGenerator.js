@@ -41,6 +41,40 @@ const CUSTOM_HOUSE_CODE_MAP = {
   "HAZIRA SEA": "INHZA1",
 };
 
+
+const formatWeightValue = (value, unit = "KGS") => {
+  if (value === null || value === undefined || value === "") return "";
+  const rawStr = String(value).trim();
+  if (!rawStr) return "";
+
+  const match = rawStr.match(/^([0-9.,]+)\s*([A-Za-z]+)?$/);
+  if (!match) return rawStr;
+
+  let num = parseFloat(match[1].replace(/,/g, ""));
+  if (isNaN(num)) return rawStr;
+
+  const targetUnit = (match[2] || unit || "KGS").toUpperCase().trim();
+
+  // If unit is MT / MTS / TON / TONS:
+  if (["MT", "MTS", "TON", "TONS", "T"].includes(targetUnit)) {
+    // If num > 500, it was stored in KG (e.g. 25849.998 or 25850), convert to MT by dividing by 1000
+    if (num > 500) {
+      num = num / 1000;
+    }
+    const rounded = Math.round((num + Number.EPSILON) * 1000) / 1000;
+    return `${rounded.toFixed(3)} ${targetUnit}`;
+  }
+
+  // If unit is KGS / KG / KILOGRAMS:
+  if (["KGS", "KG", "KILOGRAMS", "KGS."].includes(targetUnit)) {
+    const rounded = Math.round((num + Number.EPSILON) * 1000) / 1000;
+    return `${rounded.toFixed(3)} ${targetUnit}`;
+  }
+
+  const rounded = Math.round((num + Number.EPSILON) * 1000) / 1000;
+  return `${rounded.toFixed(3)} ${targetUnit}`;
+};
+
 const getCustomHouseCode = (ch) => {
   if (!ch) return "";
   const upperCh = ch.toUpperCase().trim();
@@ -1852,17 +1886,18 @@ const extractPrimaryJobNo = (input) => {
         loosePackets: exportJob.loose_pkgs || "",
 
         // Weight calculation from products or containers
-        grossWeight: exportJob.gross_weight_kg
-          ? `${exportJob.gross_weight_kg} ${exportJob.gross_weight_unit || "KGS"
-          }`
-          : exportJob.containers
-            ?.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
-            .toFixed(3) + " KGS" || "0.000 KGS",
-        netWeight: exportJob.net_weight_kg
-          ? `${exportJob.net_weight_kg} ${exportJob.net_weight_unit || "KGS"}`
-          : allProducts
-            ?.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
-            .toFixed(3) + " KGS" || "0.000 KGS",
+        grossWeight: formatWeightValue(
+          exportJob.gross_weight_kg || exportJob.grossweightkg,
+          exportJob.gross_weight_unit || "KGS"
+        ) || (exportJob.containers?.length
+          ? formatWeightValue(exportJob.containers.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0), "KGS")
+          : "0.000 KGS"),
+        netWeight: formatWeightValue(
+          exportJob.net_weight_kg || exportJob.netweightkg,
+          exportJob.net_weight_unit || "KGS"
+        ) || (allProducts?.length
+          ? formatWeightValue(allProducts.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0), "KGS")
+          : "0.000 KGS"),
 
         // Financial Details - Calculate from products and invoices
         totalFobInr:

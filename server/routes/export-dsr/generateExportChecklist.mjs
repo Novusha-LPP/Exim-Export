@@ -4,6 +4,37 @@ import express from "express";
 
 const router = express.Router();
 
+
+const formatWeight = (value, unit = "KGS") => {
+  if (value === null || value === undefined || value === "") return "";
+  const rawStr = String(value).trim();
+  if (!rawStr) return "";
+
+  const match = rawStr.match(/^([0-9.,]+)\s*([A-Za-z]+)?$/);
+  if (!match) return rawStr;
+
+  let num = parseFloat(match[1].replace(/,/g, ""));
+  if (isNaN(num)) return rawStr;
+
+  const targetUnit = (match[2] || unit || "KGS").toUpperCase().trim();
+
+  if (["MT", "MTS", "TON", "TONS", "T"].includes(targetUnit)) {
+    if (num > 500) {
+      num = num / 1000;
+    }
+    const rounded = Math.round((num + Number.EPSILON) * 1000) / 1000;
+    return `${rounded.toFixed(3)} ${targetUnit}`;
+  }
+
+  if (["KGS", "KG", "KILOGRAMS", "KGS."].includes(targetUnit)) {
+    const rounded = Math.round((num + Number.EPSILON) * 1000) / 1000;
+    return `${rounded.toFixed(3)} ${targetUnit}`;
+  }
+
+  const rounded = Math.round((num + Number.EPSILON) * 1000) / 1000;
+  return `${rounded.toFixed(3)} ${targetUnit}`;
+};
+
 const extractPrimaryJobNo = (input) => {
   if (!input) return "";
   const str = String(input).trim();
@@ -141,7 +172,7 @@ export const generateExportChecklist = async (jobNumber) => {
       170,
       18,
       "SB No. / Date",
-      `${exportJob.shippingbillnumber} dt ${exportJob.shippingbilldate}`,
+      `${exportJob.sb_no || exportJob.shippingbillnumber || ""} dt ${exportJob.sb_date || exportJob.shippingbilldate || ""}`,
       6,
       5
     );
@@ -149,14 +180,14 @@ export const generateExportChecklist = async (jobNumber) => {
     drawFieldBox(360, yPos, 225, 18, "CHA", exportJob.cha, 5.5, 5);
     yPos += 20;
 
-    drawFieldBox(10, yPos, 200, 18, "CONSIGNEE", exportJob.consigneename, 6, 5);
+    drawFieldBox(10, yPos, 200, 18, "CONSIGNEE", exportJob.consignees?.[0]?.consignee_name || exportJob.consigneename || "", 6, 5);
     drawFieldBox(
       215,
       yPos,
       120,
       18,
       "Port Of Discharge",
-      exportJob.portofdischarge,
+      exportJob.port_of_discharge || exportJob.portofdischarge || "",
       6,
       5
     );
@@ -166,7 +197,7 @@ export const generateExportChecklist = async (jobNumber) => {
       100,
       18,
       "Gross Weight",
-      `${exportJob.grossweightkg || 0}.000 KGS`,
+      formatWeight(exportJob.gross_weight_kg || exportJob.grossweightkg, exportJob.gross_weight_unit || "KGS"),
       6,
       5
     );
@@ -176,14 +207,14 @@ export const generateExportChecklist = async (jobNumber) => {
       140,
       18,
       "Country of Dest",
-      exportJob.countryoffinaldestination,
+      exportJob.destination_country || exportJob.countryoffinaldestination || "",
       6,
       5
     );
     yPos += 20;
 
     drawFieldBox(10, yPos, 60, 18, "", exportJob.consigneeId, 6, 5);
-    drawFieldBox(75, yPos, 370, 18, "", exportJob.consigneeaddress, 6, 5);
+    drawFieldBox(75, yPos, 370, 18, "", exportJob.consignees?.[0]?.consignee_address || exportJob.consigneeaddress || "", 6, 5);
     yPos += 20;
 
     const addressLine2 = [
@@ -230,20 +261,20 @@ export const generateExportChecklist = async (jobNumber) => {
       275,
       18,
       "Port Of Loading",
-      exportJob.portofloading,
+      exportJob.port_of_loading || exportJob.portofloading || "",
       6,
       5
     );
     yPos += 20;
 
-    drawFieldBox(10, yPos, 80, 18, "Loose pkts.", exportJob.loosepkgs, 6, 5);
+    drawFieldBox(10, yPos, 80, 18, "Loose pkts.", exportJob.loose_pkgs || exportJob.loosepkgs || "", 6, 5);
     drawFieldBox(
       95,
       yPos,
       100,
       18,
       "Net Weight",
-      `${exportJob.netweightkg || 0}.000 KGS`,
+      formatWeight(exportJob.net_weight_kg || exportJob.netweightkg, exportJob.net_weight_unit || "KGS"),
       6,
       5
     );
@@ -253,7 +284,7 @@ export const generateExportChecklist = async (jobNumber) => {
       50,
       18,
       "No Of Cntnrs",
-      exportJob.noofcontainers,
+      exportJob.no_of_containers || exportJob.noofcontainers || "",
       6,
       5
     );
@@ -273,16 +304,16 @@ export const generateExportChecklist = async (jobNumber) => {
     );
     yPos += 20;
 
-    drawFieldBox(10, yPos, 575, 18, "EOU IEC", exportJob.iecNo, 6, 5);
+    drawFieldBox(10, yPos, 575, 18, "EOU IEC", exportJob.ieCode || exportJob.iecNo || "", 6, 5);
     yPos += 20;
 
     drawFieldBox(10, yPos, 575, 18, "Warehouse Name", warehouseInfo, 6, 5);
     yPos += 20;
 
     const factoryAddress = [
-      exportJob.exporterName,
-      exportJob.branchcode,
-      exportJob.exporterAddress,
+      exportJob.exporter || exportJob.exporterName || "",
+      exportJob.branch_code || exportJob.branchcode || "",
+      exportJob.exporter_address || exportJob.exporterAddress || "",
     ]
       .filter(Boolean)
       .join("\n");

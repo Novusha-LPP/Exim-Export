@@ -2103,7 +2103,8 @@ function ShipmentMainTab({ formik, onUpdate, directories, isEditable = true }) {
                     onBlur={(e) => {
                       const val = parseFloat(e.target.value);
                       if (!isNaN(val)) {
-                        handleFieldChange("gross_weight_kg", val.toFixed(3));
+                        const rounded = Math.round((val + Number.EPSILON) * 1000) / 1000;
+                        handleFieldChange("gross_weight_kg", rounded.toFixed(3));
                       }
                     }}
                     placeholder={(!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? "Fill Containers first" : "0.00"}
@@ -2136,7 +2137,8 @@ function ShipmentMainTab({ formik, onUpdate, directories, isEditable = true }) {
                     onBlur={(e) => {
                       const val = parseFloat(e.target.value);
                       if (!isNaN(val)) {
-                        handleFieldChange("net_weight_kg", val.toFixed(3));
+                        const rounded = Math.round((val + Number.EPSILON) * 1000) / 1000;
+                        handleFieldChange("net_weight_kg", rounded.toFixed(3));
                       }
                     }}
                     placeholder={(!isAir && (formik.values.no_of_containers === "" || formik.values.no_of_containers == null)) ? "Fill Containers first" : "0.00"}

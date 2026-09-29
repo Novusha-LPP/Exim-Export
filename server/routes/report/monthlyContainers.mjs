@@ -16,6 +16,8 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
     const baseMatch = {
       year,
       exporter: { $ne: null, $ne: "" },
+      isGeneralJob: { $ne: true },
+      job_no: { $not: /^FF/i },
     };
 
     // Add custom_house filter if provided
@@ -84,10 +86,12 @@ router.get("/api/report/monthly-containers/:year/:month", async (req, res) => {
         ...(isWholeYear ? [
           {
             $match: {
-              $or: [
-                { sbDateObj: { $ne: null } },
-                { $gt: [{ $size: "$leoDates" }, 0] }
-              ]
+              $expr: {
+                $or: [
+                  { $ne: ["$sbDateObj", null] },
+                  { $gt: [{ $size: "$leoDates" }, 0] }
+                ]
+              }
             }
           }
         ] : [
