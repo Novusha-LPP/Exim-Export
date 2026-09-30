@@ -15,10 +15,13 @@ import CfsCodeMaster from "./CfsCodeMaster.js";
 import GeneralOrgDirectory from "./GeneralOrgDirectory.js";
 import ForwarderDirectory from "../FreightForwarding/ForwarderDirectory.js";
 import DrawbackDirectory from "./DrawbackDirectory.js";
+import MasterListDirectory from "./MasterListDirectory.js";
 
 function DirectoryComponent({ directoryType }) {
   const renderDirectory = () => {
     switch (directoryType) {
+      case "Master List":
+        return <MasterListDirectory />;
       case "Organization":
         return <ExportDirectory />;
       case "Airline Code":

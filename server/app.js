@@ -51,6 +51,7 @@ import emptyYardCodes from "./routes/Directories/emptyYardDirectory.js";
 import generalOrgs from "./routes/Directories/generalorgs.js";
 import drawback from "./routes/Directories/drawback.js";
 import globalDirectorySearch from "./routes/Directories/globalDirectorySearch.js";
+import masterList from "./routes/Directories/masterList.js";
 
 import getExportJobsModuleUsers from "./routes/export-dsr/getExportJobsModuleUsers.mjs";
 
@@ -235,6 +236,8 @@ app.use(emptyYardCodes);
 app.use("/api", auditMiddleware("Directory"), generalOrgs);
 app.use("/api/drawbacks", auditMiddleware("Directory"), drawback);
 app.use(globalDirectorySearch);
+app.use("/api/directories/master-list", masterList);
+app.use("/api/master-list", masterList);
 
 // app.set("trust proxy", 1); // Trust first proxy (NGINX, AWS ELB, etc.)
 

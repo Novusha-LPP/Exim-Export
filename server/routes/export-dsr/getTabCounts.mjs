@@ -572,20 +572,10 @@ function applyCommonFilters(filter, query) {
 }
 
 const CLUB_JOB_BILLING_COMPLETE_FILTER = {
-  $and: [
-    {
-      $or: [
-        { "operations.statusDetails.billingDocsSentDt": { $exists: true, $nin: [null, ""] } },
-        { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
-        { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
-      ],
-    },
-    {
-      $or: [
-        { is_club_job_parent: true },
-        { parent_club_job: { $exists: true, $nin: [null, ""] } },
-      ],
-    },
+  $or: [
+    { detailedStatus: "Billing Done" },
+    { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
+    { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
   ],
 };
 
@@ -731,6 +721,7 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
             });
             filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
           } else if (tabKeyLower === "booking pending") {
+            filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
             filter.$and.push({
               $and: [
                 { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
@@ -747,6 +738,7 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
               ]
             });
           } else if (tabKeyLower === "handover pending") {
+            filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
             filter.$and.push({
               $and: [
                 { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
@@ -759,6 +751,7 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
               ]
             });
           } else if (tabKeyLower === "prepare for billing") {
+            filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
             filter.$and.push({
               $and: [
                 { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
@@ -794,6 +787,7 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
               ]
             });
           } else if (tabKeyLower === "sent for billing") {
+            filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
             filter.$and.push({
               $and: [
                 { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },

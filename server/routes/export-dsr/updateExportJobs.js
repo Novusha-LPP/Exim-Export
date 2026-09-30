@@ -29,7 +29,6 @@ function isFreightForwardingJob(job) {
 function hasClubBillingDate(job) {
   return (job?.operations || []).some((operation) =>
     (operation?.statusDetails || []).some((details) =>
-      details.billingDocsSentDt ||
       details.billing_details?.agency_bill_date ||
       details.billing_details?.reimbursement_bill_date
     )
@@ -403,6 +402,20 @@ async function syncClubFields(job) {
       sibling.vgm_date = updates.vgm_date;
       sibling.form13_done = updates.form13_done;
       sibling.form13_date = updates.form13_date;
+      if (job.detailedStatus) {
+        sibling.detailedStatus = job.detailedStatus;
+      }
+      if (job.status) {
+        sibling.status = job.status;
+      }
+      const hasSiblingBillDates = Boolean(
+        sibOp0.billing_details?.agency_bill_date ||
+        sibOp0.billing_details?.reimbursement_bill_date
+      );
+      if (hasSiblingBillDates || job.detailedStatus === "Billing Done") {
+        sibling.detailedStatus = "Billing Done";
+        sibling.status = "Completed";
+      }
 
       sibling.markModified("operations");
       sibling.markModified("milestones");
@@ -1004,6 +1017,7 @@ router.get("/global-search-jobs", async (req, res) => {
           ]
         });
       } else if (statusLower === "booking pending") {
+        filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
         filter.$and.push({
           $and: [
             {
@@ -1027,6 +1041,7 @@ router.get("/global-search-jobs", async (req, res) => {
           ]
         });
       } else if (statusLower === "handover pending") {
+        filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
         filter.$and.push({
           $and: [
             {
@@ -1339,20 +1354,10 @@ router.get("/global-search-jobs", async (req, res) => {
 });
 
 const CLUB_JOB_BILLING_COMPLETE_FILTER = {
-  $and: [
-    {
-      $or: [
-        { "operations.statusDetails.billingDocsSentDt": { $exists: true, $nin: [null, ""] } },
-        { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
-        { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
-      ],
-    },
-    {
-      $or: [
-        { is_club_job_parent: true },
-        { parent_club_job: { $exists: true, $nin: [null, ""] } },
-      ],
-    },
+  $or: [
+    { detailedStatus: "Billing Done" },
+    { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
+    { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
   ],
 };
 
@@ -1552,6 +1557,7 @@ router.get("/exports/:status?", async (req, res) => {
           ]
         });
       } else if (statusLower === "prepare for billing") {
+        filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
         filter.$and.push({
           $and: [
             {
@@ -1601,6 +1607,7 @@ router.get("/exports/:status?", async (req, res) => {
           ]
         });
       } else if (statusLower === "sent for billing") {
+        filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
         filter.$and.push({
           $and: [
             {
@@ -2137,6 +2144,7 @@ router.get("/exports/:status?", async (req, res) => {
         } else {
           const newJobs = [];
           const processedParents = new Set();
+          const isPendingOrSentTab = ["pending", "sent for billing", "prepare for billing", "booking pending", "handover pending", "club-jobs"].includes(String(status || "").toLowerCase());
           finalJobs.forEach(job => {
             const pid = job.is_club_job_parent ? job.job_no : job.parent_club_job;
             if (pid) {
@@ -2144,9 +2152,22 @@ router.get("/exports/:status?", async (req, res) => {
                 const parentGroup = groups[pid];
                 if (parentGroup && parentGroup.parent) {
                   const parentJob = { ...parentGroup.parent };
+                  const isParentBillingComplete = parentJob.detailedStatus === "Billing Done" ||
+                    String(parentJob.status || "").toLowerCase() === "completed" ||
+                    hasClubBillingDate(parentJob);
+
+                  if (isPendingOrSentTab && isParentBillingComplete) {
+                    return;
+                  }
+
                   parentJob.subRows = parentGroup.children
-                    .filter((child) => String(status || "").toLowerCase() !== "pending" || !hasClubBillingDate(child))
+                    .filter((child) => !isPendingOrSentTab || (!hasClubBillingDate(child) && child.detailedStatus !== "Billing Done" && String(child.status || "").toLowerCase() !== "completed"))
                     .sort((a, b) => String(a.job_no || "").localeCompare(String(b.job_no || "")));
+
+                  if (isPendingOrSentTab && parentJob.subRows.length === 0 && isParentBillingComplete) {
+                    return;
+                  }
+
                   newJobs.push(parentJob);
                 } else {
                   newJobs.push(job);

@@ -39,6 +39,7 @@ const DIRECTORY_COLOR_MAP = {
   "General Org": "#6a1b9a",
   "Forwarder": "#2e7d32",
   "Drawback": "#c2185b",
+  "Master List": "#0284c7",
 };
 
 function Directories() {

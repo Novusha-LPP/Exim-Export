@@ -5,6 +5,7 @@ import jsPDF from "jspdf";
 import DocumentEditorDialog from "./DocumentEditorDialog";
 import thatLogo from "../../../../assets/images/that-logo.png";
 import { imageToBase64 } from "../../../../utils/imageUtils";
+import { loadClubJobData } from "../../../../utils/clubJobData.js";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 
@@ -612,7 +613,11 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       const response = await axios.get(
         `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
       );
-      const data = response.data;
+      let data = response.data;
+      const clubJobData = await loadClubJobData(data);
+      data = clubJobData.primaryJob;
+      const fetchedClubbedJobsData = clubJobData.clubbedJobsData;
+      const isClubActive = clubJobData.isClubActive;
 
       const operations = data.operations?.[0] || {};
       const invoice = data.invoices?.[0] || {};
@@ -648,25 +653,6 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       const descriptionOfGoods = products[0]?.description || data.description || "";
 
       
-      let fetchedClubbedJobsData = [];
-      let isClubActive = false;
-
-      // If this is a child job, use the parent's pre-merged data to avoid double-counting.
-      // The server already merges all child containers into the parent's containers array.
-      if (data.parent_club_job) {
-          try {
-            const parentRes = await axios.get(`${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(data.parent_club_job)}`);
-            if (parentRes.data) {
-                // Replace current data with parent's pre-merged data
-                Object.assign(data, parentRes.data);
-                isClubActive = true;
-            }
-          } catch(e) { console.warn(e); }
-      } else if (data.is_club_job_parent && Array.isArray(data.clubbed_jobs) && data.clubbed_jobs.length > 0) {
-          // Parent job: server already merged all children into data.containers
-          isClubActive = true;
-      }
-
       setIsClubJob(isClubActive);
       setClubbedJobsData(fetchedClubbedJobsData);
 

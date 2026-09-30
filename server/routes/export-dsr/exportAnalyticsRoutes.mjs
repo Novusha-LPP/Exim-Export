@@ -185,14 +185,6 @@ router.get("/api/export-analytics/overview", async (req, res) => {
                     ...(filter.$and || []),
                     {
                         $or: [
-                            { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
-                            { "operations.statusDetails.billingDocsSentDt": null },
-                            { "operations.statusDetails.billingDocsSentDt": "" },
-                            { "operations.statusDetails": { $size: 0 } }
-                        ]
-                    },
-                    {
-                        $or: [
                             { "operations.statusDetails.billing_details.agency_bill_date": { $exists: false } },
                             { "operations.statusDetails.billing_details.agency_bill_date": null },
                             { "operations.statusDetails.billing_details.agency_bill_date": "" },
@@ -405,14 +397,6 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
             send_for_billing: true,
             $and: [
                 ...(filter.$and || []),
-                {
-                    $or: [
-                        { "operations.statusDetails.billingDocsSentDt": { $exists: false } },
-                        { "operations.statusDetails.billingDocsSentDt": null },
-                        { "operations.statusDetails.billingDocsSentDt": "" },
-                        { "operations.statusDetails": { $size: 0 } }
-                    ]
-                },
                 {
                     $or: [
                         { "operations.statusDetails.billing_details.agency_bill_date": { $exists: false } },

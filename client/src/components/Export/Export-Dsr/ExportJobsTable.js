@@ -71,7 +71,6 @@ const getPreviousDayDate = (dateVal) => {
 const hasClubBillingDate = (job) =>
   (job?.operations || []).some((operation) =>
     (operation?.statusDetails || []).some((details) =>
-      details.billingDocsSentDt ||
       details.billing_details?.agency_bill_date ||
       details.billing_details?.reimbursement_bill_date
     )
@@ -937,7 +936,7 @@ const getCurrentFinancialYear = () => {
   return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
 };
 
-const PulseOverviewHover = ({ exporter }) => {
+const PulseOverviewHover = ({ exporter, year }) => {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -946,7 +945,7 @@ const PulseOverviewHover = ({ exporter }) => {
     const fetchPulse = async () => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_STRING}/export-analytics/pulse`, {
-          params: { exporter }
+          params: { exporter, year: year || undefined }
         });
         if (active && response.data.success) {
           setSummary(response.data.summary);
@@ -1296,7 +1295,8 @@ const ExportJobsTable = () => {
 
   const groupedJobs = React.useMemo(() => {
     let baseJobs = [...sortedJobs];
-    if (activeTab === "club-jobs") {
+    const isPendingOrSentTab = ["Pending", "Booking Pending", "Handover Pending", "Prepare for Billing", "Sent for Billing", "club-jobs"].includes(activeTab);
+    if (isPendingOrSentTab) {
       baseJobs = baseJobs.filter(job => {
         const isCompleted = job.detailedStatus === "Billing Done" || 
           String(job.status || "").toLowerCase() === "completed" || 
@@ -1337,7 +1337,7 @@ const ExportJobsTable = () => {
       if (job.is_club_job_parent) {
         // Sort subRows by job_no to ensure consistent ordering of child jobs under parent
         const parent = parentMap[job.job_no];
-        if (activeTab === "club-jobs") {
+        if (isPendingOrSentTab) {
           parent.subRows = parent.subRows.filter(subJob =>
             !hasClubBillingDate(subJob) &&
             subJob.detailedStatus !== "Billing Done" &&
@@ -3068,7 +3068,7 @@ const ExportJobsTable = () => {
                     },
                   }}
                 >
-                  <PulseOverviewHover exporter={selectedExporterFilter} />
+                  <PulseOverviewHover exporter={selectedExporterFilter} year={selectedYear} />
                 </Popover>
 
                 <button
@@ -3941,8 +3941,8 @@ const ExportJobsTable = () => {
                         }
                         return acc;
                       }, []).map((job, idx) => {
-                        const isClubJobBilled = Boolean(job.is_club_job_parent || job.parent_club_job) && hasClubBillingDate(job);
-                        const currentStatus = isClubJobBilled ? "Billing Done" : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
+                        const isJobBilled = Boolean(job.detailedStatus === "Billing Done" || hasClubBillingDate(job));
+                        const currentStatus = isJobBilled ? "Billing Done" : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
                           ? job.detailedStatus[job.detailedStatus.length - 1]
                           : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "";
                         const theme = getStatusTheme(currentStatus);
@@ -5185,12 +5185,6 @@ const ExportJobsTable = () => {
                                             <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billing_details.reimbursement_bill_date, "dd-MM-yy")}</span>
                                           </div>
                                         ) : null}
-                                        {!opDetails.billing_details?.agency_bill_date && !opDetails.billing_details?.reimbursement_bill_date && opDetails.billingDocsSentDt ? (
-                                          <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                            <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL</span>
-                                            <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billingDocsSentDt, "dd-MM-yy")}</span>
-                                          </div>
-                                        ) : null}
                                       </div>
                                     );
                                   })()}
@@ -5600,12 +5594,14 @@ const ExportJobsTable = () => {
                                       if (bd?.agency_bill_date && bd?.reimbursement_bill_date) {
                                         return `${formatDate(bd.agency_bill_date)} & ${formatDate(bd.reimbursement_bill_date)}`;
                                       }
-                                      return formatDate(bd?.agency_bill_date || bd?.reimbursement_bill_date || docsDt) || job.status;
+                                      return formatDate(bd?.agency_bill_date || bd?.reimbursement_bill_date) || job.status;
                                     })()
                                   )
-                                  : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
-                                    ? job.detailedStatus[job.detailedStatus.length - 1]
-                                    : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status || "-")}
+                                  : (hasClubBillingDate(job) || job.detailedStatus === "Billing Done"
+                                    ? "Billing Done"
+                                    : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
+                                      ? job.detailedStatus[job.detailedStatus.length - 1]
+                                      : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status || "-"))}
                               </div>
                             </td>
                           </tr>

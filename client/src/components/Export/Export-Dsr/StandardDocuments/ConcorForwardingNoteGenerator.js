@@ -8,6 +8,7 @@ import DocumentEditorDialog from "./DocumentEditorDialog";
 // Import the logo properly for Vite
 import concorLogo from "../../../../assets/images/concor.png";
 import { imageToBase64 } from "../../../../utils/imageUtils";
+import { loadClubJobData } from "../../../../utils/clubJobData.js";
 
 const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -177,22 +178,13 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       const response = await axios.get(
         `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}`
       );
-      const data = response.data;
+      let data = response.data;
 
       let fetchedClubbedJobsData = [];
-      let isClubActive = false;
-
-      if (data.parent_club_job) {
-        try {
-          const parentRes = await axios.get(`${import.meta.env.VITE_API_STRING}/get-export-job/${encodeURIComponent(data.parent_club_job)}`);
-          if (parentRes.data) {
-            Object.assign(data, parentRes.data);
-            isClubActive = true;
-          }
-        } catch (e) { console.warn(e); }
-      } else if (data.is_club_job_parent && Array.isArray(data.clubbed_jobs) && data.clubbed_jobs.length > 0) {
-        isClubActive = true;
-      }
+      const clubJobData = await loadClubJobData(data);
+      data = clubJobData.primaryJob;
+      fetchedClubbedJobsData = clubJobData.clubbedJobsData;
+      const isClubActive = clubJobData.isClubActive;
 
       setIsClubJob(isClubActive);
       setClubbedJobsData(fetchedClubbedJobsData);
@@ -666,10 +658,13 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
 
       let sbNoText = exportJob.sb_no || "";
       let sbDateText = formatDate(exportJob.sb_date);
-      if (isClubJob && exportJob.containers?.length > 0) {
+      const clubContainers = exportJob.mergedContainers?.length > 0
+        ? exportJob.mergedContainers
+        : exportJob.containers || [];
+      if (isClubJob && clubContainers.length > 0) {
         const allSBs = [];
         const seenSBs = new Set();
-        exportJob.containers.forEach(c => {
+        clubContainers.forEach(c => {
           const sbNo = c._sourceSbNo || c.shippingBillNo || exportJob.sb_no;
           const sbDate = c._sourceSbDate || c.sb_date || exportJob.sb_date;
           if (sbNo) {

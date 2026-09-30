@@ -239,9 +239,20 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
       
       const mergedContainers = [];
 
-      // Collect child container IDs & signatures
-      const childContainerIds = new Set();
+      // Track child entries by their shipment identity, not only physical container identity.
       const childContainerSignatures = new Set();
+      const getContainerSignature = (container, sourceJob) => {
+        const containerNo = String(container.containerNo || container.container_number || "").trim().toUpperCase();
+        const packages = Number(container.pkgsStuffed || sourceJob.total_no_of_pkgs || 0);
+        const grossWeight = Number(container.grossWeight || sourceJob.gross_weight_kg || 0);
+        const shippingBillNo = String(
+          container._sourceSbNo || container.shippingBillNo || sourceJob.custom_house_details?.shipping_bill_no || sourceJob.sb_no || sourceJob.shippingBillNo || ""
+        ).trim();
+        const shippingBillDate = String(
+          container._sourceSbDate || container.sb_date || sourceJob.custom_house_details?.sb_date || sourceJob.sb_date || ""
+        ).trim();
+        return `${containerNo}_${packages}_${grossWeight}_${shippingBillNo}_${shippingBillDate}`;
+      };
 
       // 1. Process each Child Job's containers
       for (const j of childJobs) {
@@ -253,11 +264,7 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         const containersToUse = (j.containers && j.containers.length > 0) ? j.containers : (op.containerDetails || []);
 
         for (const c of containersToUse) {
-          if (c._id) childContainerIds.add(String(c._id));
-          const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
-          const pkgs = Number(c.pkgsStuffed || 0);
-          const weight = Number(c.grossWeight || 0);
-          if (cNo) childContainerSignatures.add(`${cNo}_${pkgs}_${weight}`);
+          childContainerSignatures.add(getContainerSignature(c, j));
 
           mergedContainers.push({
             ...c,
@@ -287,16 +294,9 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         ? jobData.containers
         : (parentOp.containerDetails || []);
 
-      // Filter out any leaked child containers from parent containers array
+      // Remove only exact duplicate shipment entries; the same physical container can have a distinct parent SB.
       const parentOwnContainers = rawParentContainers.filter(c => {
-        const cId = c._id ? String(c._id) : "";
-        if (cId && childContainerIds.has(cId)) return false;
-        const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
-        const pkgs = Number(c.pkgsStuffed || 0);
-        const weight = Number(c.grossWeight || 0);
-        const sig = `${cNo}_${pkgs}_${weight}`;
-        if (cNo && childContainerSignatures.has(sig)) return false;
-        return true;
+        return !childContainerSignatures.has(getContainerSignature(c, jobData));
       });
 
       const parentMerged = parentOwnContainers.map(c => ({

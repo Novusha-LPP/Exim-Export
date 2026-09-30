@@ -31,6 +31,7 @@ export const viewMasterList = [
   "General Org",
   "Forwarder",
   "Drawback",
+  "Master List",
 ];
 
 export const directoryFields = {
