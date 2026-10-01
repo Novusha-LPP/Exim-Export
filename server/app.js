@@ -143,6 +143,9 @@ app.use(
       "http://test-ssl-exim.s3-website.ap-south-1.amazonaws.com",
       "http://exim-export.s3-website.ap-south-1.amazonaws.com",
       "https://export.alvision.in",
+      "http://export.alvision.in",
+      "https://import.alvision.in",
+      "http://import.alvision.in",
       "http://handover-odex.s3-website.ap-south-1.amazonaws.com",
       "http://localhost:3002",
       "http://192.168.2.31:3002"

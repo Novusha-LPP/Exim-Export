@@ -84,9 +84,11 @@ function toISODate(d) {
 
 export default function CashflowTracker({ mode = "export" }) {
   const isExport = mode === "export";
-  const defaultApiBase = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_STRING)
+  const envApi = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_STRING
     ? import.meta.env.VITE_API_STRING
-    : "http://localhost:9002/api";
+    : typeof process !== "undefined" && (process.env?.VITE_API_STRING || process.env?.REACT_APP_API_STRING)
+      ? (process.env.VITE_API_STRING || process.env.REACT_APP_API_STRING)
+      : null;
 
   // Trade Scope: "import" | "export" | "both"
   const [tradeScope, setTradeScope] = useState(
@@ -98,8 +100,8 @@ export default function CashflowTracker({ mode = "export" }) {
   }, [tradeScope]);
 
   const { importApi, exportApi } = useMemo(() => {
-    return getTradeApis(defaultApiBase, false);
-  }, [defaultApiBase]);
+    return getTradeApis(envApi, false);
+  }, [envApi]);
 
   const apiBase = tradeScope === "import" ? importApi : exportApi;
 

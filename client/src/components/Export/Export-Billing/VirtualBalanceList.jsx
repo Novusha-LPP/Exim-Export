@@ -112,8 +112,8 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   const { importApi, exportApi } = React.useMemo(() => {
     const raw = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_STRING
       ? import.meta.env.VITE_API_STRING
-      : "http://localhost:9002/api";
-    return getTradeApis(raw, false);
+      : null;
+    return getTradeApis(raw || null, false);
   }, []);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
