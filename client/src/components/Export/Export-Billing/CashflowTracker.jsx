@@ -5,6 +5,7 @@ import { saveAs } from "file-saver";
 import {
   Box,
   Button,
+  Alert,
   Card,
   CardContent,
   Chip,
@@ -112,6 +113,7 @@ export default function CashflowTracker({ mode = "export" }) {
 
   // Data & KPI states
   const [loading, setLoading] = useState(false);
+  const [networkError, setNetworkError] = useState(null);
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState({
     totalAddedBalance: 0,
@@ -190,6 +192,7 @@ export default function CashflowTracker({ mode = "export" }) {
   // Fetch Cashflow Data
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setNetworkError(null);
     try {
       const params = {};
       if (startDate) params.startDate = startDate;
@@ -270,6 +273,13 @@ export default function CashflowTracker({ mode = "export" }) {
       }
     } catch (err) {
       console.error("Error loading cashflow records:", err);
+      const isConnRefused = err.code === "ERR_NETWORK" || err.message?.includes("Network Error");
+      if (isConnRefused) {
+        const targetDesc = tradeScope === "export" ? "Export server on port 9002" : (tradeScope === "import" ? "Import server on port 9006" : "backend servers on port 9002 / 9006");
+        setNetworkError(`Connection Refused: Cannot connect to ${targetDesc}. Please ensure the server is started (run: "npm start" in Exim-Export/server).`);
+      } else {
+        setNetworkError(err.response?.data?.message || err.message || "Failed to load cashflow data");
+      }
     } finally {
       setLoading(false);
     }
@@ -541,6 +551,21 @@ export default function CashflowTracker({ mode = "export" }) {
 
   return (
     <Box sx={{ width: "100%", p: 2, backgroundColor: "#f8fafc", minHeight: "85vh" }}>
+      {/* Network / Connection Error Banner */}
+      {networkError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 1.5, borderRadius: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={fetchData}>
+              Retry
+            </Button>
+          }
+        >
+          {networkError}
+        </Alert>
+      )}
+
       {/* Top Header Bar - Balanced & Clean */}
       <Box
         sx={{
