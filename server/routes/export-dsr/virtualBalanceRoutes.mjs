@@ -18,6 +18,23 @@ const balanceFilter = (req) => getBalanceType(req) === "CFS"
   ? { balanceType: "CFS" }
   : { $or: [{ balanceType: "TERMINAL" }, { balanceType: { $exists: false } }, { balanceType: "" }, { balanceType: null }] };
 
+// Helper to sanitize party name (remove any duplicated "JOB_NO: " prefixes and deduplicate)
+function cleanPartyName(partyName) {
+  if (!partyName || typeof partyName !== "string") return "";
+  const lines = partyName
+    .split(/[\r\n]+/)
+    .map((line) => {
+      const trimmed = line.trim();
+      const colonIdx = trimmed.indexOf(":");
+      if (colonIdx !== -1) {
+        return trimmed.slice(colonIdx + 1).trim();
+      }
+      return trimmed;
+    })
+    .filter(Boolean);
+  return [...new Set(lines)].join("\n");
+}
+
 // Helper to look up exporter name
 async function getExporterName(jobNo) {
   if (!jobNo) return "";
@@ -122,6 +139,7 @@ router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res
 
       return {
         ...entry,
+        partyName: cleanPartyName(entry.partyName),
         openingBalance,
         availableBalance,
         spentAmount,
@@ -220,9 +238,9 @@ router.post(["/api/virtual-balance", "/api/cfs-virtual-balance"], auditMiddlewar
       return res.status(400).json({ success: false, message: "Name and Amount Paid are required." });
     }
 
-    // Use partyName from request body if provided (client sends formatted string for multi-job)
+    // Use partyName from request body if provided (clean any jobNo prefixes)
     const partyName = req.body.partyName !== undefined
-      ? req.body.partyName
+      ? cleanPartyName(req.body.partyName)
       : (jobNo ? await getExporterName(jobNo) : "");
 
     // Sequence generation: VB/EXP/YYYY/XXXX or VB/EXP/CFS/YYYY/XXXX
@@ -289,7 +307,7 @@ router.put(["/api/virtual-balance/:id", "/api/cfs-virtual-balance/:id"], auditMi
     if (jobNo !== undefined) {
       entry.jobNo = (jobNo || "").trim();
       if (req.body.partyName !== undefined) {
-        entry.partyName = req.body.partyName;
+        entry.partyName = cleanPartyName(req.body.partyName);
       }
     }
 

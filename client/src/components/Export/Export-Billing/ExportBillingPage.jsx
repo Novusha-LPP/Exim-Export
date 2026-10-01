@@ -51,6 +51,7 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import VirtualBalanceList from "./VirtualBalanceList";
+import CashflowTracker from "./CashflowTracker";
 
 
 const s = {
@@ -84,6 +85,7 @@ const PAYMENT_TABS = [
   { key: "payment-completed", label: "Payment Completed" },
   { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
+  { key: "cashflow", label: "Cash Flow" },
   { key: "terminal-virtual-balance", label: "Empty-Yards Virtual Balance" },
   { key: "cfs-virtual-balance", label: "CFS-SFSA Virtual Balance" },
 ];
@@ -95,6 +97,7 @@ const PURCHASE_TABS = [
   { key: "purchase-book-completed", label: "Purchase Book Completed" },
   { key: "club-jobs", label: "Club Jobs" },
   { key: "export-completed-billing", label: "Export Completed Billing" },
+  { key: "cashflow", label: "Cash Flow" },
   { key: "terminal-virtual-balance", label: "Empty-Yards Virtual Balance" },
   { key: "cfs-virtual-balance", label: "CFS-SFSA Virtual Balance" },
 ];
@@ -2370,7 +2373,9 @@ function ExportBillingPage() {
         </Box>
       </Box>
 
-      {activeTab === "terminal-virtual-balance" ? (
+      {activeTab === "cashflow" ? (
+        <CashflowTracker mode="export" />
+      ) : activeTab === "terminal-virtual-balance" ? (
         <VirtualBalanceList balanceType="terminal" />
       ) : activeTab === "cfs-virtual-balance" ? (
         <VirtualBalanceList balanceType="cfs" />

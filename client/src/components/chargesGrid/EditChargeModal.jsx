@@ -55,6 +55,33 @@ const EditChargeModal = ({
   const [emptyYardList, setEmptyYardList] = useState([]);
   const [createdVirtualTerminals, setCreatedVirtualTerminals] = useState([]);
   const [createdVirtualCfs, setCreatedVirtualCfs] = useState([]);
+  const [cashflowTeamMembers, setCashflowTeamMembers] = useState(['ANURAG', 'DURGESH', 'KAPIL', 'BALVIR', 'KIRIT', 'PARAS']);
+
+  const handleAddCashflowTeamMember = async () => {
+    const name = window.prompt("Enter new Team Member Name for Expense Made By:");
+    if (!name || !name.trim()) return;
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_STRING || "/api"}/cashflow/team-members`, { name: name.trim().toUpperCase() });
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setCashflowTeamMembers(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error adding team member:", err);
+    }
+  };
+
+  const handleRemoveCashflowTeamMember = async (nameToRemove) => {
+    if (!nameToRemove) return;
+    if (!window.confirm(`Are you sure you want to remove "${nameToRemove}" from the team members list?`)) return;
+    try {
+      const res = await axios.delete(`${import.meta.env.VITE_API_STRING || "/api"}/cashflow/team-members/${encodeURIComponent(nameToRemove)}`);
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setCashflowTeamMembers(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error removing team member:", err);
+    }
+  };
   const [generalOrgList, setGeneralOrgList] = useState([]);
   const [forwarders, setForwarders] = useState([]);
   const [activeDropdown, setActiveDropdown] = useState({ index: null, section: null }); // Track which row/section has open dropdown
@@ -147,6 +174,14 @@ const EditChargeModal = ({
 
   useEffect(() => {
     const fetchMasterData = async () => {
+        try {
+          const apiBase = import.meta.env.VITE_API_STRING || "/api";
+          axios.get(`${apiBase}/cashflow/team-members`).then(res => {
+            if (res.data?.success && Array.isArray(res.data.data)) {
+              setCashflowTeamMembers(res.data.data);
+            }
+          }).catch(() => {});
+        } catch (_) {}
       try {
         const [slRes, supRes, orgRes, cfsRes, transRes, termRes, genOrgRes, fwdRes, vbRes, cfsVbRes, eyRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
