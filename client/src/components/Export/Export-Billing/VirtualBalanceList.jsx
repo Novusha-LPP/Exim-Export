@@ -15,12 +15,15 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   Grid,
   IconButton,
   InputLabel,
   LinearProgress,
   MenuItem,
   Pagination,
+  Radio,
+  RadioGroup,
   Select,
   Stack,
   Table,
@@ -147,6 +150,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     remarks: "",
     status: "unpaid",
     fileUrl: "",
+    tradeType: "EXPORT",
   });
   const [cfsList, setCfsList] = useState([]);
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -373,13 +377,17 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   const [jobSearch, setJobSearch] = useState("");
   const [jobsLoading, setJobsLoading] = useState(false);
 
+  const activeJobsApi = formOpen
+    ? ((formValues.tradeType || "").toUpperCase() === "IMPORT" ? importApi : exportApi)
+    : apiBase;
+
   // Fetch Jobs list - server-side search as user types
   useEffect(() => {
     const controller = new AbortController();
     const fetchJobs = async () => {
       setJobsLoading(true);
       try {
-        const res = await axios.get(`${apiBase}/${balanceApi}/jobs`, {
+        const res = await axios.get(`${activeJobsApi}/${balanceApi}/jobs`, {
           params: { search: jobSearch },
           signal: controller.signal,
         });
@@ -397,7 +405,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
       clearTimeout(timer);
       controller.abort();
     };
-  }, [jobSearch, balanceApi, apiBase]);
+  }, [jobSearch, balanceApi, activeJobsApi]);
 
 
   // Handle jobNo blur to auto-fill exporter name
@@ -507,6 +515,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   const handleOpenForm = async (entry = null) => {
     if (entry) {
       setEditId(entry._id);
+      const entryTrade = (entry.tradeType || (tradeScope === "import" ? "IMPORT" : "EXPORT")).toUpperCase();
       setFormValues({
         cfsName: entry.cfsName,
         jobNo: entry.jobNo,
@@ -517,6 +526,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
         remarks: entry.remarks || "",
         status: entry.status || "unpaid",
         fileUrl: entry.fileUrl || "",
+        tradeType: entryTrade,
       });
 
       // Parse jobNo string and fetch partyNames from server for each job
@@ -527,7 +537,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
           const inList = jobsList.find((j) => j.jobNo === jobNo);
           const partyName = (inList && inList.partyName)
             ? inList.partyName
-            : await fetchPartyNameForJob(jobNo, entry.tradeType);
+            : await fetchPartyNameForJob(jobNo, entryTrade);
           return { jobNo, partyName: cleanPartyName(partyName) };
         })
       );
@@ -538,6 +548,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
       }));
     } else {
       setEditId(null);
+      const defaultTrade = tradeScope === "import" ? "IMPORT" : "EXPORT";
       setFormValues({
         cfsName: "",
         jobNo: "",
@@ -548,6 +559,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
         remarks: "",
         status: "unpaid",
         fileUrl: "",
+        tradeType: defaultTrade,
       });
       setSelectedJobs([]);
     }
@@ -1081,6 +1093,65 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
         </DialogTitle>
         <DialogContent sx={{ px: 3, py: 2 }}>
           <Grid container spacing={2.5} sx={{ pt: 2 }}>
+            {tradeScope === "both" && (
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    bgcolor: "#f8fafc",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
+                      Target Trade Account
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: "#64748b", fontSize: "12px" }}>
+                      {editId ? "Trade account for this entry:" : "Select database to store this balance entry:"}
+                    </Typography>
+                  </Box>
+                  {editId ? (
+                    <Chip
+                      label={(formValues.tradeType || "EXPORT").toUpperCase()}
+                      size="small"
+                      sx={{
+                        fontWeight: 700,
+                        bgcolor: (formValues.tradeType || "EXPORT").toUpperCase() === "IMPORT" ? "#0284c7" : "#ea580c",
+                        color: "#fff",
+                        px: 1,
+                      }}
+                    />
+                  ) : (
+                    <RadioGroup
+                      row
+                      value={(formValues.tradeType || "EXPORT").toUpperCase()}
+                      onChange={(e) => {
+                        const newTrade = e.target.value;
+                        setFormValues((prev) => ({ ...prev, tradeType: newTrade }));
+                        setSelectedJobs([]);
+                        setJobSearch("");
+                      }}
+                    >
+                      <FormControlLabel
+                        value="IMPORT"
+                        control={<Radio size="small" sx={{ color: "#0284c7", "&.Mui-checked": { color: "#0284c7" } }} />}
+                        label={<Typography variant="body2" sx={{ fontWeight: 700, color: "#0284c7", fontSize: "13px" }}>IMPORT</Typography>}
+                      />
+                      <FormControlLabel
+                        value="EXPORT"
+                        control={<Radio size="small" sx={{ color: "#ea580c", "&.Mui-checked": { color: "#ea580c" } }} />}
+                        label={<Typography variant="body2" sx={{ fontWeight: 700, color: "#ea580c", fontSize: "13px" }}>EXPORT</Typography>}
+                      />
+                    </RadioGroup>
+                  )}
+                </Box>
+              </Grid>
+            )}
+
             <Grid item xs={12}>
               <Autocomplete
                 size="small"
