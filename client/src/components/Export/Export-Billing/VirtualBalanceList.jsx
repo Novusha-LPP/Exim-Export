@@ -115,6 +115,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
       : null;
     return getTradeApis(raw || null, false);
   }, []);
+  const apiBase = tradeScope === "import" ? importApi : exportApi;
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -254,7 +255,9 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     setUploadingRowId(rowId);
     try {
       const result = await uploadFileToS3(file, "export_docs");
-      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/${balanceApi}/${rowId}`, {
+      const targetEntry = entries.find((e) => e._id === rowId);
+      const targetApi = (targetEntry?.tradeType === "IMPORT" ? importApi : exportApi) || apiBase;
+      const res = await axios.put(`${targetApi}/${balanceApi}/${rowId}`, {
         fileUrl: result.Location,
       });
       if (res.data.success) {
@@ -352,7 +355,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   useEffect(() => {
     const fetchCfs = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${directoryApi}`, {
+        const res = await axios.get(`${exportApi}/${directoryApi}`, {
           params: { limit: 1000 },
         });
         if (res.data.success && Array.isArray(res.data.data)) {
@@ -365,7 +368,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
       }
     };
     fetchCfs();
-  }, [directoryApi, holderLabel]);
+  }, [directoryApi, holderLabel, exportApi]);
 
   const [jobSearch, setJobSearch] = useState("");
   const [jobsLoading, setJobsLoading] = useState(false);
@@ -376,7 +379,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     const fetchJobs = async () => {
       setJobsLoading(true);
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${balanceApi}/jobs`, {
+        const res = await axios.get(`${apiBase}/${balanceApi}/jobs`, {
           params: { search: jobSearch },
           signal: controller.signal,
         });
@@ -394,7 +397,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
       clearTimeout(timer);
       controller.abort();
     };
-  }, [jobSearch, balanceApi]);
+  }, [jobSearch, balanceApi, apiBase]);
 
 
   // Handle jobNo blur to auto-fill exporter name
@@ -403,7 +406,8 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     if (!jobNo) return;
     setPartyLoading(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${balanceApi}/job-details/${encodeURIComponent(jobNo)}`);
+      const lookupApi = formValues.tradeType === "IMPORT" ? importApi : (tradeScope === "import" ? importApi : exportApi);
+      const res = await axios.get(`${lookupApi}/${balanceApi}/job-details/${encodeURIComponent(jobNo)}`);
       if (res.data.success) {
         setFormValues((prev) => ({ ...prev, partyName: res.data.partyName }));
       }
@@ -418,7 +422,8 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   const handleToggleStatus = async (row) => {
     const newStatus = row.status === "paid" ? "unpaid" : "paid";
     try {
-      const res = await axios.put(`${import.meta.env.VITE_API_STRING}/${balanceApi}/${row._id}`, {
+      const targetApi = (row.tradeType === "IMPORT" ? importApi : exportApi) || apiBase;
+      const res = await axios.put(`${targetApi}/${balanceApi}/${row._id}`, {
         status: newStatus,
       });
       if (res.data.success) {
@@ -446,10 +451,11 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   };
 
   // Delete virtual balance
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, rowTrade) => {
     if (!window.confirm("Are you sure you want to delete this entry?")) return;
     try {
-      const res = await axios.delete(`${import.meta.env.VITE_API_STRING}/${balanceApi}/${id}`);
+      const targetApi = (rowTrade || "").toUpperCase() === "IMPORT" ? importApi : exportApi;
+      const res = await axios.delete(`${targetApi}/${balanceApi}/${id}`);
       if (res.data.success) {
         fetchEntries();
       }
@@ -459,10 +465,11 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   };
 
   // Helper: fetch party name for a single job number
-  const fetchPartyNameForJob = async (jobNo) => {
+  const fetchPartyNameForJob = async (jobNo, entryTrade) => {
     try {
+      const targetApi = (entryTrade === "IMPORT" ? importApi : exportApi) || apiBase;
       const res = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/${balanceApi}/job-details/${encodeURIComponent(jobNo)}`
+        `${targetApi}/${balanceApi}/job-details/${encodeURIComponent(jobNo)}`
       );
       if (res.data.success && res.data.partyName) return res.data.partyName;
     } catch (err) {
@@ -520,7 +527,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
           const inList = jobsList.find((j) => j.jobNo === jobNo);
           const partyName = (inList && inList.partyName)
             ? inList.partyName
-            : await fetchPartyNameForJob(jobNo);
+            : await fetchPartyNameForJob(jobNo, entry.tradeType);
           return { jobNo, partyName: cleanPartyName(partyName) };
         })
       );
@@ -566,10 +573,11 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     };
 
     try {
+      const targetApi = (formValues.tradeType === "IMPORT" ? importApi : exportApi) || apiBase;
       if (editId) {
-        await axios.put(`${import.meta.env.VITE_API_STRING}/${balanceApi}/${editId}`, payload);
+        await axios.put(`${targetApi}/${balanceApi}/${editId}`, payload);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_STRING}/${balanceApi}`, payload);
+        await axios.post(`${targetApi}/${balanceApi}`, payload);
       }
       setFormOpen(false);
       fetchEntries();
@@ -584,7 +592,8 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     setCompareOpen(true);
     setCompareLoading(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_STRING}/${balanceApi}/job-purchase-books`, {
+      const targetApi = (entry.tradeType === "IMPORT" ? importApi : exportApi) || apiBase;
+      const res = await axios.get(`${targetApi}/${balanceApi}/job-purchase-books`, {
         params: {
           jobNo: entry.jobNo,
           cfsName: entry.cfsName,

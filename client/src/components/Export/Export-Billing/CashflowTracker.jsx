@@ -277,8 +277,11 @@ export default function CashflowTracker({ mode = "export" }) {
       console.error("Error loading cashflow records:", err);
       const isConnRefused = err.code === "ERR_NETWORK" || err.message?.includes("Network Error");
       if (isConnRefused) {
-        const targetDesc = tradeScope === "export" ? "Export server on port 9002" : (tradeScope === "import" ? "Import server on port 9006" : "backend servers on port 9002 / 9006");
-        setNetworkError(`Connection Refused: Cannot connect to ${targetDesc}. Please ensure the server is started (run: "npm start" in Exim-Export/server).`);
+        const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || /^192\.168\./.test(window.location.hostname));
+        const targetDesc = isLocal
+          ? (tradeScope === "export" ? "Export server on port 9002" : (tradeScope === "import" ? "Import server on port 9006" : "backend servers on port 9002 / 9006"))
+          : (tradeScope === "export" ? "Export server" : (tradeScope === "import" ? "Import server" : "Import / Export servers"));
+        setNetworkError(`Connection Error: Cannot connect to ${targetDesc}. Please check network connectivity or try again.`);
       } else {
         setNetworkError(err.response?.data?.message || err.message || "Failed to load cashflow data");
       }
