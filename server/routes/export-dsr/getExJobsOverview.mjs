@@ -27,7 +27,9 @@ router.get("/api/get-exjobs-overview/:year", async (req, res) => {
     const matchQuery = { 
       $and: [
         { year: year },
-        { job_no: { $not: /^FF/i } } // Exclude FF jobs from dashboard counts
+        { job_no: { $not: /^FF/i } }, // Exclude FF jobs from dashboard counts
+        { isGeneralJob: { $ne: true } },
+        { job_no: { $not: /^GEN/i } }
       ] 
     };
 

@@ -1454,14 +1454,14 @@ router.get("/exports/:status?", async (req, res) => {
       });
     }
 
-    const isCompletedTab = status && status.toLowerCase() === "completed";
     const isAllTab = status && status.toLowerCase() === "all";
 
     // Separate General Jobs from Actual Jobs
     if (status && status.toLowerCase() === "general-jobs") {
       filter.$and.push({ isGeneralJob: true });
-    } else if (!isCompletedTab && !isAllTab) {
+    } else if (!isAllTab) {
       filter.$and.push({ isGeneralJob: { $ne: true } });
+      filter.$and.push({ job_no: { $not: /^GEN/i } });
     }
 
     // Exclude Freight Forwarding jobs (FF) from Export module on every tab

@@ -46,11 +46,11 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import SearchIcon from "@mui/icons-material/Search";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
-import { getTradeApis } from "../../../utils/tradeScopeUtil";
+import { getTradeApis } from "../../utils/tradeScopeUtil";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import { uploadFileToS3 } from "../../../utils/awsFileUpload";
+import { uploadFileToS3 } from "../../utils/awsFileUpload";
 
 const BANKS = [
   "HDFC BANK",
@@ -66,46 +66,32 @@ const BANKS = [
 
 const s = {
   headerCell: {
-    background: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
+    backgroundColor: "#1e3a8a",
     color: "#fff",
     fontWeight: 700,
     fontSize: "12px",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
-    padding: "10px 12px",
-    borderBottom: "2px solid #0f172a",
-    borderRight: "1px solid rgba(255, 255, 255, 0.15)",
+    py: 1.5,
   },
   card: {
     borderRadius: "12px",
     boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
     border: "1px solid #e2e8f0",
   },
-  btnPrimary: {
-    bgcolor: "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
-    color: "#fff",
-    fontWeight: 700,
-    textTransform: "none",
-    boxShadow: "0 4px 10px rgba(30, 58, 138, 0.25)",
-    transition: "all 0.2s ease-in-out",
-    "&:hover": {
-      transform: "translateY(-1px)",
-      boxShadow: "0 6px 14px rgba(30, 58, 138, 0.35)",
-    },
-  },
 };
 
 export default function VirtualBalanceList({ isJobs = false, balanceType = "terminal" }) {
   const isCfsBalance = balanceType === "cfs";
   const balanceApi = isCfsBalance ? "cfs-virtual-balance" : "virtual-balance";
-  const directoryApi = isCfsBalance ? "cfsCodes" : "emptyYardCodes";
-  const balanceLabel = isCfsBalance ? "CFS-SFSA Virtual Balance" : "Empty-Yards Virtual Balance";
-  const holderLabel = isCfsBalance ? "CFS-SFSA" : "Empty Yard";
+  const directoryApi = isCfsBalance ? "get-cfs-directory-list" : "get-empty-yard-directory-list";
+  const balanceLabel = isCfsBalance ? "CFS-SFSA Virtual Balance" : "Terminal + Empty-Yards Virtual Balance";
+  const holderLabel = isCfsBalance ? "CFS-SFSA" : "Terminal + Empty Yard";
   const [entries, setEntries] = useState([]);
 
   // Trade Scope: "import" | "export" | "both"
   const [tradeScope, setTradeScope] = useState(
-    () => sessionStorage.getItem(`vb_trade_scope_${balanceType}`) || "export"
+    () => sessionStorage.getItem(`vb_trade_scope_${balanceType}`) || "import"
   );
 
   useEffect(() => {
@@ -113,27 +99,58 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   }, [tradeScope, balanceType]);
 
   const { importApi, exportApi } = React.useMemo(() => {
-    const raw = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_STRING
-      ? import.meta.env.VITE_API_STRING
-      : null;
-    return getTradeApis(raw || null, false);
+    return getTradeApis(process.env.REACT_APP_API_STRING, true);
   }, []);
-  const apiBase = tradeScope === "import" ? importApi : exportApi;
+  const apiBase = tradeScope === "export" ? exportApi : importApi;
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+
+  const [search, setSearch] = useState(
+    () => sessionStorage.getItem("ib_vb_search") || ""
+  );
+  const [statusFilter, setStatusFilter] = useState(
+    () => sessionStorage.getItem("ib_vb_status") || ""
+  );
+  const [startDate, setStartDate] = useState(
+    () => sessionStorage.getItem("ib_vb_startDate") || ""
+  );
+  const [endDate, setEndDate] = useState(
+    () => sessionStorage.getItem("ib_vb_endDate") || ""
+  );
+  const [page, setPage] = useState(
+    () => Number(sessionStorage.getItem("ib_vb_page")) || 1
+  );
+
   const [totalPages, setTotalPages] = useState(1);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [uploadingRowId, setUploadingRowId] = useState(null);
-  const [summary, setSummary] = useState({ totalDeposited: 0, totalSpent: 0, untaggedDeposits: 0 });
   const limit = 15;
+
+  // Persist filter states to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem("ib_vb_search", search);
+  }, [search]);
+
+  useEffect(() => {
+    sessionStorage.setItem("ib_vb_status", statusFilter);
+  }, [statusFilter]);
+
+  useEffect(() => {
+    sessionStorage.setItem("ib_vb_startDate", startDate || "");
+  }, [startDate]);
+
+  useEffect(() => {
+    sessionStorage.setItem("ib_vb_endDate", endDate || "");
+  }, [endDate]);
+
+  useEffect(() => {
+    sessionStorage.setItem("ib_vb_page", page.toString());
+  }, [page]);
 
   const [jobsList, setJobsList] = useState([]);
   const [selectedJobs, setSelectedJobs] = useState([]);
+  const [jobSearch, setJobSearch] = useState("");
+  const [jobsLoading, setJobsLoading] = useState(false);
   const localUser = JSON.parse(localStorage.getItem("exim_user") || "{}");
   const isBillingTeam = localUser.role === "Billing" || localUser.role === "Admin";
 
@@ -150,7 +167,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     remarks: "",
     status: "unpaid",
     fileUrl: "",
-    tradeType: "EXPORT",
+    tradeType: "IMPORT",
   });
   const [cfsList, setCfsList] = useState([]);
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -163,7 +180,12 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   const [compareLoading, setCompareLoading] = useState(false);
 
   // Debounce search
+  const isFirstSearch = React.useRef(true);
   useEffect(() => {
+    if (isFirstSearch.current) {
+      isFirstSearch.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setPage(1);
@@ -217,8 +239,8 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
         setTotal(totalCount);
         setTotalPages(totalP);
       } else {
-        const targetApi = tradeScope === "import" ? importApi : exportApi;
-        const currentTrade = tradeScope === "import" ? "IMPORT" : "EXPORT";
+        const targetApi = tradeScope === "export" ? exportApi : importApi;
+        const currentTrade = tradeScope === "export" ? "EXPORT" : "IMPORT";
         const res = await axios.get(`${targetApi}/${balanceApi}`, {
           params: {
             page,
@@ -241,26 +263,23 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
           setEntries(entriesData);
           setTotal(totalCount);
           setTotalPages(totalP);
-          if (res.data.summary || rawData?.summary) {
-            setSummary(res.data.summary || rawData?.summary);
-          }
         }
       }
     } catch (err) {
-      console.error(`Error fetching ${balanceLabel}:`, err);
+      console.error("Error fetching virtual balances:", err);
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch, statusFilter, startDate, endDate, balanceApi, balanceLabel, tradeScope, importApi, exportApi]);
+  }, [page, limit, debouncedSearch, statusFilter, startDate, endDate, balanceApi, tradeScope, importApi, exportApi]);
 
   const handleInlineFileUpload = async (e, rowId) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingRowId(rowId);
     try {
-      const result = await uploadFileToS3(file, "export_docs");
+      const result = await uploadFileToS3(file, "import_docs");
       const targetEntry = entries.find((e) => e._id === rowId);
-      const targetApi = (targetEntry?.tradeType === "IMPORT" ? importApi : exportApi) || apiBase;
+      const targetApi = targetEntry?.tradeType === "EXPORT" ? exportApi : importApi;
       const res = await axios.put(`${targetApi}/${balanceApi}/${rowId}`, {
         fileUrl: result.Location,
       });
@@ -297,7 +316,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
           (a, b) => new Date(b.createdAt || b.paymentDate || 0) - new Date(a.createdAt || a.paymentDate || 0)
         );
       } else {
-        const targetApi = tradeScope === "import" ? importApi : exportApi;
+        const targetApi = tradeScope === "export" ? exportApi : importApi;
         const res = await axios.get(`${targetApi}/${balanceApi}`, {
           params: { page: 1, limit: 1000000, search: debouncedSearch, status: statusFilter, startDate, endDate },
         });
@@ -312,7 +331,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
 
       if (exportRows.length > 0) {
         const dataToExport = exportRows.map((row) => ({
-          "TRADE": row.tradeType || (tradeScope === "import" ? "IMPORT" : "EXPORT"),
+          "TRADE": row.tradeType || (tradeScope === "export" ? "EXPORT" : "IMPORT"),
           "Create Date": row.createdAt ? new Date(row.createdAt).toLocaleDateString("en-IN") : "-",
           "Ref No": row.referenceNo || "",
           [`${holderLabel} Name`]: row.cfsName || "",
@@ -343,7 +362,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
         });
         worksheet["!cols"] = Object.keys(maxLen).map((key) => ({ wch: maxLen[key] + 3 }));
 
-        XLSX.writeFile(workbook, `${balanceLabel.replace(/\s+/g, '_')}_${new Date().toISOString().split("T")[0]}.xlsx`);
+        XLSX.writeFile(workbook, `${balanceLabel.replace(/\s/g, "_")}_${new Date().toISOString().split("T")[0]}.xlsx`);
       }
     } catch (err) {
       console.error("Excel export error:", err);
@@ -355,30 +374,52 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     fetchEntries();
   }, [fetchEntries]);
 
-  // Fetch Directory list (Terminals or CFS)
+  // Fetch CFS list
   useEffect(() => {
     const fetchCfs = async () => {
       try {
-        const res = await axios.get(`${exportApi}/${directoryApi}`, {
-          params: { limit: 1000 },
-        });
-        if (res.data.success && Array.isArray(res.data.data)) {
-          setCfsList(res.data.data);
-        } else if (Array.isArray(res.data)) {
-          setCfsList(res.data);
+        if (isCfsBalance) {
+          const res = await axios.get(`${importApi}/${directoryApi}`);
+          if (Array.isArray(res.data)) {
+            setCfsList(res.data.map((i) => ({ ...i, directorySource: "CFS" })));
+          }
+        } else {
+          // Fetch BOTH Terminal Directory (/get-cfs-list) AND Empty Yard Directory (/get-empty-yard-directory-list)
+          const [termRes, eyRes] = await Promise.all([
+            axios.get(`${importApi}/get-cfs-list`).catch(() => ({ data: [] })),
+            axios.get(`${importApi}/get-empty-yard-directory-list`).catch(() => ({ data: [] })),
+          ]);
+          const termData = Array.isArray(termRes.data)
+            ? termRes.data.map((i) => ({ ...i, directorySource: "Terminal" }))
+            : [];
+          const eyData = Array.isArray(eyRes.data)
+            ? eyRes.data.map((i) => ({ ...i, directorySource: "Empty Yard" }))
+            : [];
+
+          const mergedMap = new Map();
+          [...eyData, ...termData].forEach((item) => {
+            const key = (item.name || "").trim().toUpperCase();
+            if (key && !mergedMap.has(key)) {
+              mergedMap.set(key, item);
+            }
+          });
+          const mergedList = Array.from(mergedMap.values()).sort((a, b) =>
+            (a.name || "").localeCompare(b.name || "")
+          );
+          setCfsList(mergedList);
         }
+        // Directory loaded successfully
+
+
       } catch (err) {
-        console.error(`Error fetching ${holderLabel} list:`, err);
+        console.error("Error fetching CFS list:", err);
       }
     };
     fetchCfs();
-  }, [directoryApi, holderLabel, exportApi]);
-
-  const [jobSearch, setJobSearch] = useState("");
-  const [jobsLoading, setJobsLoading] = useState(false);
+  }, [isCfsBalance, directoryApi, importApi]);
 
   const activeJobsApi = formOpen
-    ? ((formValues.tradeType || "").toUpperCase() === "IMPORT" ? importApi : exportApi)
+    ? ((formValues.tradeType || "").toUpperCase() === "EXPORT" ? exportApi : importApi)
     : apiBase;
 
   // Fetch Jobs list - server-side search as user types
@@ -407,14 +448,13 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     };
   }, [jobSearch, balanceApi, activeJobsApi]);
 
-
   // Handle jobNo blur to auto-fill exporter name
   const handleJobNoBlur = async () => {
     const jobNo = formValues.jobNo.trim();
     if (!jobNo) return;
     setPartyLoading(true);
     try {
-      const lookupApi = formValues.tradeType === "IMPORT" ? importApi : (tradeScope === "import" ? importApi : exportApi);
+      const lookupApi = formValues.tradeType === "EXPORT" ? exportApi : (tradeScope === "export" ? exportApi : importApi);
       const res = await axios.get(`${lookupApi}/${balanceApi}/job-details/${encodeURIComponent(jobNo)}`);
       if (res.data.success) {
         setFormValues((prev) => ({ ...prev, partyName: res.data.partyName }));
@@ -430,7 +470,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   const handleToggleStatus = async (row) => {
     const newStatus = row.status === "paid" ? "unpaid" : "paid";
     try {
-      const targetApi = (row.tradeType === "IMPORT" ? importApi : exportApi) || apiBase;
+      const targetApi = (row.tradeType === "EXPORT" ? exportApi : importApi) || apiBase;
       const res = await axios.put(`${targetApi}/${balanceApi}/${row._id}`, {
         status: newStatus,
       });
@@ -448,7 +488,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     if (!file) return;
     setUploadingFile(true);
     try {
-      const result = await uploadFileToS3(file, "export_docs");
+      const result = await uploadFileToS3(file, "import_docs");
       setFormValues((prev) => ({ ...prev, fileUrl: result.Location }));
     } catch (err) {
       console.error("File upload error:", err);
@@ -462,7 +502,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   const handleDelete = async (id, rowTrade) => {
     if (!window.confirm("Are you sure you want to delete this entry?")) return;
     try {
-      const targetApi = (rowTrade || "").toUpperCase() === "IMPORT" ? importApi : exportApi;
+      const targetApi = (rowTrade || "").toUpperCase() === "EXPORT" ? exportApi : importApi;
       const res = await axios.delete(`${targetApi}/${balanceApi}/${id}`);
       if (res.data.success) {
         fetchEntries();
@@ -472,18 +512,26 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     }
   };
 
-  // Helper: fetch party name for a single job number
-  const fetchPartyNameForJob = async (jobNo, entryTrade) => {
+  // Helper: fetch job details (partyName, branchCode, customHouse, mode) for a single job number
+  const fetchJobDetails = async (jobNo, entryTrade) => {
     try {
-      const targetApi = (entryTrade === "IMPORT" ? importApi : exportApi) || apiBase;
+      const targetApi = (entryTrade === "EXPORT" ? exportApi : importApi) || apiBase;
       const res = await axios.get(
         `${targetApi}/${balanceApi}/job-details/${encodeURIComponent(jobNo)}`
       );
-      if (res.data.success && res.data.partyName) return res.data.partyName;
+      if (res.data.success) {
+        return {
+          jobNo,
+          partyName: res.data.partyName || "",
+          branchCode: res.data.branchCode || "",
+          customHouse: res.data.customHouse || "",
+          mode: res.data.mode || "",
+        };
+      }
     } catch (err) {
-      console.error("Party name lookup error:", err);
+      console.error("Job details lookup error:", err);
     }
-    return "";
+    return { jobNo, partyName: "", branchCode: "", customHouse: "", mode: "" };
   };
 
   // Helper: sanitize partyName to remove any "JOB_NO: " prefixes and deduplicate
@@ -515,7 +563,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   const handleOpenForm = async (entry = null) => {
     if (entry) {
       setEditId(entry._id);
-      const entryTrade = (entry.tradeType || (tradeScope === "import" ? "IMPORT" : "EXPORT")).toUpperCase();
+      const entryTrade = (entry.tradeType || (tradeScope === "export" ? "EXPORT" : "IMPORT")).toUpperCase();
       setFormValues({
         cfsName: entry.cfsName,
         jobNo: entry.jobNo,
@@ -529,16 +577,23 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
         tradeType: entryTrade,
       });
 
-      // Parse jobNo string and fetch partyNames from server for each job
+      // Parse jobNo string and fetch job details from server for each job
       const jobString = entry.jobNo || "";
       const jobNos = jobString.split(",").map((j) => j.trim()).filter(Boolean);
       const initialSelected = await Promise.all(
         jobNos.map(async (jobNo) => {
-          const inList = jobsList.find((j) => j.jobNo === jobNo);
-          const partyName = (inList && inList.partyName)
-            ? inList.partyName
-            : await fetchPartyNameForJob(jobNo, entryTrade);
-          return { jobNo, partyName: cleanPartyName(partyName) };
+          const inList = jobsList.find((j) => j.jobNo === jobNo || (j.jobSeq && j.jobSeq === jobNo));
+          if (inList && (inList.partyName || inList.branchCode)) {
+            return {
+              ...inList,
+              partyName: cleanPartyName(inList.partyName),
+            };
+          }
+          const details = await fetchJobDetails(jobNo, entryTrade);
+          return {
+            ...details,
+            partyName: cleanPartyName(details?.partyName),
+          };
         })
       );
       setSelectedJobs(initialSelected);
@@ -548,7 +603,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
       }));
     } else {
       setEditId(null);
-      const defaultTrade = tradeScope === "import" ? "IMPORT" : "EXPORT";
+      const defaultTrade = tradeScope === "export" ? "EXPORT" : "IMPORT";
       setFormValues({
         cfsName: "",
         jobNo: "",
@@ -570,7 +625,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
   const handleSaveForm = async () => {
     const { cfsName, amountPaid } = formValues;
     if (!cfsName || !amountPaid) {
-      alert("Please fill CFS Name and Amount Paid.");
+      alert(`Please fill ${holderLabel} Name and Amount Paid.`);
       return;
     }
 
@@ -579,13 +634,10 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
       .filter(Boolean)
       .join(", ");
 
-    const payload = {
-      ...formValues,
-      jobNo: jobNoString,
-    };
+    const payload = { ...formValues, jobNo: jobNoString };
 
     try {
-      const targetApi = (formValues.tradeType === "IMPORT" ? importApi : exportApi) || apiBase;
+      const targetApi = (formValues.tradeType === "EXPORT" ? exportApi : importApi) || apiBase;
       if (editId) {
         await axios.put(`${targetApi}/${balanceApi}/${editId}`, payload);
       } else {
@@ -604,7 +656,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     setCompareOpen(true);
     setCompareLoading(true);
     try {
-      const targetApi = (entry.tradeType === "IMPORT" ? importApi : exportApi) || apiBase;
+      const targetApi = (entry.tradeType === "EXPORT" ? exportApi : importApi) || apiBase;
       const res = await axios.get(`${targetApi}/${balanceApi}/job-purchase-books`, {
         params: {
           jobNo: entry.jobNo,
@@ -621,61 +673,10 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
     }
   };
 
-  const pbTotal = comparePbList.reduce((sum, item) => sum + (item.netAmount !== undefined && item.netAmount !== null ? item.netAmount : ((item.total || 0) - (item.tds || 0))), 0);
+  const pbTotal = comparePbList.reduce((sum, item) => sum + ((item.total || 0) - (item.tds || 0)), 0);
 
   return (
     <Box sx={{ p: 2, backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-      {/* Dashboard Summary Cards */}
-      {!isJobs && (
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ ...s.card, background: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)", color: "#fff" }}>
-              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-                  <AccountBalanceWalletIcon fontSize="small" sx={{ opacity: 0.8 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, opacity: 0.9 }}>
-                    Total Deposited
-                  </Typography>
-                </Stack>
-                <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                  ₹ {summary.totalDeposited.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ ...s.card, background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "#fff" }}>
-              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-                  <CheckCircleOutlineIcon fontSize="small" sx={{ opacity: 0.8 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, opacity: 0.9 }}>
-                    Total Spent / Utilized
-                  </Typography>
-                </Stack>
-                <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                  ₹ {summary.totalSpent.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ ...s.card, background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", color: "#fff" }}>
-              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-                  <AccessTimeIcon fontSize="small" sx={{ opacity: 0.8 }} />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, opacity: 0.9 }}>
-                    Untagged Deposits (No Jobs)
-                  </Typography>
-                </Stack>
-                <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                  ₹ {summary.untaggedDeposits.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
-
       {/* Top Filter and Search Bar */}
       <Stack
         direction={{ xs: "column", md: "row" }}
@@ -691,7 +692,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
       >
         <TextField
           size="small"
-          placeholder="Search reference, job, cfs..."
+          placeholder={`Search reference, job, ${holderLabel.toLowerCase()}...`}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           InputProps={{
@@ -723,7 +724,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
             size="small"
             variant={tradeScope === "both" ? "contained" : "outlined"}
             onClick={() => {
-              setTradeScope(tradeScope === "both" ? "export" : "both");
+              setTradeScope(tradeScope === "both" ? "import" : "both");
               setPage(1);
             }}
             startIcon={<CompareArrowsIcon sx={{ fontSize: 16 }} />}
@@ -844,7 +845,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
             }}
             onClick={() => handleOpenForm()}
           >
-            + Add Virtual Balance
+            + Add {balanceLabel}
           </Button>
         </Stack>
       </Stack>
@@ -862,11 +863,12 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
         <Table stickyHeader size="small">
           <TableHead>
             <TableRow>
+              <TableCell sx={s.headerCell}>TRADE</TableCell>
               <TableCell sx={s.headerCell}>Create Date</TableCell>
               <TableCell sx={s.headerCell}>Ref No</TableCell>
               <TableCell sx={s.headerCell}>{holderLabel} Name</TableCell>
               <TableCell sx={s.headerCell}>Job No</TableCell>
-              <TableCell sx={s.headerCell}>{tradeScope === "import" ? "Importer Name" : tradeScope === "both" ? "Importer / Exporter" : "Exporter Name"}</TableCell>
+              <TableCell sx={s.headerCell}>{tradeScope === "export" ? "Exporter Name" : tradeScope === "both" ? "Importer / Exporter" : "Importer Name"}</TableCell>
               <TableCell sx={s.headerCell}>Opening Bal</TableCell>
               <TableCell sx={s.headerCell}>Amt Paid</TableCell>
               <TableCell sx={s.headerCell}>Available Bal</TableCell>
@@ -907,6 +909,22 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
                     transition: "background-color 0.2s ease",
                   }}
                 >
+                  <TableCell sx={{ fontSize: "11px", whiteSpace: "nowrap" }}>
+                    <Chip
+                      size="small"
+                      label={(row.tradeType || (tradeScope === "export" ? "EXPORT" : "IMPORT")).toUpperCase()}
+                      sx={{
+                        height: 20,
+                        fontSize: "9.5px",
+                        fontWeight: 800,
+                        letterSpacing: "0.5px",
+                        backgroundColor: (row.tradeType || (tradeScope === "export" ? "EXPORT" : "IMPORT")).toUpperCase() === "EXPORT" ? "#fef3c7" : "#e0f2fe",
+                        color: (row.tradeType || (tradeScope === "export" ? "EXPORT" : "IMPORT")).toUpperCase() === "EXPORT" ? "#b45309" : "#0369a1",
+                        border: "1px solid",
+                        borderColor: (row.tradeType || (tradeScope === "export" ? "EXPORT" : "IMPORT")).toUpperCase() === "EXPORT" ? "#fde68a" : "#bae6fd",
+                      }}
+                    />
+                  </TableCell>
                   <TableCell sx={{ color: "#475569" }}>
                     {row.createdAt ? new Date(row.createdAt).toLocaleDateString("en-IN") : "-"}
                   </TableCell>
@@ -1116,11 +1134,11 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
                   </Box>
                   {editId ? (
                     <Chip
-                      label={(formValues.tradeType || "EXPORT").toUpperCase()}
+                      label={(formValues.tradeType || "IMPORT").toUpperCase()}
                       size="small"
                       sx={{
                         fontWeight: 700,
-                        bgcolor: (formValues.tradeType || "EXPORT").toUpperCase() === "IMPORT" ? "#0284c7" : "#ea580c",
+                        bgcolor: (formValues.tradeType || "IMPORT").toUpperCase() === "EXPORT" ? "#ea580c" : "#0284c7",
                         color: "#fff",
                         px: 1,
                       }}
@@ -1128,7 +1146,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
                   ) : (
                     <RadioGroup
                       row
-                      value={(formValues.tradeType || "EXPORT").toUpperCase()}
+                      value={(formValues.tradeType || "IMPORT").toUpperCase()}
                       onChange={(e) => {
                         const newTrade = e.target.value;
                         setFormValues((prev) => ({ ...prev, tradeType: newTrade }));
@@ -1155,12 +1173,44 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
             <Grid item xs={12}>
               <Autocomplete
                 size="small"
-                options={cfsList.map((cfs) => cfs.name)}
-                value={formValues.cfsName || null}
-                onChange={(event, newValue) => {
-                  setFormValues((prev) => ({ ...prev, cfsName: newValue || "" }));
+                options={cfsList}
+                getOptionLabel={(option) => (typeof option === "string" ? option : option.name || "")}
+                freeSolo
+                onInputChange={(event, newInputValue, reason) => {
+                  if (reason === "input") setFormValues((prev) => ({ ...prev, cfsName: newInputValue }));
                 }}
-                renderInput={(params) => <TextField {...params} label={`${holderLabel} Name *`} />}
+                renderOption={(props, option) => {
+                  const { key, ...optionProps } = props;
+                  const name = typeof option === "string" ? option : option.name;
+                  const source = typeof option === "object" ? (option.directorySource || option.sourceLabel) : null;
+                  return (
+                    <li key={key || name} {...optionProps}>
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                        <Typography variant="body2">{name}</Typography>
+                        {source && (
+                          <Chip
+                            label={source}
+                            size="small"
+                            sx={{
+                              height: 18,
+                              fontSize: "10px",
+                              fontWeight: 600,
+                              bgcolor: source === "Terminal" ? "#e0f2fe" : "#fef3c7",
+                              color: source === "Terminal" ? "#0369a1" : "#92400e",
+                              ml: 1,
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </li>
+                  );
+                }}
+                value={cfsList.find((c) => (c.name || "").trim().toUpperCase() === (formValues.cfsName || "").trim().toUpperCase()) || formValues.cfsName || null}
+                onChange={(event, newValue) => {
+                  const val = typeof newValue === "string" ? newValue : (newValue?.name || "");
+                  setFormValues((prev) => ({ ...prev, cfsName: val }));
+                }}
+                renderInput={(params) => <TextField {...params} label={`${holderLabel} *`} />}
                 ListboxProps={{ style: { maxHeight: "250px" } }}
               />
             </Grid>
@@ -1177,18 +1227,72 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
                   if (typeof option === "string") return option;
                   return option.jobNo || "";
                 }}
-                renderOption={(props, option) => (
-                  <li {...props} key={typeof option === "string" ? option : option.jobNo}>
-                    <span style={{ fontWeight: 700 }}>{typeof option === "string" ? option : option.jobNo}</span>
-                    {typeof option !== "string" && option.partyName && (
-                      <span style={{ marginLeft: 8, color: "#64748b", fontSize: "11px" }}>— {option.partyName}</span>
-                    )}
-                  </li>
-                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => {
+                    const isString = typeof option === "string";
+                    const jobNo = isString ? option : option.jobNo;
+                    const branch = !isString ? option.branchCode : "";
+                    const modeCustom = !isString ? (option.mode || option.customHouse) : "";
+                    const details = [branch, modeCustom].filter(Boolean).join(" | ");
+                    const label = details ? `${jobNo} (${details})` : jobNo;
+                    const { key, ...tagProps } = getTagProps({ index });
+                    return (
+                      <Chip
+                        key={key || index}
+                        size="small"
+                        label={label}
+                        sx={{ fontWeight: 600, bgcolor: "#e2e8f0", color: "#1e293b", mr: 0.5 }}
+                        {...tagProps}
+                      />
+                    );
+                  })
+                }
+                renderOption={(props, option) => {
+                  const isString = typeof option === "string";
+                  const jobNo = isString ? option : option.jobNo;
+                  const branch = !isString ? option.branchCode : "";
+                  const mode = !isString ? option.mode : "";
+                  const customHouse = !isString ? option.customHouse : "";
+                  const partyName = !isString ? option.partyName : "";
+
+                  const details = [branch, mode, customHouse].filter(Boolean).join(" • ");
+                  const { key, ...optionProps } = props;
+
+                  return (
+                    <li key={key || jobNo} {...optionProps}>
+                      <Box sx={{ display: "flex", flexDirection: "column", width: "100%", py: 0.5 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: "#0f172a" }}>
+                            {jobNo}
+                          </Typography>
+                          {details && (
+                            <Chip
+                              label={details}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: "10px",
+                                fontWeight: 700,
+                                bgcolor: "#e0e7ff",
+                                color: "#3730a3",
+                                borderRadius: "4px",
+                              }}
+                            />
+                          )}
+                        </Box>
+                        {partyName && (
+                          <Typography variant="caption" sx={{ color: "#64748b", mt: 0.2 }}>
+                            — {partyName}
+                          </Typography>
+                        )}
+                      </Box>
+                    </li>
+                  );
+                }}
                 isOptionEqualToValue={(option, value) => {
                   const optJobNo = typeof option === "string" ? option : option.jobNo;
                   const valJobNo = typeof value === "string" ? value : value.jobNo;
-                  return optJobNo === valJobNo;
+                  return optJobNo === valJobNo || (option.jobSeq && option.jobSeq === valJobNo);
                 }}
                 value={selectedJobs}
                 onInputChange={(event, inputVal, reason) => {
@@ -1203,19 +1307,30 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
 
                       if (!jobNo) return null;
 
-                      // If already has partyName, keep it
-                      const existingPartyName = typeof item !== "string" ? item.partyName : "";
-                      if (existingPartyName) return { jobNo, partyName: existingPartyName };
+                      if (typeof item !== "string" && (item.partyName || item.branchCode)) {
+                        return {
+                          jobNo,
+                          partyName: cleanPartyName(item.partyName) || "",
+                          branchCode: item.branchCode || "",
+                          customHouse: item.customHouse || "",
+                          mode: item.mode || "",
+                        };
+                      }
 
                       // Try jobsList cache first
                       const inList = jobsList.find((j) => j.jobNo === jobNo);
-                      if (inList && inList.partyName) return { jobNo, partyName: inList.partyName };
+                      if (inList && (inList.partyName || inList.branchCode)) return inList;
 
                       // Fallback: fetch from server
-                      const partyName = await fetchPartyNameForJob(jobNo);
-                      const resolved = { jobNo, partyName: cleanPartyName(partyName) };
-                      if (partyName) setJobsList((prev) => [...prev, resolved]);
-                      return resolved;
+                      const details = await fetchJobDetails(jobNo, formValues.tradeType);
+                      const cleanDetails = {
+                        ...details,
+                        partyName: cleanPartyName(details?.partyName),
+                      };
+                      if (details && (details.partyName || details.branchCode)) {
+                        setJobsList((prev) => [...prev, cleanDetails]);
+                      }
+                      return cleanDetails;
                     })
                   );
                   const filtered = updatedValue.filter(Boolean);
@@ -1229,7 +1344,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
                   <TextField
                     {...params}
                     label="Job Number(s)"
-                    placeholder="Type to search..."
+                    placeholder="Type to search job no, branch, mode, party..."
                     InputProps={{
                       ...params.InputProps,
                       endAdornment: (
@@ -1241,7 +1356,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
                     }}
                   />
                 )}
-                ListboxProps={{ style: { maxHeight: "220px" } }}
+                ListboxProps={{ style: { maxHeight: "250px" } }}
               />
             </Grid>
             <Grid item xs={12}>
@@ -1252,7 +1367,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
                 multiline
                 minRows={1}
                 maxRows={4}
-                label="Exporter Name(s)"
+                label="Importer Name(s)"
                 value={formValues.partyName}
                 helperText={selectedJobs.length > 1 ? `${selectedJobs.length} jobs selected` : ""}
                 InputProps={{
@@ -1576,7 +1691,7 @@ export default function VirtualBalanceList({ isJobs = false, balanceType = "term
                             <TableCell>₹ {Number(pb.taxableValue || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                             <TableCell>₹ {Number(gstSum).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                             <TableCell sx={{ color: "#be123c" }}>₹ -{Number(pb.tds || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
-                            <TableCell sx={{ fontWeight: 750 }}>₹ {Number(pb.netAmount !== undefined && pb.netAmount !== null ? pb.netAmount : ((pb.total || 0) - (pb.tds || 0))).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell sx={{ fontWeight: 750 }}>₹ {Number((pb.total || 0) - (pb.tds || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                           </TableRow>
                         );
                       })}

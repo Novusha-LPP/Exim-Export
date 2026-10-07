@@ -35,18 +35,75 @@ function cleanPartyName(partyName) {
   return [...new Set(lines)].join("\n");
 }
 
-// Helper to look up exporter name
+function escapeRegex(string) {
+  return string.replace(/[/[\-\\^$*+?.()|[\]{}]/g, "\\$&");
+}
+
+function extractJobTokens(str) {
+  if (!str) return [];
+  return str.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function jobTokensMatch(jobStr1, jobStr2) {
+  if (!jobStr1 || !jobStr2) return false;
+  const s1 = jobStr1.trim().toUpperCase();
+  const s2 = jobStr2.trim().toUpperCase();
+  if (s1 === s2) return true;
+  if (s1.includes(s2) || s2.includes(s1)) return true;
+
+  const parts1 = s1.split("/");
+  const parts2 = s2.split("/");
+
+  if (parts1.length >= 4 && parts2.length >= 4) {
+    const branch1 = parts1[0];
+    const seq1 = parts1[3].replace(/^0+/, "");
+    const branch2 = parts2[0];
+    const seq2 = parts2[3].replace(/^0+/, "");
+    return branch1 === branch2 && seq1 === seq2;
+  }
+
+  const getSeq = (s) => {
+    const match = s.match(/(?:^|\/|-)(\d{3,5})(?:\/|-|$)/);
+    if (match) return match[1].replace(/^0+/, "");
+    const numOnly = s.match(/\d+/);
+    return numOnly ? numOnly[0].replace(/^0+/, "") : null;
+  };
+
+  const seq1 = getSeq(s1);
+  const seq2 = getSeq(s2);
+  return Boolean(seq1 && seq2 && seq1 === seq2);
+}
+
+function isPbForVirtualBalanceEntry(entryJobNo, pbJobNo) {
+  if (!entryJobNo || !pbJobNo) return false;
+  const entryJobs = extractJobTokens(entryJobNo);
+  return entryJobs.some((ej) => jobTokensMatch(ej, pbJobNo));
+}
+
 async function getExporterName(jobNo) {
   if (!jobNo) return "";
   const trimmed = jobNo.trim();
-  const job = await ExJobModel.findOne({
-    job_no: { $regex: new RegExp(`^${trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") }
-  }).select("exporter exporter_name name").lean();
+  const seqMatch = trimmed.match(/(?:^|\/|-)(\d{3,5})(?:\/|-|$)/) || trimmed.match(/\d+/);
+  const conditions = [
+    { job_no: { $regex: new RegExp(`^${escapeRegex(trimmed)}$`, "i") } },
+    { jobNumber: { $regex: new RegExp(`^${escapeRegex(trimmed)}$`, "i") } },
+    { custom_job_no: { $regex: new RegExp(`^${escapeRegex(trimmed)}$`, "i") } },
+  ];
+  if (seqMatch) {
+    const seqNum = parseInt(seqMatch[1] || seqMatch[0], 10);
+    const flexRegex = new RegExp(`(?:^|/|-)0*${seqNum}(?:/|-|$)`, "i");
+    conditions.push({ job_no: { $regex: flexRegex } });
+    conditions.push({ jobNumber: { $regex: flexRegex } });
+  }
+
+  const job = await ExJobModel.findOne({ $or: conditions })
+    .select("exporter exporter_name name")
+    .lean();
   if (!job) return "";
   return job.exporter || job.exporter_name || job.name || "";
 }
 
-// GET /api/virtual-balance & /api/cfs-virtual-balance - Fetch list of virtual balances with running balances
+// GET /api/virtual-balance & /api/cfs-virtual-balance
 router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res) => {
   try {
     const { page = 1, limit = 50, search = "", status = "", startDate = "", endDate = "" } = req.query;
@@ -55,40 +112,48 @@ router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res
     const skip = (pageNum - 1) * limitNum;
 
     const type = getBalanceType(req);
-
-    // 1. Fetch all virtual balances in chronological order
     const allBalances = await VirtualBalanceModel.find(balanceFilter(req)).sort({ createdAt: 1 }).lean();
 
-    // 2. Fetch all purchase books for the jobs involved in these balances
-    const jobNosSet = new Set();
+    const jobTokens = [];
     allBalances.forEach((b) => {
       if (b.jobNo) {
-        b.jobNo.split(",").forEach(j => jobNosSet.add(j.trim()));
+        b.jobNo.split(",").forEach((t) => {
+          const trimmed = t.trim();
+          if (trimmed) jobTokens.push(trimmed);
+        });
       }
     });
-    const purchaseBooks = await PurchaseBookEntryModel.find({
-      jobNo: { $in: [...jobNosSet] },
-    }).lean();
 
-    // 3. Map purchase books by jobNo and supplierName (or virtualBalanceTerminal override)
-    const pbSumMap = {};
-    purchaseBooks.forEach((pb) => {
-      if (!pb.jobNo) return;
-      const targetTerminal = (pb.virtualBalanceTerminal || pb.supplierName || "").trim().toUpperCase();
-      if (!targetTerminal) return;
-      const pbBalanceType = String(pb.virtualBalanceType || (pb.virtualBalanceTerminal ? "TERMINAL" : "")).toUpperCase();
-      if (type === "CFS" && pbBalanceType !== "CFS") return;
-      if (type === "TERMINAL" && pbBalanceType === "CFS") return;
+    let pbQuery = {};
+    if (jobTokens.length > 0) {
+      const orConditions = [];
+      jobTokens.forEach((jt) => {
+        const escaped = escapeRegex(jt);
+        orConditions.push({ jobNo: { $regex: new RegExp(escaped, "i") } });
+        orConditions.push({ entryNo: { $regex: new RegExp(escaped, "i") } });
+        const seqMatch = jt.match(/(?:^|\/|-)(\d{3,5})(?:\/|-|$)/) || jt.match(/\d+/);
+        if (seqMatch) {
+          const seqNum = parseInt(seqMatch[1] || seqMatch[0], 10);
+          const flexRegex = new RegExp(`(?:^|/|-)0*${seqNum}(?:/|-|$)`, "i");
+          orConditions.push({ jobNo: { $regex: flexRegex } });
+          orConditions.push({ entryNo: { $regex: flexRegex } });
+        }
+      });
+      pbQuery = { $or: orConditions };
+    }
 
-      const key = `${pb.jobNo.trim().toUpperCase()}_${targetTerminal}`;
-      const netAmt = pb.netAmount !== undefined && pb.netAmount !== null
-        ? pb.netAmount
-        : ((pb.total || 0) - (pb.tds || 0));
-      pbSumMap[key] = (pbSumMap[key] || 0) + netAmt;
-    });
+    const purchaseBooks = await PurchaseBookEntryModel.find(pbQuery).lean();
 
-    // 4. Fetch all directory opening balances
-    const cfsList = type === "CFS" ? await CfsDirectoryModel.find().lean() : await EmptyYardDirectoryModel.find().lean();
+    let cfsList = [];
+    if (type === "CFS") {
+      cfsList = await CfsDirectoryModel.find().lean();
+    } else {
+      const [eyList, termList] = await Promise.all([
+        EmptyYardDirectoryModel.find().lean(),
+        TerminalCodeModel.find().lean(),
+      ]);
+      cfsList = [...eyList, ...termList];
+    }
     const cfsOpeningMap = {};
     const cfsBankMap = {};
     cfsList.forEach((c) => {
@@ -108,7 +173,6 @@ router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res
       }
     });
 
-    // 5. Calculate running balances chronologically
     const cfsRunningMap = {};
     const calculatedEntries = allBalances.map((entry) => {
       const cfsKey = entry.cfsName.trim().toUpperCase();
@@ -117,19 +181,20 @@ router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res
       const amountPaid = entry.amountPaid || 0;
       const availableBalance = openingBalance + amountPaid;
 
-      // Get purchase books filed for this job and CFS
       let spentAmount = 0;
       if (entry.jobNo) {
-        const individualJobs = entry.jobNo.split(",").map(j => j.trim().toUpperCase());
-        individualJobs.forEach(j => {
-          const pbKey = `${j}_${cfsKey}`;
-          spentAmount += (pbSumMap[pbKey] || 0);
+        const matchingPbs = purchaseBooks.filter((pb) => {
+          const targetTerminal = (pb.virtualBalanceTerminal || pb.supplierName || "").trim().toUpperCase();
+          if (targetTerminal !== cfsKey) return false;
+          const pbBalanceType = String(pb.virtualBalanceType || "TERMINAL").toUpperCase();
+          if (pbBalanceType !== type) return false;
+          return isPbForVirtualBalanceEntry(entry.jobNo, pb.jobNo || pb.entryNo);
         });
+
+        spentAmount = matchingPbs.reduce((sum, pb) => sum + ((pb.total || 0) - (pb.tds || 0)), 0);
       }
 
       const remainingBalance = availableBalance - spentAmount;
-
-      // Update running balance for next entry of this CFS
       cfsRunningMap[cfsKey] = remainingBalance;
 
       const bankInfo = cfsBankMap[cfsKey] || {};
@@ -150,7 +215,6 @@ router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res
       };
     });
 
-    // 6. Apply filters and search in memory
     let filtered = [...calculatedEntries];
 
     if (status) {
@@ -173,88 +237,64 @@ router.get(["/api/virtual-balance", "/api/cfs-virtual-balance"], async (req, res
     if (search && search.trim()) {
       const term = search.trim().toLowerCase();
       filtered = filtered.filter((e) => {
-        const refNo = (e.referenceNo || "").toLowerCase();
-        const cfs = (e.cfsName || "").toLowerCase();
-        const jNo = (e.jobNo || "").toLowerCase();
-        const party = (e.partyName || "").toLowerCase();
-        const utrVal = (e.utr || "").toLowerCase();
-        const bank = (e.fromBank || "").toLowerCase();
-        const rem = (e.remarks || "").toLowerCase();
         return (
-          refNo.includes(term) ||
-          cfs.includes(term) ||
-          jNo.includes(term) ||
-          party.includes(term) ||
-          utrVal.includes(term) ||
-          bank.includes(term) ||
-          rem.includes(term)
+          (e.referenceNo && e.referenceNo.toLowerCase().includes(term)) ||
+          (e.jobNo && e.jobNo.toLowerCase().includes(term)) ||
+          (e.cfsName && e.cfsName.toLowerCase().includes(term)) ||
+          (e.partyName && e.partyName.toLowerCase().includes(term)) ||
+          (e.bankAccountNo && e.bankAccountNo.toLowerCase().includes(term)) ||
+          (e.bankName && e.bankName.toLowerCase().includes(term)) ||
+          (e.bankIfsc && e.bankIfsc.toLowerCase().includes(term)) ||
+          (e.utr && e.utr.toLowerCase().includes(term)) ||
+          (e.remarks && e.remarks.toLowerCase().includes(term))
         );
       });
     }
 
-    const totalRecords = filtered.length;
-
-    // Summary calculation
-    const totalDeposited = filtered.reduce((acc, curr) => acc + (curr.amountPaid || 0), 0);
-    const totalSpent = filtered.reduce((acc, curr) => acc + (curr.spentAmount || 0), 0);
-    const untaggedDeposits = filtered
-      .filter((e) => !e.jobNo || e.jobNo.trim() === "")
-      .reduce((acc, curr) => acc + (curr.amountPaid || 0), 0);
-
-    // Sort descending for display (newest first)
     filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    // Pagination
+    const total = filtered.length;
     const paginatedEntries = filtered.slice(skip, skip + limitNum);
 
     res.status(200).json({
       success: true,
-      data: paginatedEntries,
-      summary: {
-        totalDeposited,
-        totalSpent,
-        untaggedDeposits,
-      },
-      pagination: {
-        currentPage: pageNum,
-        totalPages: Math.ceil(totalRecords / limitNum),
-        totalRecords,
+      data: {
+        entries: paginatedEntries,
+        total,
+        page: pageNum,
         limit: limitNum,
+        totalPages: Math.ceil(total / limitNum) || 1,
       },
     });
   } catch (error) {
-    console.error("Error fetching virtual balance:", error);
+    console.error("Error fetching virtual balances:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 
-// POST /api/virtual-balance & /api/cfs-virtual-balance - Create a new virtual balance entry
+// POST /api/virtual-balance
 router.post(["/api/virtual-balance", "/api/cfs-virtual-balance"], auditMiddleware("Billing"), async (req, res) => {
   try {
-    const { cfsName, jobNo, amountPaid, utr, fromBank, remarks, status = "unpaid", fileUrl, bankAccountNo, bankName, bankIfsc } = req.body;
+    const { cfsName, jobNo, amountPaid, utr, fromBank, remarks, status = "unpaid", fileUrl } = req.body;
     const type = getBalanceType(req);
 
     if (!cfsName || amountPaid === undefined) {
-      return res.status(400).json({ success: false, message: "Name and Amount Paid are required." });
+      return res.status(400).json({ success: false, message: "CFS Name and Amount Paid are required." });
     }
 
-    // Use partyName from request body if provided (clean any jobNo prefixes)
     const partyName = req.body.partyName !== undefined
       ? cleanPartyName(req.body.partyName)
       : (jobNo ? await getExporterName(jobNo) : "");
 
-    // Sequence generation: VB/EXP/YYYY/XXXX or VB/EXP/CFS/YYYY/XXXX
     const year = new Date().getFullYear();
-    const prefix = type === "CFS" ? `VB/EXP/CFS` : `VB/EXP`;
+    const prefix = type === "CFS" ? "VB/CFS" : "VB/EXP";
     const count = await VirtualBalanceModel.countDocuments({
-      ...balanceFilter(req),
-      referenceNo: new RegExp(`^${prefix}/${year}/`, "i"),
+      ...balanceFilter(req), referenceNo: new RegExp(`^${prefix}/${year}/`, "i"),
     });
 
     let nextSeq = count + 1;
     let referenceNo = `${prefix}/${year}/${String(nextSeq).padStart(4, "0")}`;
 
-    // Ensure uniqueness
     let exists = await VirtualBalanceModel.findOne({ referenceNo });
     while (exists) {
       nextSeq += 1;
@@ -277,9 +317,6 @@ router.post(["/api/virtual-balance", "/api/cfs-virtual-balance"], auditMiddlewar
       status: status.toLowerCase(),
       paymentDate,
       fileUrl,
-      bankAccountNo: bankAccountNo || "",
-      bankName: bankName || "",
-      bankIfsc: bankIfsc || "",
     });
 
     await newEntry.save();
@@ -291,7 +328,7 @@ router.post(["/api/virtual-balance", "/api/cfs-virtual-balance"], auditMiddlewar
   }
 });
 
-// PUT /api/virtual-balance/:id & /api/cfs-virtual-balance/:id - Update an existing virtual balance entry
+// PUT /api/virtual-balance/:id
 router.put(["/api/virtual-balance/:id", "/api/cfs-virtual-balance/:id"], auditMiddleware("Billing"), async (req, res) => {
   try {
     const { cfsName, jobNo, amountPaid, utr, fromBank, remarks, status, fileUrl } = req.body;
@@ -339,7 +376,7 @@ router.put(["/api/virtual-balance/:id", "/api/cfs-virtual-balance/:id"], auditMi
   }
 });
 
-// DELETE /api/virtual-balance/:id & /api/cfs-virtual-balance/:id - Delete a virtual balance entry
+// DELETE /api/virtual-balance/:id
 router.delete(["/api/virtual-balance/:id", "/api/cfs-virtual-balance/:id"], auditMiddleware("Billing"), async (req, res) => {
   try {
     const deleted = await VirtualBalanceModel.findOneAndDelete({ _id: req.params.id, ...balanceFilter(req) });
@@ -353,43 +390,90 @@ router.delete(["/api/virtual-balance/:id", "/api/cfs-virtual-balance/:id"], audi
   }
 });
 
-// GET /api/virtual-balance/job-details/:jobNo & /api/cfs-virtual-balance/job-details/:jobNo
+// GET /api/virtual-balance/job-details/:jobNo
 router.get(["/api/virtual-balance/job-details/:jobNo", "/api/cfs-virtual-balance/job-details/:jobNo"], async (req, res) => {
   try {
-    const partyName = await getExporterName(req.params.jobNo);
-    res.status(200).json({ success: true, partyName });
+    const jobNo = req.params.jobNo ? req.params.jobNo.trim() : "";
+    if (!jobNo) {
+      return res.status(200).json({ success: true, partyName: "", branchCode: "", customHouse: "", mode: "", jobNo: "" });
+    }
+
+    const seqMatch = jobNo.match(/(?:^|\/|-)(\d{3,5})(?:\/|-|$)/) || jobNo.match(/\d+/);
+    const conditions = [
+      { job_no: { $regex: new RegExp(`^${escapeRegex(jobNo)}$`, "i") } },
+      { jobNumber: { $regex: new RegExp(`^${escapeRegex(jobNo)}$`, "i") } },
+      { custom_job_no: { $regex: new RegExp(`^${escapeRegex(jobNo)}$`, "i") } },
+    ];
+    if (seqMatch) {
+      const seqNum = parseInt(seqMatch[1] || seqMatch[0], 10);
+      const flexRegex = new RegExp(`(?:^|/|-)0*${seqNum}(?:/|-|$)`, "i");
+      conditions.push({ job_no: { $regex: flexRegex } });
+      conditions.push({ jobNumber: { $regex: flexRegex } });
+    }
+
+    const job = await ExJobModel.findOne({ $or: conditions })
+      .select("job_no jobNumber custom_job_no exporter exporter_name name branch_code custom_house mode")
+      .lean();
+
+    if (!job) {
+      return res.status(200).json({ success: true, partyName: "", branchCode: "", customHouse: "", mode: "", jobNo: jobNo });
+    }
+
+    res.status(200).json({
+      success: true,
+      jobNo: job.job_no || job.jobNumber || jobNo,
+      partyName: job.exporter || job.exporter_name || job.name || "",
+      branchCode: job.branch_code || "",
+      customHouse: job.custom_house || "",
+      mode: job.mode || "",
+    });
   } catch (error) {
     console.error("Error fetching job details:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 
-// Helper function to escape regex characters
-function escapeRegex(string) {
-  return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
-}
-
-// GET /api/virtual-balance/job-purchase-books & /api/cfs-virtual-balance/job-purchase-books
+// GET /api/virtual-balance/job-purchase-books
 router.get(["/api/virtual-balance/job-purchase-books", "/api/cfs-virtual-balance/job-purchase-books"], async (req, res) => {
   try {
     const { jobNo, cfsName } = req.query;
 
     if (!jobNo || !cfsName) {
-      return res.status(400).json({ success: false, message: "Job No and Name are required." });
+      return res.status(400).json({ success: false, message: "Job No and CFS Name are required." });
     }
 
-    const type = getBalanceType(req);
+    const jobTokens = extractJobTokens(jobNo);
+    const orConditions = [];
+
+    jobTokens.forEach((jt) => {
+      const escaped = escapeRegex(jt);
+      orConditions.push({ jobNo: { $regex: new RegExp(escaped, "i") } });
+      orConditions.push({ entryNo: { $regex: new RegExp(escaped, "i") } });
+      const seqMatch = jt.match(/(?:^|\/|-)(\d{3,5})(?:\/|-|$)/) || jt.match(/\d+/);
+      if (seqMatch) {
+        const seqNum = parseInt(seqMatch[1] || seqMatch[0], 10);
+        const flexRegex = new RegExp(`(?:^|/|-)0*${seqNum}(?:/|-|$)`, "i");
+        orConditions.push({ jobNo: { $regex: flexRegex } });
+        orConditions.push({ entryNo: { $regex: flexRegex } });
+      }
+    });
+
     const cfsRegex = new RegExp(`^${escapeRegex(cfsName.trim())}$`, "i");
+    const type = getBalanceType(req);
 
     const purchaseBooks = await PurchaseBookEntryModel.find({
-      jobNo: { $in: jobNo.split(",").map(j => j.trim().toUpperCase()) },
-      $or: [
-        { virtualBalanceTerminal: { $regex: cfsRegex }, virtualBalanceType: type },
+      $and: [
+        { $or: orConditions.length > 0 ? orConditions : [{ jobNo: jobNo.trim() }] },
         {
-          $and: [
-            { $or: [{ virtualBalanceTerminal: { $exists: false } }, { virtualBalanceTerminal: "" }, { virtualBalanceTerminal: null }] },
-            ...(type === "TERMINAL" ? [{ $or: [{ virtualBalanceType: { $exists: false } }, { virtualBalanceType: "" }, { virtualBalanceType: "TERMINAL" }, { virtualBalanceType: null }] }] : []),
-            { supplierName: { $regex: cfsRegex } }
+          $or: [
+            { virtualBalanceTerminal: { $regex: cfsRegex }, virtualBalanceType: type },
+            {
+              $and: [
+                { $or: [{ virtualBalanceTerminal: { $exists: false } }, { virtualBalanceTerminal: "" }, { virtualBalanceTerminal: null }] },
+                ...(type === "TERMINAL" ? [{ $or: [{ virtualBalanceType: { $exists: false } }, { virtualBalanceType: "" }, { virtualBalanceType: "TERMINAL" }, { virtualBalanceType: null }] }] : []),
+                { supplierName: { $regex: cfsRegex } }
+              ]
+            }
           ]
         }
       ]
@@ -402,20 +486,40 @@ router.get(["/api/virtual-balance/job-purchase-books", "/api/cfs-virtual-balance
   }
 });
 
-// GET /api/virtual-balance/jobs & /api/cfs-virtual-balance/jobs
+// GET /api/virtual-balance/jobs
 router.get(["/api/virtual-balance/jobs", "/api/cfs-virtual-balance/jobs"], async (req, res) => {
   try {
     const { search = "" } = req.query;
-    const query = search
-      ? { job_no: { $regex: new RegExp(escapeRegex(search.trim()), "i") } }
-      : {};
+    const trimmed = search.trim();
+    let query = {};
+    if (trimmed) {
+      const regex = new RegExp(escapeRegex(trimmed), "i");
+      query = {
+        $or: [
+          { job_no: regex },
+          { jobNumber: regex },
+          { branch_code: regex },
+          { custom_house: regex },
+          { mode: regex },
+          { exporter: regex },
+          { exporter_name: regex },
+          { name: regex },
+        ],
+      };
+    }
     const jobs = await ExJobModel.find(query)
-      .select("job_no exporter exporter_name name")
+      .select("job_no jobNumber exporter exporter_name name branch_code custom_house mode")
+      .sort({ createdAt: -1 })
       .limit(200)
       .lean();
+
     const data = jobs.map((j) => ({
-      jobNo: j.job_no || "",
+      jobNo: j.job_no || j.jobNumber || "",
+      jobSeq: j.job_no || "",
       partyName: j.exporter || j.exporter_name || j.name || "",
+      branchCode: j.branch_code || "",
+      customHouse: j.custom_house || "",
+      mode: j.mode || "",
     }));
     res.status(200).json({ success: true, data });
   } catch (error) {
@@ -425,26 +529,29 @@ router.get(["/api/virtual-balance/jobs", "/api/cfs-virtual-balance/jobs"], async
 });
 
 // GET distinct terminal / cfs names that have virtual balance entries
-router.get([
-  "/virtual-balance/created-terminals",
-  "/api/virtual-balance/created-terminals",
-  "/cfs-virtual-balance/created-names",
-  "/api/cfs-virtual-balance/created-names",
-  "/empty-yard-virtual-balance/created-names",
-  "/api/empty-yard-virtual-balance/created-names"
-], async (req, res) => {
-  try {
-    const distinctTerminals = await VirtualBalanceModel.distinct("cfsName", balanceFilter(req));
-    const validTerminals = (distinctTerminals || [])
-      .filter((t) => t && typeof t === "string" && t.trim() !== "")
-      .map((t) => t.trim().toUpperCase())
-      .sort();
-    const unique = [...new Set(validTerminals)];
-    res.status(200).json({ success: true, data: unique });
-  } catch (error) {
-    console.error("Error fetching created virtual balance names:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+router.get(
+  [
+    "/virtual-balance/created-terminals",
+    "/api/virtual-balance/created-terminals",
+    "/cfs-virtual-balance/created-names",
+    "/api/cfs-virtual-balance/created-names",
+    "/empty-yard-virtual-balance/created-names",
+    "/api/empty-yard-virtual-balance/created-names",
+  ],
+  async (req, res) => {
+    try {
+      const distinctTerminals = await VirtualBalanceModel.distinct("cfsName", balanceFilter(req));
+      const validTerminals = (distinctTerminals || [])
+        .filter((t) => t && typeof t === "string" && t.trim() !== "")
+        .map((t) => t.trim().toUpperCase())
+        .sort();
+      const unique = [...new Set(validTerminals)];
+      res.status(200).json({ success: true, data: unique });
+    } catch (error) {
+      console.error("Error fetching created virtual balance terminals:", error);
+      res.status(500).json({ success: false, message: "Internal server error" });
+    }
   }
-});
+);
 
 export default router;

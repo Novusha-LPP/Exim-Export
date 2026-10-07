@@ -1295,6 +1295,9 @@ const ExportJobsTable = () => {
 
   const groupedJobs = React.useMemo(() => {
     let baseJobs = [...sortedJobs];
+    if (!isChargesModule && activeTab !== "General Jobs" && activeTab !== "general-jobs") {
+      baseJobs = baseJobs.filter(job => !job.isGeneralJob && !String(job.job_no || "").toUpperCase().startsWith("GEN/"));
+    }
     const isPendingOrSentTab = ["Pending", "Booking Pending", "Handover Pending", "Prepare for Billing", "Sent for Billing", "club-jobs"].includes(activeTab);
     if (isPendingOrSentTab) {
       baseJobs = baseJobs.filter(job => {

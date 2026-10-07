@@ -106,6 +106,7 @@ router.get("/api/operation-jobs/:status?", async (req, res) => {
         // --- MANDATORY BASE CONDITIONS FOR OPERATION MODULE ---
         // 1. Exclude General Jobs from Operation Module
         filter.$and.push({ isGeneralJob: { $ne: true } });
+        filter.$and.push({ job_no: { $not: /^GEN/i } });
 
         // EXCLUDE Freight Forwarding Jobs (FF) from Operation Module
         filter.$and.push({ job_no: { $not: /^FF/i } });

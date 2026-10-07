@@ -5,7 +5,6 @@ import { saveAs } from "file-saver";
 import {
   Box,
   Button,
-  Alert,
   Card,
   CardContent,
   Chip,
@@ -48,7 +47,7 @@ import GroupIcon from "@mui/icons-material/Group";
 import ClearIcon from "@mui/icons-material/Clear";
 import DateRangeIcon from "@mui/icons-material/DateRange";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
-import { getTradeApis } from "../../../utils/tradeScopeUtil";
+import { getTradeApis } from "../../utils/tradeScopeUtil";
 
 // Format date helper: DD.MM.YYYY
 function formatDateDisplay(val) {
@@ -87,11 +86,7 @@ function toISODate(d) {
 
 export default function CashflowTracker({ mode = "export" }) {
   const isExport = mode === "export";
-  const envApi = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_STRING
-    ? import.meta.env.VITE_API_STRING
-    : typeof process !== "undefined" && (process.env?.VITE_API_STRING || process.env?.REACT_APP_API_STRING)
-      ? (process.env.VITE_API_STRING || process.env.REACT_APP_API_STRING)
-      : null;
+  const envApi = process.env.REACT_APP_API_STRING || "";
 
   // Trade Scope: "import" | "export" | "both"
   const [tradeScope, setTradeScope] = useState(
@@ -103,10 +98,10 @@ export default function CashflowTracker({ mode = "export" }) {
   }, [tradeScope]);
 
   const { importApi, exportApi } = useMemo(() => {
-    return getTradeApis(envApi, false);
-  }, [envApi]);
+    return getTradeApis(envApi, !isExport);
+  }, [envApi, isExport]);
 
-  const apiBase = tradeScope === "import" ? importApi : exportApi;
+  const apiBase = tradeScope === "export" ? exportApi : importApi;
 
   // Filter States - Default to Today
   const todayStr = useMemo(() => toISODate(new Date()), []);
@@ -118,7 +113,6 @@ export default function CashflowTracker({ mode = "export" }) {
 
   // Data & KPI states
   const [loading, setLoading] = useState(false);
-  const [networkError, setNetworkError] = useState(null);
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState({
     totalAddedBalance: 0,
@@ -150,7 +144,7 @@ export default function CashflowTracker({ mode = "export" }) {
     particular: "CASH WITHDRAWAL FROM BANK",
     expenseMadeBy: "",
     remarks: "",
-    tradeType: mode === "import" ? "import" : "export",
+    tradeType: mode === "export" ? "export" : "import",
   });
 
   // Add Manual Expense Form State
@@ -165,7 +159,7 @@ export default function CashflowTracker({ mode = "export" }) {
     particular: "",
     expenseMadeBy: "",
     remarks: "",
-    tradeType: mode === "import" ? "import" : "export",
+    tradeType: mode === "export" ? "export" : "import",
   });
 
   // New Team Member input
@@ -199,7 +193,6 @@ export default function CashflowTracker({ mode = "export" }) {
   // Fetch Cashflow Data
   const fetchData = useCallback(async () => {
     setLoading(true);
-    setNetworkError(null);
     try {
       const params = {};
       if (startDate) params.startDate = startDate;
@@ -217,6 +210,13 @@ export default function CashflowTracker({ mode = "export" }) {
         const importData = resImport.status === "fulfilled" && resImport.value.data?.success ? resImport.value.data : null;
         const exportData = resExport.status === "fulfilled" && resExport.value.data?.success ? resExport.value.data : null;
 
+        const impSummary = importData?.summary || {};
+        const expSummary = exportData?.summary || {};
+
+        const impOpening = Number(impSummary.openingBalance || 0);
+        const expOpening = Number(expSummary.openingBalance || 0);
+        const combinedOpening = impOpening + expOpening;
+
         const impRows = (importData?.data || []).map((r) => ({ ...r, tradeType: "IMPORT" }));
         const expRows = (exportData?.data || []).map((r) => ({ ...r, tradeType: "EXPORT" }));
 
@@ -225,10 +225,22 @@ export default function CashflowTracker({ mode = "export" }) {
           (a, b) => new Date(a.postingDate) - new Date(b.postingDate)
         );
 
-        setRows(combined);
+        // Recompute running CASH BAL across combined rows starting from combinedOpening
+        let currentCombinedBal = combinedOpening;
+        const updatedCombined = combined.map((r) => {
+          const isWithdrawal = r.isBalanceAddition || (r.jobRefNo || "").includes("CASH WITHDRAWAL");
+          if (isWithdrawal) {
+            currentCombinedBal += Number(r.cashWith || 0);
+          } else {
+            currentCombinedBal -= Number(r.expAmount || 0);
+          }
+          return {
+            ...r,
+            cashBal: currentCombinedBal,
+          };
+        });
 
-        const impSummary = importData?.summary || {};
-        const expSummary = exportData?.summary || {};
+        setRows(updatedCombined);
 
         let totAdded = Number(impSummary.totalAddedBalance || 0) + Number(expSummary.totalAddedBalance || 0);
         let totExp = Number(impSummary.totalExpense || 0) + Number(expSummary.totalExpense || 0);
@@ -236,7 +248,7 @@ export default function CashflowTracker({ mode = "export" }) {
         if (!impSummary.totalAddedBalance && !expSummary.totalAddedBalance && combined.length > 0) {
           totAdded = 0;
           totExp = 0;
-          combined.forEach((r) => {
+          updatedCombined.forEach((r) => {
             totAdded += Number(r.cashWith || 0);
             totExp += Number(r.expAmount || 0);
           });
@@ -246,6 +258,7 @@ export default function CashflowTracker({ mode = "export" }) {
         const currentCashBalance = Number(impSummary.currentCashBalance || 0) + Number(expSummary.currentCashBalance || 0);
 
         setSummary({
+          openingBalance: combinedOpening,
           totalAddedBalance: totAdded,
           totalExpense: totExp,
           netBalance,
@@ -280,16 +293,6 @@ export default function CashflowTracker({ mode = "export" }) {
       }
     } catch (err) {
       console.error("Error loading cashflow records:", err);
-      const isConnRefused = err.code === "ERR_NETWORK" || err.message?.includes("Network Error");
-      if (isConnRefused) {
-        const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || /^192\.168\./.test(window.location.hostname));
-        const targetDesc = isLocal
-          ? (tradeScope === "export" ? "Export server on port 9002" : (tradeScope === "import" ? "Import server on port 9006" : "backend servers on port 9002 / 9006"))
-          : (tradeScope === "export" ? "Export server" : (tradeScope === "import" ? "Import server" : "Import / Export servers"));
-        setNetworkError(`Connection Error: Cannot connect to ${targetDesc}. Please check network connectivity or try again.`);
-      } else {
-        setNetworkError(err.response?.data?.message || err.message || "Failed to load cashflow data");
-      }
     } finally {
       setLoading(false);
     }
@@ -309,8 +312,8 @@ export default function CashflowTracker({ mode = "export" }) {
     setSubmitting(true);
     try {
       const targetApi = tradeScope === "both"
-        ? (balanceForm.tradeType === "import" ? importApi : exportApi)
-        : (tradeScope === "import" ? importApi : exportApi);
+        ? (balanceForm.tradeType === "export" ? exportApi : importApi)
+        : (tradeScope === "export" ? exportApi : importApi);
       const res = await axios.post(`${targetApi}/cashflow/balance`, balanceForm, {
         withCredentials: true,
       });
@@ -324,7 +327,7 @@ export default function CashflowTracker({ mode = "export" }) {
           particular: "CASH WITHDRAWAL FROM BANK",
           expenseMadeBy: "",
           remarks: "",
-          tradeType: tradeScope === "import" ? "import" : "export",
+          tradeType: tradeScope === "export" ? "export" : "import",
         });
         fetchData();
       } else {
@@ -348,8 +351,8 @@ export default function CashflowTracker({ mode = "export" }) {
     setSubmitting(true);
     try {
       const targetApi = tradeScope === "both"
-        ? (expenseForm.tradeType === "import" ? importApi : exportApi)
-        : (tradeScope === "import" ? importApi : exportApi);
+        ? (expenseForm.tradeType === "export" ? exportApi : importApi)
+        : (tradeScope === "export" ? exportApi : importApi);
       const res = await axios.post(`${targetApi}/cashflow/expense`, expenseForm, {
         withCredentials: true,
       });
@@ -366,7 +369,7 @@ export default function CashflowTracker({ mode = "export" }) {
           particular: "",
           expenseMadeBy: "",
           remarks: "",
-          tradeType: tradeScope === "import" ? "import" : "export",
+          tradeType: tradeScope === "export" ? "export" : "import",
         });
         fetchData();
       } else {
@@ -385,7 +388,7 @@ export default function CashflowTracker({ mode = "export" }) {
     const label = isBalance ? "Balance Addition / Cash Withdrawal" : "Manual Expense";
     if (!window.confirm(`Are you sure you want to delete this ${label}?`)) return;
     try {
-      const targetApi = (rowTradeType || "").toUpperCase() === "IMPORT" ? importApi : exportApi;
+      const targetApi = (rowTradeType || "").toUpperCase() === "EXPORT" ? exportApi : importApi;
       const res = await axios.delete(`${targetApi}/cashflow/${id}`, {
         withCredentials: true,
       });
@@ -569,21 +572,6 @@ export default function CashflowTracker({ mode = "export" }) {
 
   return (
     <Box sx={{ width: "100%", p: 2, backgroundColor: "#f8fafc", minHeight: "85vh" }}>
-      {/* Network / Connection Error Banner */}
-      {networkError && (
-        <Alert
-          severity="error"
-          sx={{ mb: 1.5, borderRadius: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={fetchData}>
-              Retry
-            </Button>
-          }
-        >
-          {networkError}
-        </Alert>
-      )}
-
       {/* Top Header Bar - Balanced & Clean */}
       <Box
         sx={{
@@ -623,7 +611,7 @@ export default function CashflowTracker({ mode = "export" }) {
             onClick={() => {
               setBalanceForm((prev) => ({
                 ...prev,
-                tradeType: tradeScope === "import" ? "import" : "export",
+                tradeType: tradeScope === "export" ? "export" : "import",
               }));
               setBalanceModalOpen(true);
             }}
@@ -640,7 +628,7 @@ export default function CashflowTracker({ mode = "export" }) {
             onClick={() => {
               setExpenseForm((prev) => ({
                 ...prev,
-                tradeType: tradeScope === "import" ? "import" : "export",
+                tradeType: tradeScope === "export" ? "export" : "import",
               }));
               setExpenseModalOpen(true);
             }}
@@ -830,7 +818,7 @@ export default function CashflowTracker({ mode = "export" }) {
               <Button
                 size="small"
                 variant={tradeScope === "both" ? "contained" : "outlined"}
-                onClick={() => setTradeScope(tradeScope === "both" ? (mode || "export") : "both")}
+                onClick={() => setTradeScope(tradeScope === "both" ? (mode || "import") : "both")}
                 startIcon={<CompareArrowsIcon sx={{ fontSize: 16 }} />}
                 sx={{
                   textTransform: "none",
@@ -1043,8 +1031,8 @@ export default function CashflowTracker({ mode = "export" }) {
       <TableContainer
         component={Paper}
         sx={{
-          borderRadius: 2,
-          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          borderRadius: 1.5,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
           maxHeight: "calc(100vh - 275px)",
           border: "1px solid #e2e8f0",
         }}
@@ -1286,7 +1274,7 @@ export default function CashflowTracker({ mode = "export" }) {
                 </Box>
                 <RadioGroup
                   row
-                  value={balanceForm.tradeType || "export"}
+                  value={balanceForm.tradeType || "import"}
                   onChange={(e) => setBalanceForm({ ...balanceForm, tradeType: e.target.value })}
                 >
                   <FormControlLabel
@@ -1412,7 +1400,7 @@ export default function CashflowTracker({ mode = "export" }) {
                 </Box>
                 <RadioGroup
                   row
-                  value={expenseForm.tradeType || "export"}
+                  value={expenseForm.tradeType || "import"}
                   onChange={(e) => setExpenseForm({ ...expenseForm, tradeType: e.target.value })}
                 >
                   <FormControlLabel
