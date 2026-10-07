@@ -47,7 +47,7 @@ import GroupIcon from "@mui/icons-material/Group";
 import ClearIcon from "@mui/icons-material/Clear";
 import DateRangeIcon from "@mui/icons-material/DateRange";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
-import { getTradeApis } from "../../utils/tradeScopeUtil";
+import { getTradeApis } from "../../../utils/tradeScopeUtil";
 
 // Format date helper: DD.MM.YYYY
 function formatDateDisplay(val) {

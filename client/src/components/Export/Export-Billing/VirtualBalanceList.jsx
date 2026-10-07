@@ -46,11 +46,11 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import SearchIcon from "@mui/icons-material/Search";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
-import { getTradeApis } from "../../utils/tradeScopeUtil";
+import { getTradeApis } from "../../../utils/tradeScopeUtil";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import { uploadFileToS3 } from "../../utils/awsFileUpload";
+import { uploadFileToS3 } from "../../../utils/awsFileUpload";
 
 const BANKS = [
   "HDFC BANK",

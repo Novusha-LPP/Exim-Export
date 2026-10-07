@@ -331,7 +331,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
                      <td style="width: 25%; padding: 6px 10px; font-weight: 900; height: 31px; line-height: 1; font-size: 9.5px;">&nbsp;</td>
                   </tr>
                   <tr>
-                     <td style="padding: 2px 10px 6px ${isOriginal ? '0px' : '8px'}; font-weight: 700; text-transform: uppercase; font-size: 12px;"><div style="position: relative; left: ${isOriginal ? '-10px' : '0'};">${bl.vessel_name || "[MV NAME AND VOY]"}</div></td>
+                     <td style="padding: 2px 10px 6px ${isOriginal ? '0px' : '8px'}; font-weight: 700; text-transform: uppercase; font-size: 12px;"><div style="position: relative; left: ${isOriginal ? '-10px' : '0'}; top: ${isOriginal ? '-8px' : '-5px'};">${bl.vessel_name || "[MV NAME AND VOY]"}</div></td>
                      <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; text-align: center;">&nbsp;</td>
                   </tr>
                </table>
@@ -342,7 +342,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
                     <td style="padding: 6px 10px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1; color: ${isOriginal ? 'transparent' : '#000'};">Mode of Transport</td>
                   </tr>
                   <tr>
-                    <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.mode_of_transport || (enquiry?.shipment_type?.toUpperCase().includes('SEA') ? 'SEA' : 'AIR')}</td>
+                    <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;"><div style="position: relative; top: ${isOriginal ? '-8px' : '-5px'};">${bl.mode_of_transport || (enquiry?.shipment_type?.toUpperCase().includes('SEA') ? 'SEA' : 'AIR')}</div></td>
                   </tr>
                </table>
             </td>
@@ -352,7 +352,7 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
                     <td style="padding: 6px 10px; font-weight: 900; font-size: 9.5px; height: 31px; line-height: 1; color: ${isOriginal ? 'transparent' : '#000'};">Route / transshipment</td>
                   </tr>
                   <tr>
-                    <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;">${bl.route_transshipment || ""}</td>
+                    <td style="padding: 2px 10px 6px; font-weight: 700; text-transform: uppercase; font-size: 12px;"><div style="position: relative; top: ${isOriginal ? '-8px' : '-5px'};">${bl.route_transshipment || ""}</div></td>
                   </tr>
                </table>
             </td>
@@ -401,19 +401,19 @@ const generateBLTemplate = (enquiry, mode = 'draft') => {
           <tr style="min-height: 45px;">
             <td style="width: 25%; ${br18} padding: 6px 10px 6px ${isOriginal ? '0px' : '8px'}; vertical-align: top;">
                <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Freight Amount</div>
-               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '45px' : '0'};">${bl.freight_amount || "AS AGREED"}</div>
+               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '50px' : '0'};">${bl.freight_amount || "AS AGREED"}</div>
             </td>
             <td style="width: 25%; ${br18} padding: 6px 10px; vertical-align: top;">
                <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Freight Payable at</div>
-               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '45px' : '0'};">AHMEDABAD</div>
+               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '50px' : '0'};">AHMEDABAD</div>
             </td>
             <td style="width: 25%; ${br18} padding: 6px 10px 6px 10px; vertical-align: top;">
                <div style="font-weight: 900; margin-bottom: 3px; font-size: 9px; color: ${isOriginal ? 'transparent' : '#000'};">Number of Original MTD (s)</div>
-               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '45px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.no_of_originals || "3 (THREE)"}</div>
+               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '50px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.no_of_originals || "3 (THREE)"}</div>
             </td>
             <td style="width: 25%; padding: 6px 10px 6px 20px; vertical-align: top;">
                <div style="font-weight: 900; margin-bottom: 3px; font-size: 9.5px; color: ${isOriginal ? 'transparent' : '#000'};">Place and Date of Issue</div>
-               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '40px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${formatIssueDate(bl.date_of_issue || enquiry?.sailing_date || enquiry?.bl_details?.date_of_issue || new Date())}</div>
+               <div style="font-weight: 700; text-transform: uppercase; font-size: 12px; position: relative; top: ${isOriginal ? '45px' : '0'}; left: ${isOriginal ? '10px' : '0'};">${bl.place_of_issue || "AHMEDABAD"}<br/>${formatIssueDate(bl.date_of_issue || enquiry?.sailing_date || enquiry?.bl_details?.date_of_issue || new Date())}</div>
             </td>
           </tr>
         </table>
