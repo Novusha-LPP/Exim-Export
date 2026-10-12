@@ -12,6 +12,8 @@ import TerminalCode from "../../model/Directorties/TerminalCode.js";
 import GeneralOrg from "../../model/Directorties/GeneralOrg.js";
 import ForwarderModel from "../../model/export/ForwarderModel.mjs";
 import Drawback from "../../model/export/DrawbackModel.js";
+import CfsDirectory from "../../model/Directorties/CfsDirectory.js";
+import EmptyYardDirectory from "../../model/Directorties/EmptyYardDirectory.js";
 
 const router = express.Router();
 
@@ -320,6 +322,54 @@ router.get("/api/directories/global-search", async (req, res) => {
           subtitle: `Chapter: ${doc.chapter || "N/A"} | Rate: ${
             doc.drawback_rate || "N/A"
           } | Cap: ${doc.drawback_cap || "N/A"}`,
+        }));
+      })(),
+
+      // 14. CFS Code
+      (async () => {
+        const docs = await CfsDirectory.find({
+          $or: [
+            { name: regex },
+            { "branches.branchName": regex },
+            { "branches.city": regex },
+            { "branches.gst": regex },
+            { "branches.pan": regex },
+          ],
+        })
+          .limit(limitPerCategory)
+          .lean();
+
+        return docs.map((doc) => ({
+          directory: "CFS Code",
+          id: doc._id,
+          title: doc.name,
+          subtitle: `GST: ${doc.branches?.[0]?.gst || "N/A"} | City: ${
+            doc.branches?.[0]?.city || "N/A"
+          }`,
+        }));
+      })(),
+
+      // 15. Empty Yard
+      (async () => {
+        const docs = await EmptyYardDirectory.find({
+          $or: [
+            { name: regex },
+            { "branches.branchName": regex },
+            { "branches.city": regex },
+            { "branches.gst": regex },
+            { "branches.pan": regex },
+          ],
+        })
+          .limit(limitPerCategory)
+          .lean();
+
+        return docs.map((doc) => ({
+          directory: "Empty Yard",
+          id: doc._id,
+          title: doc.name,
+          subtitle: `GST: ${doc.branches?.[0]?.gst || "N/A"} | City: ${
+            doc.branches?.[0]?.city || "N/A"
+          }`,
         }));
       })(),
     ];

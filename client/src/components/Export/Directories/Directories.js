@@ -35,6 +35,7 @@ const DIRECTORY_COLOR_MAP = {
   "Shipping Line": "#00838f",
   "Transporter": "#e65100",
   "Terminal Code": "#d84315",
+  "Empty Yard": "#475569",
   "CFS Code": "#0891b2",
   "General Org": "#6a1b9a",
   "Forwarder": "#2e7d32",

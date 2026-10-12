@@ -471,6 +471,8 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           
           <div style="float: right; text-align: right; width: 240px; font-size: 10px;">
             <b>Signature &amp; Seal of the Customer</b><br/>
+            +91 97254 63754<br/>
+            +91 99243 04003<br/>
             DATE: ${formatDate(new Date())}
           </div>
           <div style="clear: both;"></div>
@@ -813,9 +815,12 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       yPos += 2; doc.text("Tick the appropriate option shown above.", leftMargin, yPos);
       doc.setFont("helvetica", "bold");
       doc.text("Signature & Seal of the Customer", pageWidth - rightMargin - 65, yPos);
-      doc.text(`DATE: ${formatDate(new Date())}`, pageWidth - rightMargin - 65, yPos + 5);
+      doc.setFont("helvetica", "normal");
+      doc.text("+91 97254 63754", pageWidth - rightMargin - 65, yPos + 3.5);
+      doc.text("+91 99243 04003", pageWidth - rightMargin - 65, yPos + 7);
+      doc.text(`DATE: ${formatDate(new Date())}`, pageWidth - rightMargin - 65, yPos + 10.5);
 
-      yPos += 12;
+      yPos += 16;
       doc.setFontSize(10); doc.setFont("helvetica", "bold");
       doc.text("TERMS AND CONDITIONS", pageWidth / 2, yPos, { align: "center" });
       yPos += 5; doc.setFont("helvetica", "normal"); doc.setFontSize(7);

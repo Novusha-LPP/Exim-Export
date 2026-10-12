@@ -448,8 +448,22 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         : isFreightJob(job);
 
     const jobNoStr = String(job.tally_club_ref_no || job.job_no || "").toUpperCase();
-    const isImport = job.job_type === "IMPORT" || jobNoStr.includes("/IMP/") || jobNoStr.includes("IMP");
+    const isImport = job.job_type === "IMPORT" || jobNoStr.includes("/IMP/") || jobNoStr.includes("IMP") || String(job.shipment_type || "").toUpperCase().includes("IMPORT");
     const jobType = isImport ? "IMPORT" : (job.job_type || "EXPORT");
+
+    const rawExporter = job.exporter || job.organization_name || "";
+    const rawConsignee = job.consignees?.[0]?.consignee_name || job.consignee || job.consignee_name || "";
+
+    // In freight forwarding import jobs: pick consignee as exporter and exporter as consignee
+    const finalImporterExporter = (isFreight && isImport)
+        ? (rawConsignee || job.importer || job.importer_name || job.importerExporter || rawExporter)
+        : (isImport
+            ? (job.importer || job.importer_name || job.importerExporter || rawExporter)
+            : (rawExporter || job.organization_name || ""));
+
+    const finalConsignee = (isFreight && isImport)
+        ? (rawExporter || rawConsignee)
+        : rawConsignee;
 
     return {
         "freight": isFreight,
@@ -458,10 +472,8 @@ const mapNormalJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Job Year": job.year || job.job_year || "",
         "Job Type": jobType,
         "Job Date": normalizeDate(job.createdAt || job.job_date || job.jobDate),
-        "ImporterExporter Name": isImport
-            ? (job.importer || job.importer_name || job.importerExporter || job.exporter || job.organization_name || "")
-            : (job.exporter || job.organization_name || ""),
-        "Consignee": job.consignees?.[0]?.consignee_name || job.consignee || job.consignee_name || "",
+        "ImporterExporter Name": finalImporterExporter,
+        "Consignee": finalConsignee,
         "Shipper": job.shipper || job.supplier_name || job.supplier || "",
         "Origin Port": job.port_of_loading || job.origin_port || job.pol || "",
         "Destination Port": job.port_of_discharge || job.destination_port || job.pod || "",
@@ -546,11 +558,23 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         : isFreightJob(job);
 
     const jobNoStr = String(job.tally_club_ref_no || job.job_no || "").toUpperCase();
-    const isImport = job.job_type === "IMPORT" || jobNoStr.includes("/IMP/") || jobNoStr.includes("IMP");
+    const isImport = job.job_type === "IMPORT" || jobNoStr.includes("/IMP/") || jobNoStr.includes("IMP") || String(job.shipment_type || "").toUpperCase().includes("IMPORT");
     const jobType = isImport ? "IMPORT" : (job.job_type || "EXPORT");
 
     const grossVal = job.gross_weight_kg || job.gross_weight || job.bl_details?.gross_weight;
     const netVal = job.net_weight_kg || job.net_weight || job.bl_details?.net_weight;
+
+    const rawExporter = job.exporter || job.organization_name || "";
+    const rawConsignee = job.consignees?.[0]?.consignee_name || job.consignee_name || job.consignee || job.bl_details?.consignee || "";
+
+    // In freight forwarding import jobs: pick consignee as exporter and exporter as consignee
+    const finalImporterExporter = isImport
+        ? (rawConsignee || job.importer || job.importer_name || job.importerExporter || rawExporter)
+        : (rawExporter || job.organization_name || "");
+
+    const finalConsignee = isImport
+        ? (rawExporter || rawConsignee)
+        : rawConsignee;
 
     return {
         "freight": isFreight,
@@ -559,10 +583,8 @@ const mapFFJobAndInvoiceToTally = (job, inv, explicitFreight) => {
         "Job Year": job.year || job.job_year || "",
         "Job Type": jobType,
         "Job Date": normalizeDate(job.createdAt || job.job_date || job.jobDate),
-        "ImporterExporter Name": isImport
-            ? (job.importer || job.importer_name || job.importerExporter || job.exporter || job.organization_name || "")
-            : (job.exporter || job.organization_name || ""),
-        "Consignee": job.consignees?.[0]?.consignee_name || job.consignee_name || job.consignee || job.bl_details?.consignee || "",
+        "ImporterExporter Name": finalImporterExporter,
+        "Consignee": finalConsignee,
         "Shipper": job.shipper || job.exporter || job.organization_name || job.supplier_name || "",
         "Origin Port": job.port_of_loading || job.place_of_receipt || job.origin_port || "",
         "Destination Port": job.port_of_discharge || job.port_of_destination || job.destination_port || "",
