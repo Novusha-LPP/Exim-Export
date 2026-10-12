@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
 import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
 import authApiKey from "../../middleware/authApiKey.mjs";
@@ -1226,7 +1227,18 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         let job = null;
         try {
             if (entry.jobRef) {
-                job = await ExJobModel.findById(entry.jobRef).lean();
+                try {
+                    job = await ExJobModel.findById(entry.jobRef).lean();
+                } catch (e) { }
+                if (!job && importDbConnection && importDbConnection.readyState === 1) {
+                    try {
+                        if (mongoose.Types.ObjectId.isValid(entry.jobRef)) {
+                            job = await importDbConnection.db.collection("jobs").findOne({
+                                _id: new mongoose.Types.ObjectId(entry.jobRef)
+                            });
+                        }
+                    } catch (err) { }
+                }
             }
             if (!job && entry.jobNo) {
                 const firstJob = String(entry.jobNo).split(",")[0].trim();
@@ -1583,10 +1595,6 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     itemTotal = itemNet; // For reimbursement and margin, total equals net payable
                 }
 
-                const itemRevAmt = (item.revenueAmount !== undefined && item.revenueAmount !== null && item.revenueAmount !== 0)
-                    ? Number(item.revenueAmount)
-                    : revenueAmount;
-
                 let targetJob = job || rawJobDB;
                 let itemMatchedCharge = null;
                 if (targetJob && Array.isArray(targetJob.charges)) {
@@ -1606,6 +1614,29 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                 const itemCostQty = itemCost.qty !== undefined ? itemCost.qty : (itemMatchedCharge?.qty !== undefined ? itemMatchedCharge.qty : undefined);
                 const itemCostRate = itemCost.rate !== undefined ? itemCost.rate : (itemMatchedCharge?.rate !== undefined ? itemMatchedCharge.rate : undefined);
                 const itemCostForeignAmt = itemCost.amount !== undefined ? itemCost.amount : (itemCost.currencyAmount || itemCost.foreignCurrencyAmount);
+
+                // Determine item revenue amount: allow 0 instead of falling back to entire bill total
+                let rawItemRev = null;
+                if (item.revenueAmount !== undefined && item.revenueAmount !== null && item.revenueAmount !== "") {
+                    rawItemRev = Number(item.revenueAmount);
+                } else if (item["Revenue Amount"] !== undefined && item["Revenue Amount"] !== null && item["Revenue Amount"] !== "") {
+                    rawItemRev = Number(item["Revenue Amount"]);
+                } else if (item.revenueTotal !== undefined && item.revenueTotal !== null && item.revenueTotal !== "") {
+                    rawItemRev = Number(item.revenueTotal);
+                } else if (item["Revenue Total"] !== undefined && item["Revenue Total"] !== null && item["Revenue Total"] !== "") {
+                    rawItemRev = Number(item["Revenue Total"]);
+                }
+
+                let itemRevAmt = 0;
+                if (rawItemRev !== null && !isNaN(rawItemRev)) {
+                    itemRevAmt = rawItemRev;
+                } else if (itemRevenue && (itemRevenue.amountINR !== undefined || itemRevenue.amount !== undefined || itemRevenue.totalAmount !== undefined || itemRevenue.rate !== undefined)) {
+                    itemRevAmt = Number(itemRevenue.amountINR || itemRevenue.amount || itemRevenue.totalAmount || (itemRevenue.rate ? itemRevenue.rate * (itemRevenue.qty || 1) : 0));
+                } else if (!entry.isMultiCharge) {
+                    itemRevAmt = revenueAmount;
+                } else {
+                    itemRevAmt = 0;
+                }
 
                 const itemRevRate = (item["Revenue Rate"] !== undefined && item["Revenue Rate"] !== null && item["Revenue Rate"] !== 0)
                     ? Number(item["Revenue Rate"])
@@ -1664,7 +1695,11 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
                     const rawItemRevSgst = item["Revenue SGST"] !== undefined ? Number(item["Revenue SGST"]) : (item.revenueSgst !== undefined ? Number(item.revenueSgst) : (itemRevenue.sgst !== undefined ? Number(itemRevenue.sgst) : 0));
                     const rawItemRevIgst = item["Revenue IGST"] !== undefined ? Number(item["Revenue IGST"]) : (item.revenueIgst !== undefined ? Number(item.revenueIgst) : (itemRevenue.igst !== undefined ? Number(itemRevenue.igst) : 0));
 
-                    if (rawItemRevCgst > 0 || rawItemRevSgst > 0 || rawItemRevIgst > 0) {
+                    if (itemRevAmt === 0) {
+                        itemRevCgst = 0;
+                        itemRevSgst = 0;
+                        itemRevIgst = 0;
+                    } else if (rawItemRevCgst > 0 || rawItemRevSgst > 0 || rawItemRevIgst > 0) {
                         itemRevCgst = rawItemRevCgst;
                         itemRevSgst = rawItemRevSgst;
                         itemRevIgst = rawItemRevIgst;
@@ -1864,6 +1899,10 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         delete formattedData["Charge Description"];
         delete formattedData["Charge Head Category"];
         delete formattedData["TDS Category"];
+        if (formattedData["isMultiCharge"]) {
+            delete formattedData["Revenue Rate"];
+            delete formattedData["Revenue Currency Amount"];
+        }
 
         res.status(200).json(formattedData);
     } catch (error) {
