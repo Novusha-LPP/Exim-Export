@@ -478,19 +478,28 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
           <div style="clear: both;"></div>
         </div>
 
-        <div style="margin-top: 10px; text-align: center; font-size: 13px; font-weight: bold;">TERMS AND CONDITIONS</div>
-        <div style="font-size: 9px; margin-top: 4px; line-height: 1.3;">
-          <div>1. Unless the consignor declares in clause(1) overleaf the value of any consignment &amp; pays percentage charge on excess value as required by CONCOR, the maximum limit of liability shall not exceed Rs. 50 per kg.</div>
-          <div>2. When alternative 'CONCOR Risk' and 'Owner Risk' rates are quoted, the latter will apply unless sender elects 'CONCOR Risk'.</div>
-          <div>3. I accept responsibility for any consequences to the property of CONCOR or others caused by this consignment Note - Attention is invited to terms for dangerous goods in I.R.C.A Red Tariff and IMDG.</div>
-        </div>
-        
-        <div style="margin-top: 8px; border: 1px solid black; padding: 5px 8px; font-size: 10px; font-weight: bold; min-height: 25px;">
-          Additional declarations for Dangerous Goods (I.R.C.A / IMDG)
-        </div>
-        
-        <div style="margin-top: -1px; border: 1px solid black; padding: 5px 8px; font-size: 11px; font-weight: bold; min-height: 35px;">
-          FOR OFFICE USE
+        <div style="${aggregatedContainers.length > 2 ? 'page-break-before: always; break-before: page; margin-top: 30px;' : 'margin-top: 10px;'} page-break-inside: avoid; break-inside: avoid;">
+          ${aggregatedContainers.length > 2 ? `
+            <div style="text-align: center; margin-bottom: 20px;">
+              <div style="font-size: 16px; font-weight: bold;">CONTAINER CORPORATION OF INDIA LIMITED (CONCOR)</div>
+              <div style="font-size: 11px; margin-top: 2px;">FORWARDING NOTE - TERMS AND CONDITIONS</div>
+              <div style="font-size: 11px; font-weight: bold; margin-top: 4px;">JOB: ${exportJob.job_no || ""} &nbsp;&nbsp;|&nbsp;&nbsp; INV: ${invoice.invoiceNumber || ""}</div>
+            </div>
+          ` : ''}
+          <div style="margin-top: 10px; text-align: center; font-size: 13px; font-weight: bold;">TERMS AND CONDITIONS</div>
+          <div style="font-size: 9px; margin-top: 6px; line-height: 1.4;">
+            <div>1. Unless the consignor declares in clause(1) overleaf the value of any consignment &amp; pays percentage charge on excess value as required by CONCOR, the maximum limit of liability shall not exceed Rs. 50 per kg.</div>
+            <div>2. When alternative 'CONCOR Risk' and 'Owner Risk' rates are quoted, the latter will apply unless sender elects 'CONCOR Risk'.</div>
+            <div>3. I accept responsibility for any consequences to the property of CONCOR or others caused by this consignment Note - Attention is invited to terms for dangerous goods in I.R.C.A Red Tariff and IMDG.</div>
+          </div>
+          
+          <div style="margin-top: 10px; border: 1px solid black; padding: 6px 8px; font-size: 10px; font-weight: bold; min-height: ${aggregatedContainers.length > 2 ? '40px' : '25px'};">
+            Additional declarations for Dangerous Goods (I.R.C.A / IMDG)
+          </div>
+          
+          <div style="margin-top: ${aggregatedContainers.length > 2 ? '10px' : '-1px'}; border: 1px solid black; padding: 6px 8px; font-size: 11px; font-weight: bold; min-height: ${aggregatedContainers.length > 2 ? '60px' : '35px'};">
+            FOR OFFICE USE
+          </div>
         </div>
       </div>
     `;
@@ -821,18 +830,42 @@ const ConcorForwardingNotePDFGenerator = ({ jobNo, children }) => {
       doc.text(`DATE: ${formatDate(new Date())}`, pageWidth - rightMargin - 65, yPos + 10.5);
 
       yPos += 16;
+
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const termsNeededHeight = 45;
+      const shouldMoveTermsToNextPage = (yPos + termsNeededHeight > pageHeight - 5) || (containerCount > 2);
+
+      if (shouldMoveTermsToNextPage) {
+        doc.addPage("a4", "landscape");
+        yPos = 16;
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("CONTAINER CORPORATION OF INDIA LIMITED (CONCOR)", pageWidth / 2, yPos, { align: "center" });
+        yPos += 5;
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        const jobRefStr = `FORWARDING NOTE - TERMS AND CONDITIONS   |   JOB: ${exportJob.job_no || ""}   |   INV: ${invoice.invoiceNumber || ""}`;
+        doc.text(jobRefStr, pageWidth / 2, yPos, { align: "center" });
+        yPos += 10;
+      }
+
       doc.setFontSize(10); doc.setFont("helvetica", "bold");
       doc.text("TERMS AND CONDITIONS", pageWidth / 2, yPos, { align: "center" });
-      yPos += 5; doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+      yPos += 5; doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
       const terms = [
         "1. Unless the consignor declares in clause(1) overleaf the value of any consignment & pays percentage charge on excess value as required by CONCOR, the maximum limit of liability shall not exceed Rs. 50 per kg.",
         "2. When alternative 'CONCOR Risk' and 'Owner Risk' rates are quoted, the latter will apply unless sender elects 'CONCOR Risk'.",
         "3. I accept responsibility for any consequences to the property of CONCOR or others caused by this consignment Note - Attention is invited to terms for dangerous goods in I.R.C.A Red Tariff and IMDG."
       ];
-      terms.forEach(line => { doc.text(line, leftMargin, yPos); yPos += 3; });
-      yPos += 2; doc.rect(leftMargin, yPos, contentWidth, 10);
-      doc.setFont("helvetica", "bold"); doc.text("Additional declarations for Dangerous Goods (I.R.C.A / IMDG)", leftMargin + 3, yPos + 5);
-      yPos += 12; doc.rect(leftMargin, yPos, contentWidth, 12);
+      terms.forEach(line => { doc.text(line, leftMargin, yPos); yPos += 3.5; });
+      yPos += 2;
+      const dangerousGoodsH = shouldMoveTermsToNextPage ? 20 : 10;
+      doc.rect(leftMargin, yPos, contentWidth, dangerousGoodsH);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(8);
+      doc.text("Additional declarations for Dangerous Goods (I.R.C.A / IMDG)", leftMargin + 3, yPos + 5);
+      yPos += dangerousGoodsH + 2;
+      const officeUseH = shouldMoveTermsToNextPage ? 28 : 12;
+      doc.rect(leftMargin, yPos, contentWidth, officeUseH);
       doc.setFontSize(9); doc.text("FOR OFFICE USE", leftMargin + 3, yPos + 6);
 
       window.open(doc.output("bloburl"), "_blank");
