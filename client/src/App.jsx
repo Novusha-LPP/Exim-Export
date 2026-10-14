@@ -10,20 +10,20 @@ import { Routes, Route } from "react-router-dom";
 import BLDraftForm from "./components/Public/BLDraftForm.jsx";
 
 function App() {
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("exim_user"))
-  );
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("exim_user")) || null;
+    } catch {
+      return null;
+    }
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
-      const interceptor = axios.interceptors.request.use((config) => {
-        config.headers["username"] = user.username || "unknown";
-        config.headers["user-id"] = user._id || "unknown";
-        config.headers["user-role"] = user.role || "unknown";
-        return config;
-      });
-      return () => axios.interceptors.request.eject(interceptor);
+    if (user?.token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${user.token}`;
+    } else {
+      delete axios.defaults.headers.common["Authorization"];
     }
   }, [user]);
 

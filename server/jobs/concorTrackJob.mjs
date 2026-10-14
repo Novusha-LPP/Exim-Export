@@ -3,6 +3,7 @@ import axios from "axios";
 import https from "https";
 import express from "express";
 import ExJobModel from "../model/export/ExJobModel.mjs";
+import { withDistributedLock } from "../utils/cronLock.mjs";
 
 const httpsAgent = new https.Agent({
     rejectUnauthorized: false
@@ -397,11 +398,13 @@ export const initConcorTrackCronJob = () => {
     cron.schedule(
         "0 12 * * *",
         async () => {
-            try {
-                await runConcorTrackJob();
-            } catch (err) {
-                console.error(`${LOG_PREFIX} Cron Execution Error:`, err);
-            }
+            await withDistributedLock("concor_track_job", 60 * 60 * 1000, async () => {
+                try {
+                    await runConcorTrackJob();
+                } catch (err) {
+                    console.error(`${LOG_PREFIX} Cron Execution Error:`, err);
+                }
+            });
         },
         { timezone: "Asia/Kolkata" }
     );

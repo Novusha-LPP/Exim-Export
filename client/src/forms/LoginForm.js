@@ -22,6 +22,9 @@ function LoginPage() {
 
         if (res.status === 200) {
           localStorage.setItem("exim_user", JSON.stringify(res.data));
+          if (res.data?.token) {
+            axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
+          }
           setUser(res.data);
           resetForm();
         }

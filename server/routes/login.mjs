@@ -1,6 +1,15 @@
 import express from "express";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 import UserModel from "../model/userModel.mjs";
+
+dotenv.config();
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("FATAL CONFIG ERROR: Missing JWT_SECRET in environment variables.");
+}
 
 const router = express.Router();
 
@@ -20,11 +29,27 @@ router.post("/api/login", async (req, res) => {
       }
 
       if (passwordResult) {
-        // Create a new object with only the required fields
+        // Generate cryptographic JWT token
+        const token = jwt.sign(
+          {
+            _id: user._id,
+            username: user.username,
+            role: user.role,
+            modules: user.modules || [],
+            canDeleteDocs: user.canDeleteDocs || false,
+            selected_branches: user.selected_branches || [],
+            selected_ports: user.selected_ports || [],
+          },
+          JWT_SECRET,
+          { expiresIn: process.env.JWT_EXPIRATION || "7d" }
+        );
+
+        // Create a new object with only the required fields + the signed token
         const userResponse = {
           _id: user._id,
           username: user.username,
           role: user.role,
+          token: token,
           modules: user.modules,
           first_name: user.first_name,
           middle_name: user.middle_name,

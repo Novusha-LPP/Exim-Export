@@ -16,12 +16,25 @@ import UserModel from "../model/userModel.mjs";
  */
 export const requireAdmin = async (req, res, next) => {
     try {
-        // Get username from multiple possible sources
+        // 1. If user was already cryptographically authenticated by JWT middleware
+        if (req.user) {
+            if ((req.user.role || "").toLowerCase() !== "admin") {
+                console.warn(`⚠️ Unauthorized admin access attempt by user: ${req.user.username} (role: ${req.user.role})`);
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied: Admin privileges required"
+                });
+            }
+            req.verifiedUser = req.user;
+            return next();
+        }
+
+        // 2. Fallback for endpoints before global JWT or without req.user
         const username =
-            req.body?.requestingUser || // For POST requests
-            req.query?.requestingUser || // For GET requests
-            req.headers["x-username"] || // From headers
-            req.headers["username"]; // Alternative header
+            req.body?.requestingUser ||
+            req.query?.requestingUser ||
+            req.headers["x-username"] ||
+            req.headers["username"];
 
         if (!username) {
             return res.status(401).json({

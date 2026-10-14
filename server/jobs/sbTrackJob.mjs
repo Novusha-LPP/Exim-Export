@@ -2,6 +2,7 @@ import cron from "node-cron";
 import axios from "axios";
 import express from "express";
 import ExJobModel from "../model/export/ExJobModel.mjs";
+import { withDistributedLock } from "../utils/cronLock.mjs";
 
 // Custom House → ICEGATE Location Code mapping
 const CUSTOM_HOUSE_CODE_MAP = {
@@ -386,11 +387,13 @@ export const initSbTrackCronJob = () => {
     cron.schedule(
         "0 12 * * *",
         async () => {
-            try {
-                await runSbTrackJob();
-            } catch (err) {
-                console.error(`${LOG_PREFIX} Critical cron error:`, err);
-            }
+            await withDistributedLock("sb_track_job", 60 * 60 * 1000, async () => {
+                try {
+                    await runSbTrackJob();
+                } catch (err) {
+                    console.error(`${LOG_PREFIX} Critical cron error:`, err);
+                }
+            });
         },
         { timezone: "Asia/Kolkata" }
     );

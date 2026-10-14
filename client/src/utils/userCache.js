@@ -22,6 +22,21 @@ export const fetchUserWithCache = async (username) => {
             cachedUserData = response.data;
             lastFetchTime = Date.now();
             cachedUserPromise = null;
+
+            // Automatically persist refreshed/generated token
+            if (response.data?.token) {
+                try {
+                    const local = JSON.parse(localStorage.getItem("exim_user") || "{}");
+                    localStorage.setItem(
+                        "exim_user",
+                        JSON.stringify({ ...local, ...response.data })
+                    );
+                    axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.token}`;
+                } catch (e) {
+                    // ignore storage errors
+                }
+            }
+
             return cachedUserData;
         })
         .catch((error) => {

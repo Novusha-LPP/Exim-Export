@@ -47,6 +47,7 @@ function Sidebar() {
   const handleLogout = () => {
     setUser(null);
     clearUserCache();
+    delete axios.defaults.headers.common["Authorization"];
     navigate("/");
     // Remove user from local storage
     localStorage.removeItem("exim_user");

@@ -1,11 +1,22 @@
 {
   "apps": [
     {
-      "name": "server",
+      "name": "exim-api",
       "script": "app.js",
-      "node_args": "--max-old-space-size=4096",
-      "max_memory_restart": "3G",
-      "watch": true,
+      "instances": "max",
+      "exec_mode": "cluster",
+      "max_memory_restart": "1G",
+      "env": {
+        "NODE_ENV": "production",
+        "ENABLE_IN_PROCESS_CRON": "false"
+      }
+    },
+    {
+      "name": "exim-worker",
+      "script": "worker.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "max_memory_restart": "1G",
       "env": {
         "NODE_ENV": "production"
       }

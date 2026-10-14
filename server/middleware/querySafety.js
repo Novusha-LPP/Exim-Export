@@ -210,20 +210,28 @@ export function enforcePagination(options = {}) {
  */
 export function trackResponseSize(warningThresholdBytes = 1024 * 1024) { // 1MB default
     return (req, res, next) => {
-        const originalJson = res.json.bind(res);
+        const originalSend = res.send.bind(res);
 
-        res.json = function (data) {
-            const jsonString = JSON.stringify(data);
-            const sizeBytes = Buffer.byteLength(jsonString, "utf8");
+        res.send = function (body) {
+            try {
+                if (body) {
+                    const sizeBytes = typeof body === "string"
+                        ? Buffer.byteLength(body, "utf8")
+                        : (Buffer.isBuffer(body) ? body.length : 0);
 
-            if (sizeBytes > warningThresholdBytes) {
-                console.warn(`⚠️ Large response (${(sizeBytes / 1024 / 1024).toFixed(2)}MB) at ${req.originalUrl}`);
+                    if (sizeBytes > warningThresholdBytes) {
+                        console.warn(`⚠️ Large response (${(sizeBytes / 1024 / 1024).toFixed(2)}MB) at ${req.originalUrl}`);
+                    }
+
+                    if (sizeBytes > 0 && !res.headersSent) {
+                        res.setHeader("X-Response-Size", sizeBytes);
+                    }
+                }
+            } catch (e) {
+                // Tracking should never block the response
             }
 
-            // Add size header for monitoring
-            res.setHeader("X-Response-Size", sizeBytes);
-
-            return originalJson(data);
+            return originalSend(body);
         };
 
         next();

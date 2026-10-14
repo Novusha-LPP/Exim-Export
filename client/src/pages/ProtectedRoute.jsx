@@ -1,38 +1,59 @@
 // components/ProtectedRoute.js
 import React, { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import axios from "axios";
 import { CircularProgress, Box } from "@mui/material";
 import { fetchUserWithCache } from "../utils/userCache.js";
 
 const ProtectedRoute = ({ children, requiredModule, fallbackPath = "/" }) => {
-  const [userModules, setUserModules] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("exim_user") || "null");
+    } catch {
+      return null;
+    }
+  });
+
+  const [userModules, setUserModules] = useState(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("exim_user") || "null");
+      return Array.isArray(u?.modules) ? u.modules : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // If we already have user info and modules (or user is Admin), no need to block with loading
+  const [loading, setLoading] = useState(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("exim_user") || "null");
+      return !(u && (u.role === "Admin" || (Array.isArray(u.modules) && u.modules.length > 0)));
+    } catch {
+      return true;
+    }
+  });
+
   const location = useLocation();
 
   useEffect(() => {
     const fetchUserModules = async () => {
       try {
-        // Get current user info - adjust this based on how you store user info
         const user = JSON.parse(localStorage.getItem("exim_user") || "null");
 
-        // If no user is stored, bail out and send to login
         if (!user || Object.keys(user).length === 0) {
-          setError(true);
           setLoading(false);
           return;
         }
 
-        const userData = await fetchUserWithCache(user.username || user.id);
+        setCurrentUser(user);
 
-        // The user document stores permissions under the 'modules' key
-        const modulesFromApi = userData?.modules || [];
+        // Fetch fresh module permissions from server in background
+        const userData = await fetchUserWithCache(user.username || user.id);
+        const modulesFromApi = userData?.modules || user.modules || [];
 
         setUserModules(modulesFromApi);
       } catch (err) {
-        console.error("Error fetching user modules:", err);
-        setError(true);
+        console.warn("Could not refresh user permissions from server, using cached session:", err);
+        // Keep whatever modules were already loaded in localStorage
       } finally {
         setLoading(false);
       }
@@ -54,16 +75,22 @@ const ProtectedRoute = ({ children, requiredModule, fallbackPath = "/" }) => {
     );
   }
 
-  if (error || !userModules) {
+  // If user is truly not logged in, redirect to login
+  if (!currentUser) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Admins always have access to all modules
+  if (currentUser.role === "Admin") {
+    return children;
   }
 
   // Check if user has the required module permission (supports string or array of allowed modules)
   const allowedModules = Array.isArray(requiredModule) ? requiredModule : [requiredModule];
-  const hasPermission = allowedModules.some((mod) => userModules.includes(mod));
+  const currentModulesList = userModules || currentUser.modules || [];
+  const hasPermission = allowedModules.some((mod) => currentModulesList.includes(mod));
 
   if (!hasPermission) {
-    // Redirect to fallback path with a message
     const moduleNames = allowedModules.join(" or ");
     return (
       <Navigate

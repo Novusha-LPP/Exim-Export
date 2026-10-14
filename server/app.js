@@ -1,9 +1,9 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import compression from "compression";
-import bodyParser from "body-parser";
 import logger from "./logger.resilient.js";
 import { auditMiddleware } from "./middleware/auditTrail.mjs";
 
@@ -16,6 +16,7 @@ import healthRoutes from "./routes/health.js";
 
 // Query safety middleware to prevent runaway reads
 import { enforcePagination, trackResponseSize } from "./middleware/querySafety.js";
+import { authenticateToken } from "./middleware/auth.mjs";
 
 import getAllUsers from "./routes/getAllUsers.mjs";
 import getUser from "./routes/getUser.mjs";
@@ -116,6 +117,7 @@ import exporterReport from "./routes/report/getExporterReport.mjs";
 import exportClearanceReport from "./routes/report/exportClearanceMonthly.mjs";
 import tdsPayableRegister from "./routes/report/tdsPayableRegister.mjs";
 import adminFreightReport from "./routes/report/adminFreightReport.mjs";
+import signerRoutes from "./routes/signerRoutes.js";
 
 // REMOVED: Dangerous exception handlers that caused 3.1M log storm
 // Exception handlers are now in ./exceptionHandlers.js with:
@@ -130,9 +132,8 @@ dotenv.config();
 const app = express();
 
 // App middleware
-app.use(bodyParser.json({ limit: "100mb" }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(
   cors({
     origin: [
@@ -200,10 +201,10 @@ mongoose
 // Health monitoring routes (added after retry storm incident)
 app.use("/api", healthRoutes);
 
+app.use(login);
+app.use(authenticateToken);
 app.use(getAllUsers);
 app.use(getUser);
-app.use(login);
-app.use(login);
 
 //HOME
 app.use(assignModules);
@@ -234,9 +235,7 @@ app.use("/api/districts", auditMiddleware("Directory"), districts);
 app.use("/api/transporters", auditMiddleware("Directory"), transporters);
 app.use("/api/terminalCodes", auditMiddleware("Directory"), terminalCodes);
 app.use("/api/cfsCodes", auditMiddleware("Directory"), cfsCodes);
-app.use(cfsCodes);
 app.use("/api/emptyYardCodes", auditMiddleware("Directory"), emptyYardCodes);
-app.use(emptyYardCodes);
 app.use("/api", auditMiddleware("Directory"), generalOrgs);
 app.use("/api/drawbacks", auditMiddleware("Directory"), drawback);
 app.use(globalDirectorySearch);
@@ -305,19 +304,17 @@ app.use(tdsPayableRegister);
 app.use(adminFreightReport);
 
 // s3 route
-
 app.use(deleteFromS3Routes);
 
 // Charges & Charge Heads (must be before wildcard updateExportJobs)
 app.use("/api", chargesRoute);
 app.use("/api/tally", tallyRoutes);
 
+// DSC Signer Routes (must be before wildcard updateExportJobs)
+app.use("/api/signer", signerRoutes);
+
 // Update Export Jobs (Wildcard route - must be last)
 app.use("/api", updateExportJobs);
-
-// DSC Signer Routes
-import signerRoutes from "./routes/signerRoutes.js";
-app.use("/api/signer", signerRoutes);
 
 app.get("/", (req, res) => {
   res.send("Export Jobs API Running");
@@ -339,12 +336,15 @@ process.on("SIGTERM", async () => {
 const PORT = process.env.PORT || 9002;
 
 // Initialize Cron Jobs
-initDsrCronJob();               // Daily 8 PM DSR email job
-initSbTrackCronJob();           // Daily 12 PM SB Track auto-poll (15-day gate per job)
-initConcorTrackCronJob();       // Daily 12 PM CONCOR Container Track auto-poll
-initFreightAutoRejectCronJob(); // Hourly Freight Auto-Reject job for stale inquiries (> 5 days)
+if (process.env.ENABLE_IN_PROCESS_CRON !== "false") {
+  initDsrCronJob();
+  initSbTrackCronJob();           // Daily 12 PM SB Track auto-poll (15-day gate per job)
+  initConcorTrackCronJob();       // Daily 12 PM CONCOR Container Track auto-poll
+  initFreightAutoRejectCronJob(); // Hourly Freight Auto-Reject job (15-day check)
+} else {
+  console.log("ℹ️ In-process cron jobs disabled (handled by standalone worker).");
+}
 
 app.listen(PORT, () => {
   console.log(`🟢 Server listening on http://localhost:${PORT}`);
 });
-// Updated route handling for tally purchase entry revenue fields

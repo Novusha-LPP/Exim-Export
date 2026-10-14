@@ -54,6 +54,18 @@ function AppbarComponent(props) {
           `${import.meta.env.VITE_API_STRING}/get-user/${user.username}`
         );
         setData(res.data);
+        if (res.data?.token) {
+          try {
+            const local = JSON.parse(localStorage.getItem("exim_user") || "{}");
+            localStorage.setItem(
+              "exim_user",
+              JSON.stringify({ ...local, ...res.data })
+            );
+            axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
+          } catch (e) {
+            // ignore storage error
+          }
+        }
       } catch (error) {
         console.error("Error fetching user data:", error);
       } finally {

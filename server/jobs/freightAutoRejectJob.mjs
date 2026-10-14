@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import express from "express";
 import { autoRejectPendingEnquiries } from "../routes/export-dsr/freightEnquiryRoutes.mjs";
+import { withDistributedLock } from "../utils/cronLock.mjs";
 
 const LOG_PREFIX = "[Freight Auto-Reject Job]";
 
@@ -8,20 +9,22 @@ const LOG_PREFIX = "[Freight Auto-Reject Job]";
  * Runs the auto-reject job for stale pending enquiries (>= 5 days old)
  */
 export const runFreightAutoRejectJob = async () => {
-  console.log(`${LOG_PREFIX} Running check for pending enquiries older than 5 days...`);
-  try {
-    await autoRejectPendingEnquiries();
-    console.log(`${LOG_PREFIX} Finished check for stale enquiries.`);
-  } catch (err) {
-    console.error(`${LOG_PREFIX} Error during execution:`, err);
-  }
+  await withDistributedLock("freight_auto_reject_job", 15 * 60 * 1000, async () => {
+    console.log(`${LOG_PREFIX} Running check for pending enquiries older than 5 days...`);
+    try {
+      await autoRejectPendingEnquiries();
+      console.log(`${LOG_PREFIX} Finished check for stale enquiries.`);
+    } catch (err) {
+      console.error(`${LOG_PREFIX} Error during execution:`, err);
+    }
+  });
 };
 
 /**
  * Initializes hourly cron job (runs every hour at minute 0)
  */
 export const initFreightAutoRejectCronJob = () => {
-  // Run check immediately on server startup
+  // Run check immediately on server startup (guarded by lock)
   runFreightAutoRejectJob().catch((err) => {
     console.error(`${LOG_PREFIX} Startup check error:`, err);
   });

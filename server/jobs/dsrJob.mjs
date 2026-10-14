@@ -3,6 +3,7 @@ import ExportJob from "../model/export/ExJobModel.mjs";
 import Directory from "../model/Directorties/Directory.js";
 import { generateDSRHTMLTable, generateTableDSRBuffer } from "../utils/dsrReportGenerator.mjs";
 import transporter from "../utils/mailer.mjs";
+import { withDistributedLock } from "../utils/cronLock.mjs";
 
 /**
  * Daily 4 PM DSR Job
@@ -11,8 +12,9 @@ import transporter from "../utils/mailer.mjs";
 export const initDsrCronJob = () => {
     // Schedule for 4:00 PM every day (16:00)
     cron.schedule("0 16 * * *", async () => {
-        console.log(`[${new Date().toISOString()}] 🕒 Starting Daily DSR Report Job...`);
-        try {
+        await withDistributedLock("dsr_daily_job", 45 * 60 * 1000, async () => {
+            console.log(`[${new Date().toISOString()}] 🕒 Starting Daily DSR Report Job...`);
+            try {
             // Compute current Indian financial year (Apr–Mar) as "YY-YY" e.g. "26-27"
             const now = new Date();
             const calYear = now.getFullYear();
@@ -153,6 +155,7 @@ export const initDsrCronJob = () => {
         } catch (error) {
             console.error("❌ Critical error in DSR cron job:", error);
         }
+        });
     }, {
         timezone: "Asia/Kolkata" // Set to Indian Standard Time
     });
