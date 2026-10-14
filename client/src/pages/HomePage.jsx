@@ -6,6 +6,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { Route, Routes, Outlet } from "react-router-dom";
 import { TabValueContext } from "../contexts/TabValueContext.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
+import ErrorBoundary from "../components/common/ErrorBoundary.jsx";
 // Home
 import Home from "../components/home/Home.js";
 import Assign from "../components/home/Assign.js";
@@ -82,7 +83,8 @@ function HomePage() {
               <CircularProgress />
             </Box>
           }>
-            <Routes>
+            <ErrorBoundary title="Module View Error">
+              <Routes>
             {/* Public Routes - No protection needed */}
             <Route path="/" element={<Home />} />
             <Route path="/change-password" element={<ChangePassword />} />
@@ -333,8 +335,9 @@ function HomePage() {
                 <BillingReportsUtility />
               }
             />
-          </Routes>
-          </Suspense>
+            </Routes>
+          </ErrorBoundary>
+        </Suspense>
         </Box>
       </Box>
     </TabValueContext.Provider>

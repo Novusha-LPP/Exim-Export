@@ -19,6 +19,7 @@ import {
   syncClubFields,
   isLikelyJobNumber,
 } from "./exportJobHelpers.mjs";
+import { populateJobSubcollections, syncJobSubcollections } from "../../services/export-jobs/subcollectionSyncService.mjs";
 import jobQueryRoutes from "./jobQueryRoutes.mjs";
 import impexcubeRoutes from "./impexcubeRoutes.mjs";
 import jobLockRoutes from "./jobLockRoutes.mjs";
@@ -269,6 +270,7 @@ router.get("/:job_no(.*)", async (req, res, next) => {
     }
 
     let jobData = exportJob.toObject();
+    jobData = await populateJobSubcollections(jobData);
 
     // Merge FreightEnquiry details if FF job
     if (job_no.startsWith("FF")) {
@@ -368,8 +370,8 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       const parentProduct = parentInv.products?.[0] || {};
       const parentHsnList = [...new Set((parentInv.products || []).map(p => p.hsn_code || p.hsnCode || p.hsn || (p.ritc?.hsnCode || p.ritc?.ritcCode || p.ritc)).filter(Boolean))].join(", ");
 
-      const rawParentContainers = (exportJob.containers && exportJob.containers.length > 0)
-        ? exportJob.containers
+      const rawParentContainers = (jobData.containers && jobData.containers.length > 0)
+        ? jobData.containers
         : (parentOp.containerDetails || []);
 
       // Filter out any leaked child containers from parent containers array
@@ -406,7 +408,7 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       jobData.containers = parentOwnContainers;
 
       // Keep parent job's own invoices as plain objects (do NOT merge child jobs' invoices into parent job)
-      jobData.invoices = (exportJob.invoices || []).map(inv => {
+      jobData.invoices = (jobData.invoices || []).map(inv => {
         const plain = typeof inv.toObject === "function" ? inv.toObject() : (inv._doc ? { ...inv._doc } : { ...inv });
         delete plain.__parentArray;
         delete plain.$__parent;
@@ -416,7 +418,7 @@ router.get("/:job_no(.*)", async (req, res, next) => {
         delete plain.$isNew;
         return { ...plain, _sourceJobNo: exportJob.job_no };
       }).filter(Boolean);
-      jobData.operations = [exportJob.operations?.[0] || {}, ...childJobs.flatMap(j => j.operations || [])].filter(Boolean);
+      jobData.operations = [jobData.operations?.[0] || {}, ...childJobs.flatMap(j => j.operations || [])].filter(Boolean);
     }
 
     // Check for stale locks (e.g., older than 30 minutes)
@@ -578,6 +580,7 @@ router.put(
       }
 
       await syncToClientDatabase(updatedExportJob.job_no, { containers });
+      await syncJobSubcollections(updatedExportJob.job_no, { containers }, updatedExportJob._id);
 
       res.json({
         message: "Containers updated successfully",
@@ -745,6 +748,8 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
     if (!updatedExportJob) {
       return res.status(404).json({ message: "Export job not found" });
     }
+
+    await syncJobSubcollections(updatedExportJob.job_no, updateData, updatedExportJob._id);
 
     // Sync back to FreightEnquiry if it's a Freight Forwarding job
     if (job_no.startsWith("FF")) {
@@ -1052,6 +1057,8 @@ router.patch(
       if (!updatedExportJob) {
         return res.status(404).json({ message: "Export job not found" });
       }
+
+      await syncJobSubcollections(updatedExportJob.job_no, updateObject, updatedExportJob._id);
 
       // Force Pre-Save calculations for milestones and detailedStatus
       updatedExportJob.markModified("milestones");

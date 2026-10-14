@@ -1,5 +1,6 @@
 // ImagePreview.jsx (same logic, slightly tighter enterprise styling)
 import React, { useState, useContext } from "react";
+import axios from "axios";
 import { UserContext } from "../../contexts/UserContext";
 import ConfirmDialog from "./ConfirmDialog";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -51,6 +52,11 @@ const ImagePreview = ({
   const [deleteIndex, setDeleteIndex] = useState(null);
   const { user } = useContext(UserContext);
 
+  const canDelete = Boolean(
+    user?.canDeleteDocs === true ||
+    (typeof user?.role === "string" && user?.role.toLowerCase() === "admin")
+  );
+
   const imageArray = Array.isArray(images)
     ? images.map((img) =>
       typeof img === "object" && img !== null ? img.url : img
@@ -80,22 +86,23 @@ const ImagePreview = ({
 
     try {
       const key = new URL(imageUrl).pathname.slice(1);
-      const response = await fetch(
+      const response = await axios.post(
         `${import.meta.env.VITE_API_STRING}/delete-s3-file`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ key }),
-        }
+        { key }
       );
-      if (response.ok) {
+      if (response.status === 200 || response.data?.success) {
         onDeleteImage(deleteIndex);
       } else {
-        alert("Failed to delete document from S3.");
+        alert(response.data?.message || "Failed to delete document from S3.");
       }
     } catch (error) {
       console.error("Error deleting document:", error);
-      alert("Error deleting document.");
+      const errorMsg =
+        error.response?.data?.message ||
+        error.response?.data ||
+        error.message ||
+        "Error deleting document.";
+      alert(errorMsg);
     }
     setOpenDeleteDialog(false);
   };
@@ -122,7 +129,7 @@ const ImagePreview = ({
               <span style={{ fontSize: 11, color: '#64748b' }}>N/A</span>
             )}
             
-            {!readOnly && (
+            {!readOnly && canDelete && (
               <button
                 type="button"
                 style={styles.deleteBtn}
@@ -137,7 +144,7 @@ const ImagePreview = ({
       ) : (
         <div style={styles.empty}>No document.</div>
       )}
-      {!readOnly && (
+      {!readOnly && canDelete && (
         <ConfirmDialog
           open={openDeleteDialog}
           handleClose={() => setOpenDeleteDialog(false)}

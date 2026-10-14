@@ -1,6 +1,7 @@
 import express from "express";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
 import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
+import { populateJobSubcollections } from "../../services/export-jobs/subcollectionSyncService.mjs";
 
 const router = express.Router();
 
@@ -193,6 +194,7 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
     }
 
     let jobData = job.toObject();
+    jobData = await populateJobSubcollections(jobData);
 
     // Merge FreightEnquiry details if FF job
     if (String(jobNo).startsWith("FF")) {

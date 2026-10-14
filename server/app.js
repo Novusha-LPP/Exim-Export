@@ -21,7 +21,6 @@ import { authenticateToken } from "./middleware/auth.mjs";
 import getAllUsers from "./routes/getAllUsers.mjs";
 import getUser from "./routes/getUser.mjs";
 import login from "./routes/login.mjs";
-import handleS3Deletation from "./routes/handleS3Deletation.mjs";
 
 //HOME
 import assignModules from "./routes/home/assignModules.mjs";
@@ -212,9 +211,6 @@ app.use(assignRole);
 app.use(unassignModule);
 app.use(changePassword);
 app.use(assignIcdCode);
-
-// handle delete
-app.use(handleS3Deletation);
 
 app.use(auditTrail);
 

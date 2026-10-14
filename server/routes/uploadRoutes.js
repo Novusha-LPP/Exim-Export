@@ -40,7 +40,7 @@ const storage = multer.diskStorage({
   },
 });
 
-// Strict MIME type validation to prevent malicious uploads (Stored XSS, executables)
+// Strict MIME type & extension validation to prevent malicious uploads (Stored XSS, executables)
 const ALLOWED_MIME_TYPES = new Set([
   "application/pdf",
   "image/jpeg",
@@ -56,14 +56,34 @@ const ALLOWED_MIME_TYPES = new Set([
   "text/plain",
 ]);
 
+const ALLOWED_EXTENSIONS = new Set([
+  ".pdf",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".xlsx",
+  ".xls",
+  ".csv",
+  ".doc",
+  ".docx",
+  ".zip",
+  ".txt",
+]);
+
 const fileFilter = (req, file, cb) => {
   const mime = (file.mimetype || "").toLowerCase();
-  if (ALLOWED_MIME_TYPES.has(mime) || mime.startsWith("image/")) {
+  const ext = path.extname(file.originalname || "").toLowerCase();
+
+  const isMimeAllowed = ALLOWED_MIME_TYPES.has(mime) || mime.startsWith("image/");
+  const isExtAllowed = ALLOWED_EXTENSIONS.has(ext);
+
+  if (isMimeAllowed && isExtAllowed) {
     cb(null, true);
   } else {
     cb(
       new Error(
-        `Security Error: File type '${file.mimetype}' is not permitted. Only PDF, Excel, Word, CSV, Zip, and Images are allowed.`
+        `Security Error: Upload rejected. File '${file.originalname}' (MIME: '${file.mimetype}', Ext: '${ext}') is not permitted. Only PDF, Excel, Word, CSV, Zip, and Images are allowed.`
       ),
       false
     );
