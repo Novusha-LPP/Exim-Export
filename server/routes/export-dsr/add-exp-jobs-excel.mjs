@@ -125,7 +125,7 @@ const normalizeEximScheme = (scheme) => {
         case "03": return "03 - ADVANCE LICENCE";
         case "19": return "19 - DRAWBACK (DBK)";
         case "21": return "21 (EOU/EPZ/SEZ/EHTP/STP)";
-        case "43": return "43 - DRAWBACK AND ZERO DUTY PECG";
+        case "43": return "43 - DRAWBACK AND ZERO DUTY EPCG";
         case "50": return "50 - EPCG AND ADVANCE LICENSE";
         case "60": return "60 - DRAWBACK AND ROSCTL";
         case "61": return "61 - EPCG, DRAWBACK AND ROSCTL";

@@ -394,6 +394,16 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
           pol: "$port_of_loading",
           pod: "$port_of_discharge",
           country: "$discharge_country",
+          rawInvoices: "$invoices",
+          rawConsignees: "$consignees",
+          rawContainers: "$uniqueContainers.list",
+          shipping_line: { $ifNull: ["$shipping_line_airline", ""] },
+          gross_weight: { $ifNull: ["$gross_weight_kg", ""] },
+          net_weight: { $ifNull: ["$net_weight_kg", ""] },
+          packages: { $ifNull: ["$total_no_of_pkgs", ""] },
+          package_unit: { $ifNull: ["$package_unit", ""] },
+          drawback_scroll_no: { $ifNull: ["$drawback_scroll_no", ""] },
+          drawback_scroll_date: { $ifNull: ["$drawback_scroll_date", ""] },
         },
       },
     ]);
@@ -408,7 +418,155 @@ router.get("/api/report/export-clearance/:year/:month", async (req, res) => {
     }
 
     const result = await ExJobModel.aggregate(pipeline);
-    res.status(200).json(result);
+
+    const formattedResult = result.map((row) => {
+      const hsnSet = new Set();
+      const eximSet = new Set();
+      const invNoSet = new Set();
+      const invDateSet = new Set();
+      let totalFob = 0;
+
+      const rodtepRateSet = new Set();
+      const rodtepClaimSet = new Set();
+      let totalRodtepAmount = 0;
+
+      const dbkRateSet = new Set();
+      const dbkSrNoSet = new Set();
+      const dbkScrollNoSet = new Set();
+      const dbkScrollDateSet = new Set();
+      let totalDbkAmount = 0;
+
+      const rosctlRateSet = new Set();
+      const rosctlClaimSet = new Set();
+      let totalRosctlAmount = 0;
+
+      const igstStatusSet = new Set();
+      const originStateSet = new Set();
+      const originDistrictSet = new Set();
+      const rewardItemSet = new Set();
+
+      if (row.drawback_scroll_no) dbkScrollNoSet.add(String(row.drawback_scroll_no).trim());
+      if (row.drawback_scroll_date) dbkScrollDateSet.add(String(row.drawback_scroll_date).trim());
+
+      (row.rawInvoices || []).forEach((inv) => {
+        if (inv.invoiceNumber) invNoSet.add(String(inv.invoiceNumber).trim());
+        if (inv.invoiceDate) invDateSet.add(String(inv.invoiceDate).trim());
+        const fobAmt = parseFloat(inv.freightInsuranceCharges?.fobValue?.amount);
+        if (!isNaN(fobAmt)) totalFob += fobAmt;
+
+        (inv.products || []).forEach((p) => {
+          const hsn =
+            (typeof p.ritc === "object"
+              ? p.ritc?.ritcCode || p.ritc?.hsnCode
+              : p.ritc) ||
+            p.hsn_code ||
+            p.hsnCode ||
+            p.hsn;
+          if (hsn && String(hsn).trim()) hsnSet.add(String(hsn).trim());
+
+          const exim = p.eximCode || p.scheme_code || p.schemeCode;
+          if (exim && String(exim).trim()) eximSet.add(String(exim).trim());
+
+          // RoDTEP Details
+          if (p.rodtepInfo) {
+            if (p.rodtepInfo.ratePercent && parseFloat(p.rodtepInfo.ratePercent) > 0) {
+              rodtepRateSet.add(`${p.rodtepInfo.ratePercent}%`);
+            }
+            if (p.rodtepInfo.amountINR) {
+              const rAmt = parseFloat(p.rodtepInfo.amountINR);
+              if (!isNaN(rAmt)) totalRodtepAmount += rAmt;
+            }
+            if (p.rodtepInfo.claim) {
+              rodtepClaimSet.add(String(p.rodtepInfo.claim).trim());
+            }
+          }
+
+          // DBK (Duty Drawback) Details
+          if (Array.isArray(p.drawbackDetails)) {
+            p.drawbackDetails.forEach((d) => {
+              if (d.dbkRate && parseFloat(d.dbkRate) > 0) {
+                dbkRateSet.add(d.percentageOfFobValue || `${d.dbkRate}%`);
+              }
+              if (d.dbkAmount) {
+                const dAmt = parseFloat(d.dbkAmount);
+                if (!isNaN(dAmt)) totalDbkAmount += dAmt;
+              }
+              if (d.dbkSrNo) dbkSrNoSet.add(String(d.dbkSrNo).trim());
+              if (d.drawback_scroll_no) dbkScrollNoSet.add(String(d.drawback_scroll_no).trim());
+              if (d.drawback_scroll_date) dbkScrollDateSet.add(String(d.drawback_scroll_date).trim());
+            });
+          } else if (p.dbkRate || p.dbkAmount || p.dbkitem || p.dbkSrNo) {
+            if (p.dbkRate) dbkRateSet.add(String(p.dbkRate));
+            if (p.dbkAmount) totalDbkAmount += parseFloat(p.dbkAmount) || 0;
+            if (p.dbkSrNo || p.dbkitem) dbkSrNoSet.add(String(p.dbkSrNo || p.dbkitem));
+          }
+
+          // RoSCTL Details
+          if (p.rosctlInfo) {
+            const sl = parseFloat(p.rosctlInfo.slRate) || 0;
+            const ctl = parseFloat(p.rosctlInfo.ctlRate) || 0;
+            if (sl > 0 || ctl > 0) rosctlRateSet.add(`${sl + ctl}%`);
+            if (p.rosctlInfo.amountINR) {
+              const rosAmt = parseFloat(p.rosctlInfo.amountINR);
+              if (!isNaN(rosAmt)) totalRosctlAmount += rosAmt;
+            }
+            if (p.rosctlInfo.claim) rosctlClaimSet.add(String(p.rosctlInfo.claim).trim());
+          }
+
+          // Additional customs attributes
+          if (p.igstCompensationCess?.igstPaymentStatus) {
+            igstStatusSet.add(String(p.igstCompensationCess.igstPaymentStatus).trim());
+          }
+          if (p.originState) originStateSet.add(String(p.originState).trim());
+          if (p.originDistrict) originDistrictSet.add(String(p.originDistrict).trim());
+          if (p.rewardItem !== undefined && p.rewardItem !== null) {
+            rewardItemSet.add(p.rewardItem ? "Yes" : "No");
+          }
+        });
+      });
+
+      const consigneeName =
+        row.consignee || (row.rawConsignees?.[0]?.consignee_name || "");
+
+      const containerDetails = (row.rawContainers || []).map((c) => ({
+        containerNo: c.containerNo || c.container_number || "",
+        containerSize: c.containerSize || c.type || "",
+        sealNo: c.sealNo || c.customSealNo || "",
+        lineSealNo: c.shippingLineSealNo || "",
+        pkgs: c.pkgsStuffed || "",
+        grossWeight: c.grossWeight || "",
+      }));
+
+      const { rawInvoices, rawConsignees, rawContainers, ...cleanRow } = row;
+
+      return {
+        ...cleanRow,
+        hsn_code: Array.from(hsnSet).join(", "),
+        exim_code: Array.from(eximSet).join(", "),
+        fob_value: totalFob > 0 ? totalFob : "",
+        invoice_no: Array.from(invNoSet).join(", "),
+        invoice_date: Array.from(invDateSet).join(", "),
+        consignee: consigneeName,
+        containerDetails,
+        rodtep_rate: Array.from(rodtepRateSet).join(", "),
+        rodtep_amount: totalRodtepAmount > 0 ? totalRodtepAmount.toFixed(2) : "",
+        rodtep_claim: Array.from(rodtepClaimSet).join(", "),
+        dbk_rate: Array.from(dbkRateSet).join(", "),
+        dbk_amount: totalDbkAmount > 0 ? totalDbkAmount.toFixed(2) : "",
+        dbk_sr_no: Array.from(dbkSrNoSet).join(", "),
+        dbk_scroll_no: Array.from(dbkScrollNoSet).join(", "),
+        dbk_scroll_date: Array.from(dbkScrollDateSet).join(", "),
+        rosctl_rate: Array.from(rosctlRateSet).join(", "),
+        rosctl_amount: totalRosctlAmount > 0 ? totalRosctlAmount.toFixed(2) : "",
+        rosctl_claim: Array.from(rosctlClaimSet).join(", "),
+        igst_status: Array.from(igstStatusSet).join(", "),
+        origin_state: Array.from(originStateSet).join(", "),
+        origin_district: Array.from(originDistrictSet).join(", "),
+        reward_item: Array.from(rewardItemSet).join(", "),
+      };
+    });
+
+    res.status(200).json(formattedResult);
   } catch (error) {
     console.error("❌ Error in export clearance route:", error);
     res
