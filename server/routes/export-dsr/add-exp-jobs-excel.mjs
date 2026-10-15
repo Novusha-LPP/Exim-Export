@@ -3,6 +3,7 @@ import ExportJobModel from "../../model/export/ExJobModel.mjs";
 import ExLastJobsDate from "../../model/export/ExLastJobDate.mjs";
 import { updateJobSequenceIfHigher } from "../../utils/jobNumberGenerator.mjs";
 import { detectSbOrSealChange } from "../../utils/sbSealChangeDetector.mjs";
+import Directory from "../../model/Directorties/Directory.js";
 
 const router = express.Router();
 
@@ -260,10 +261,24 @@ router.post("/api/jobs/add-job", async (req, res) => {
             `✅ [Backend] Found ${existingJobsMap.size} existing jobs. Building bulk operations...`
         );
 
+        // Batch fetch all approved organizations from Directory
+        const approvedDirectories = await Directory.find(
+            { approvalStatus: "Approved" },
+            { directoryName: 1 }
+        ).lean();
+
+        const approvedOrgSet = new Set(
+            approvedDirectories
+                .map((d) => (d.directoryName || "").trim().toLowerCase())
+                .filter(Boolean)
+        );
+        console.log(`🏢 [Backend] Found ${approvedOrgSet.size} approved organizations in Directory`);
 
         const bulkOperations = [];
         let processedCount = 0;
         let skippedCount = 0;
+        let unapprovedSkippedCount = 0;
+        const unapprovedExportersList = new Set();
 
         // Collect max sequence numbers to update JobSequence at the end
         const maxSequences = new Map(); // Key: "branch|year", Value: maxSeq
@@ -442,6 +457,32 @@ router.post("/api/jobs/add-job", async (req, res) => {
             if (!job_no || String(job_no).trim() === "" || String(job_no).toLowerCase() === "undefined") {
                 skippedCount++;
                 continue;
+            }
+
+            const isNewJob = !existingJobsMap.has(job_no);
+            const expKey = (formattedExporter || "").trim().toLowerCase();
+
+            // CRITICAL: Don't allow creating job for unapproved organization
+            if (isNewJob) {
+                if (!expKey || !approvedOrgSet.has(expKey)) {
+                    skippedCount++;
+                    unapprovedSkippedCount++;
+                    unapprovedExportersList.add(formattedExporter || "No Exporter Specified");
+                    console.warn(`[Backend Excel] Skipped creating new job ${job_no}: organization '${formattedExporter || "N/A"}' is not approved`);
+                    continue;
+                }
+            } else {
+                // If updating existing job, do not allow setting exporter to an unapproved organization
+                const existingJob = existingJobsMap.get(job_no);
+                if (
+                    formattedExporter &&
+                    existingJob?.exporter &&
+                    expKey !== existingJob.exporter.trim().toLowerCase() &&
+                    !approvedOrgSet.has(expKey)
+                ) {
+                    console.warn(`[Backend Excel] Job ${job_no}: keeping existing approved exporter '${existingJob.exporter}', ignoring unapproved '${formattedExporter}'`);
+                    formattedExporter = existingJob.exporter;
+                }
             }
 
 
@@ -1248,9 +1289,13 @@ router.post("/api/jobs/add-job", async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: "Export jobs added/updated successfully",
+            message: unapprovedSkippedCount > 0
+                ? `Export jobs processed (${processedCount} saved, ${unapprovedSkippedCount} skipped due to unapproved organizations)`
+                : "Export jobs added/updated successfully",
             count: processedCount,
             skipped: skippedCount,
+            unapprovedSkipped: unapprovedSkippedCount,
+            unapprovedExporters: Array.from(unapprovedExportersList),
             timeTaken: totalTime,
         });
     } catch (error) {
