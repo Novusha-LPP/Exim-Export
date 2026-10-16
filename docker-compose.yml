@@ -1,0 +1,69 @@
+services:
+  # ─── BACKEND API SERVICE ───────────────────────────────────────────────
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: exim_backend
+    restart: unless-stopped
+    ports:
+      - "9002:9002"
+    environment:
+      - ENABLE_IN_PROCESS_CRON=false
+    env_file:
+      - ./server/.env
+    volumes:
+      # Persist application logs on EC2 host
+      - ./server/logs:/server/logs
+    networks:
+      - exim_network
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'const http = require(\"http\"); http.get(\"http://localhost:9002/api/health\", (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on(\"error\", () => process.exit(1));'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ─── FRONTEND WEB APPLICATION (NGINX + REACT SPA) ─────────────────────
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        # Uses relative /api reverse proxied by Nginx to the backend container
+        VITE_API_STRING: /api
+        VITE_IMPORT_API_STRING: https://eximbot.alvision.in/import/api
+        VITE_VERSION: "12-10-01"
+        VITE_TALLY_KEY: "03c132e8da9d30732371f56fdb337ce564011287ca41a1725c5bd2a368dff5e4"
+    container_name: exim_frontend
+    restart: unless-stopped
+    ports:
+      # Expose standard HTTP on port 80
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - exim_network
+
+  # ─── STANDALONE BACKGROUND WORKER (CRON JOBS & TRACKING) ───────────────
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: exim_worker
+    command: ["npm", "run", "worker"]
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    volumes:
+      - ./server/logs:/server/logs
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - exim_network
+
+networks:
+  exim_network:
+    driver: bridge

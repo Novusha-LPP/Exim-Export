@@ -135,21 +135,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(
   cors({
-    origin: [
-      "http://eximdev.s3-website.ap-south-1.amazonaws.com",
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://122.162.239.158:5173",
-      "http://test-ssl-exim.s3-website.ap-south-1.amazonaws.com",
-      "http://exim-export.s3-website.ap-south-1.amazonaws.com",
-      "https://export.alvision.in",
-      "http://export.alvision.in",
-      "https://import.alvision.in",
-      "http://import.alvision.in",
-      "http://handover-odex.s3-website.ap-south-1.amazonaws.com",
-      "http://localhost:3002",
-      "http://192.168.2.31:3002"
-    ],
+    origin: true, // Dynamically reflects origin (supports any EC2 IP, localhost, and custom domains)
     credentials: true,
     // Allow custom headers for audit trail
     exposedHeaders: ["Content-Type", "Authorization"],

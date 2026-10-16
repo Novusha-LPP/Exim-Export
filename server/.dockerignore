@@ -9,3 +9,6 @@ yarn-error.log
 .vscode
 .idea
 *.md
+.env
+.env.*
+scratch

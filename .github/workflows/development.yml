@@ -1,0 +1,160 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+jobs:
+  deploy-client-dev:
+    name: Build & Deploy Dev Client
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+           uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install Client Dependencies
+        run: |
+          cd client
+          npm ci
+
+      - name: Inject Development Client Environment (.env)
+        run: |
+          cat <<EOF > client/.env
+          VITE_API_STRING=${{ secrets.DEV_VITE_API_STRING || 'http://localhost:9002/api' }}
+          VITE_IMPORT_API_STRING=${{ secrets.DEV_VITE_IMPORT_API_STRING || 'https://eximbot.alvision.in/import/api' }}
+          VITE_VERSION=${{ secrets.DEV_VITE_VERSION || 'dev' }}
+          FAST_REFRESH=false
+          GENERATE_SOURCEMAP=true
+          VITE_TALLY_KEY=${{ secrets.DEV_VITE_TALLY_KEY }}
+          EOF
+
+      - name: Build Client Bundle
+        run: |
+          cd client
+          npm run build
+
+      - name: Configure AWS Credentials (Optional S3 Deploy)
+        if: "${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.DEV_AWS_S3_CLIENT_BUCKET != '' }}"
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
+
+      - name: Sync Static Assets to Development S3 Bucket
+        if: "${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.DEV_AWS_S3_CLIENT_BUCKET != '' }}"
+        run: |
+          aws s3 sync client/dist s3://${{ secrets.DEV_AWS_S3_CLIENT_BUCKET }} --delete
+
+  deploy-server-dev:
+    name: Build & Publish Dev Server Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: "${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}"
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push Development Docker Image
+        run: |
+          IMAGE_TAG="${{ secrets.DOCKERHUB_USERNAME || 'punit084' }}/export-dev"
+          docker build \
+            --no-cache \
+            -t ${IMAGE_TAG}:latest \
+            -t ${IMAGE_TAG}:${{ github.sha }} \
+            server/
+
+          if [ "${{ secrets.DOCKERHUB_TOKEN }}" != "" ]; then
+            docker push ${IMAGE_TAG}:latest
+            docker push ${IMAGE_TAG}:${{ github.sha }}
+          else
+            echo "DOCKERHUB_TOKEN not configured. Skipping docker push step."
+          fi
+
+      - name: Deploy to Remote Development Server via SSH (Optional)
+        if: "${{ secrets.DEV_SSH_HOST != '' && secrets.DEV_SSH_KEY != '' }}"
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER || 'ubuntu' }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            echo "Pulling latest development image and updating service..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME || 'punit084' }}/export-dev:latest
+            # Restart development container / PM2 process if applicable
+
+  notify-on-failure:
+    name: Send Development Failure Alert Email
+    needs: [deploy-client-dev, deploy-server-dev]
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve GitHub Account Email
+        id: recipient
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EMAIL="${{ github.event.head_commit.author.email }}"
+          if [ -z "$EMAIL" ] || [ "$EMAIL" = "null" ] || [[ "$EMAIL" == *"noreply"* ]]; then
+            PUSHER_EMAIL="${{ github.event.pusher.email }}"
+            if [ -n "$PUSHER_EMAIL" ] && [ "$PUSHER_EMAIL" != "null" ] && [[ "$PUSHER_EMAIL" != *"noreply"* ]]; then
+              EMAIL="$PUSHER_EMAIL"
+            fi
+          fi
+          if [ -z "$EMAIL" ] || [ "$EMAIL" = "null" ] || [[ "$EMAIL" == *"noreply"* ]]; then
+            API_EMAIL=$(gh api users/${{ github.actor }} --jq '.email // empty' 2>/dev/null || true)
+            if [ -n "$API_EMAIL" ] && [ "$API_EMAIL" != "null" ]; then
+              EMAIL="$API_EMAIL"
+            fi
+          fi
+          if [ -z "$EMAIL" ] || [ "$EMAIL" = "null" ] || [[ "$EMAIL" == *"noreply"* ]]; then
+            if [ -n "${{ secrets.ALERT_EMAIL }}" ]; then
+              EMAIL="${{ secrets.ALERT_EMAIL }}"
+            fi
+          fi
+          if [ -z "$EMAIL" ] || [ "$EMAIL" = "null" ]; then
+            EMAIL="${{ github.event.head_commit.author.email || github.event.pusher.email }}"
+          fi
+          echo "Resolved recipient email: $EMAIL"
+          echo "email=$EMAIL" >> $GITHUB_OUTPUT
+
+      - name: Send Alert Email
+        if: steps.recipient.outputs.email != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST || 'smtp.mailer91.com' }}
+          server_port: ${{ secrets.SMTP_PORT || 587 }}
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "🚨 Dev Deployment Failed: ${{ github.repository }} [${{ github.ref_name }}]"
+          to: ${{ steps.recipient.outputs.email }}
+          from: "Exim CI/CD Alert <${{ secrets.SMTP_USER }}>"
+          html_body: |
+            <h2>🚨 Development Deployment Failed</h2>
+            <p>An error occurred during the development deployment workflow on <strong>${{ github.repository }}</strong>.</p>
+            <ul>
+              <li><strong>Branch:</strong> ${{ github.ref_name }}</li>
+              <li><strong>Commit:</strong> ${{ github.sha }}</li>
+              <li><strong>Author:</strong> ${{ github.actor }}</li>
+              <li><strong>Workflow Run:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Logs</a></li>
+            </ul>
+            <p>Please check the action run logs to see which step failed.</p>

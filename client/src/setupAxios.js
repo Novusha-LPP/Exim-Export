@@ -83,7 +83,7 @@ axios.interceptors.response.use(
         const raw = localStorage.getItem("exim_user");
         if (raw) {
           const user = JSON.parse(raw);
-          if (user && !user.token) {
+          if (user && user.token !== response.data.token) {
             user.token = response.data.token;
             localStorage.setItem("exim_user", JSON.stringify(user));
             axios.defaults.headers.common["Authorization"] = `Bearer ${user.token}`;
@@ -114,5 +114,53 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Global Fetch Interceptor: transparently injects auth headers into native window.fetch calls
+if (typeof window !== "undefined" && window.fetch) {
+  const nativeFetch = window.fetch;
+  window.fetch = async (input, init = {}) => {
+    try {
+      const raw = localStorage.getItem("exim_user");
+      if (raw) {
+        const user = JSON.parse(raw);
+        if (user) {
+          let headers;
+          if (init && init.headers) {
+            headers = new Headers(init.headers);
+          } else if (input instanceof Request) {
+            headers = new Headers(input.headers);
+          } else {
+            headers = new Headers();
+          }
+
+          if (user.token && !headers.has("Authorization")) {
+            headers.set("Authorization", `Bearer ${user.token}`);
+          }
+          if (user.username && !headers.has("username")) {
+            headers.set("username", user.username);
+            headers.set("x-username", user.username);
+          }
+          if ((user._id || user.id) && !headers.has("user-id")) {
+            headers.set("user-id", user._id || user.id);
+          }
+          if (user.role && !headers.has("user-role")) {
+            headers.set("user-role", user.role);
+            headers.set("x-user-role", user.role);
+          }
+
+          if (input instanceof Request) {
+            const newRequest = new Request(input, { ...init, headers });
+            return nativeFetch(newRequest);
+          } else {
+            return nativeFetch(input, { ...init, headers });
+          }
+        }
+      }
+    } catch (e) {
+      // Graceful fallback to native fetch
+    }
+    return nativeFetch(input, init);
+  };
+}
 
 export default axios;

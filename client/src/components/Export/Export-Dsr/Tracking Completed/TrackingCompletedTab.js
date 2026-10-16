@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useState, useEffect } from "react";
 import DateInput from "../../../common/DateInput.js";
+import axios from "axios";
 
 const getMilestones = (isAir) => [
   "SB Filed",
@@ -26,12 +27,15 @@ const TrackingCompletedTab = ({ formik, directories, params, isEditable = true }
   useEffect(() => {
     const fetchExportJobsUsers = async () => {
       try {
-        const response = await fetch(
+        const response = await axios.get(
           `${import.meta.env.VITE_API_STRING}/export-jobs-module-users`
         );
-        if (response.ok) {
-          const data = await response.json();
-          setExportJobsUsers(data.data || []);
+        if (response.data?.success) {
+          setExportJobsUsers(response.data.data || []);
+        } else if (Array.isArray(response.data?.data)) {
+          setExportJobsUsers(response.data.data);
+        } else if (Array.isArray(response.data)) {
+          setExportJobsUsers(response.data);
         }
       } catch (error) {
         console.error("Error fetching export-jobs module users:", error);

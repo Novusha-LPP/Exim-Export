@@ -11,9 +11,8 @@ COPY package*.json ./
 # Install production dependencies and clean npm cache
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy rest of the code
+# Copy application code (excluding .dockerignore files)
 COPY . .
-COPY .env .env
 
 EXPOSE 9002
 
