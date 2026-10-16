@@ -25,6 +25,10 @@ const SeaPortSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    portDetails: {
+      type: String,
+      trim: true,
+    },
   },
   { timestamps: true }
 );

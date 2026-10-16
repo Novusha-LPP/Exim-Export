@@ -1,12 +1,18 @@
 import express from "express";
 import SeaPort from "../../model/Directorties/SeaPort.js";
+import AirPort from "../../model/Directorties/AirPort.js";
 
 const router = express.Router();
 
 // GET /api/seaPorts - Get all sea ports
 router.get("/", async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "" } = req.query;
+    const {
+      page = 1,
+      limit = req.query.search ? 50 : 10,
+      search = "",
+      country = "",
+    } = req.query;
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -23,11 +29,33 @@ router.get("/", async (req, res) => {
       ];
     }
 
+    if (country) {
+      query.country = { $regex: `^${country}$`, $options: "i" };
+    }
+
     const total = await SeaPort.countDocuments(query);
-    const seaPorts = await SeaPort.find(query)
+    let seaPorts = await SeaPort.find(query)
       .sort({ portCode: 1 })
       .skip(skip)
-      .limit(limitNum);
+      .limit(limitNum)
+      .lean();
+
+    // If search was performed and we have space, also supplement from AirPort
+    if (search && seaPorts.length < limitNum) {
+      const existingCodes = new Set(
+        seaPorts.map((p) => (p.portCode || "").toUpperCase().trim())
+      );
+      const airPorts = await AirPort.find(query)
+        .limit(limitNum - seaPorts.length)
+        .lean();
+      for (const ap of airPorts) {
+        const code = (ap.portCode || "").toUpperCase().trim();
+        if (code && !existingCodes.has(code)) {
+          existingCodes.add(code);
+          seaPorts.push(ap);
+        }
+      }
+    }
 
     res.json({
       success: true,
