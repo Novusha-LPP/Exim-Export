@@ -98,7 +98,7 @@ jobs:
           echo "email=$EMAIL" >> $GITHUB_OUTPUT
 
       - name: Send Alert Email
-        if: steps.recipient.outputs.email != ''
+        if: steps.recipient.outputs.email != '' && secrets.SMTP_USER != ''
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_HOST || 'smtp.mailer91.com' }}

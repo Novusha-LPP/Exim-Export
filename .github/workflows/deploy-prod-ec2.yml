@@ -1,0 +1,125 @@
+name: Deploy to EC2 (Production)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-to-ec2-prod:
+    name: Deploy Docker Compose to Production EC2
+    # Runs when PROD_EC2_HOST secret is defined
+    if: "${{ secrets.PROD_EC2_HOST != '' }}"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Production EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_EC2_HOST }}
+          username: ${{ secrets.PROD_EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.PROD_EC2_SSH_KEY }}
+          script: |
+            set -e
+            echo "=========================================================="
+            echo "🚀 Deploying latest 'main' branch to Production EC2..."
+            echo "=========================================================="
+
+            AUTH_TOKEN="${{ secrets.GH_PAT || github.token }}"
+            REPO_URL="https://x-access-token:${AUTH_TOKEN}@github.com/Novusha-LPP/Exim-Export.git"
+
+            # Navigate to or clone repository directory on EC2
+            if [ ! -d "$HOME/Exim-Export" ]; then
+              echo "Repository not found at $HOME/Exim-Export. Cloning main branch..."
+              git clone -b main "$REPO_URL" "$HOME/Exim-Export"
+            fi
+            cd "$HOME/Exim-Export"
+
+            # Ensure origin remote is authenticated with the token
+            git remote set-url origin "$REPO_URL"
+
+            # Fetch latest changes from main branch
+            echo "📥 Pulling latest commits from main..."
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+
+            # Inject production environment from GitHub secret if available
+            if [ -n "${{ secrets.PROD_SERVER_ENV }}" ]; then
+              echo "Injecting server/.env from PROD_SERVER_ENV GitHub secret..."
+              echo "${{ secrets.PROD_SERVER_ENV }}" > server/.env
+            elif [ ! -f "server/.env" ]; then
+              if [ -f "server/.env.example" ]; then
+                echo "⚠️ server/.env not found! Initializing from server/.env.example..."
+                cp server/.env.example server/.env
+              else
+                touch server/.env
+              fi
+            fi
+
+            # Remove client/.env if present so build args (/api) are used
+            rm -f client/.env
+
+            # Build and restart containers using Docker Compose
+            echo "📦 Building images and starting containers..."
+            docker compose up -d --build --remove-orphans
+
+            # Clean up old unused build cache images to save disk space
+            docker image prune -f
+
+            echo "=========================================================="
+            echo "✅ Production deployment successful! Active containers:"
+            echo "=========================================================="
+            docker compose ps
+
+  notify-on-failure:
+    name: Send Production Failure Alert Email
+    needs: [deploy-to-ec2-prod]
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve GitHub Account Email
+        id: recipient
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EMAIL="${{ github.event.head_commit.author.email }}"
+          if [ -z "$EMAIL" ] || [ "$EMAIL" = "null" ] || [[ "$EMAIL" == *"noreply"* ]]; then
+            PUSHER_EMAIL="${{ github.event.pusher.email }}"
+            if [ -n "$PUSHER_EMAIL" ] && [ "$PUSHER_EMAIL" != "null" ] && [[ "$PUSHER_EMAIL" != *"noreply"* ]]; then
+              EMAIL="$PUSHER_EMAIL"
+            fi
+          fi
+          if [ -z "$EMAIL" ] || [ "$EMAIL" = "null" ] || [[ "$EMAIL" == *"noreply"* ]]; then
+            API_EMAIL=$(gh api users/${{ github.actor }} --jq '.email // empty' 2>/dev/null || true)
+            if [ -n "$API_EMAIL" ] && [ "$API_EMAIL" != "null" ]; then
+              EMAIL="$API_EMAIL"
+            fi
+          fi
+          if [ -z "$EMAIL" ] || [ "$EMAIL" = "null" ]; then
+            EMAIL="${{ github.event.head_commit.author.email || github.event.pusher.email }}"
+          fi
+          echo "Resolved recipient email: $EMAIL"
+          echo "email=$EMAIL" >> $GITHUB_OUTPUT
+
+      - name: Send Alert Email
+        if: steps.recipient.outputs.email != '' && secrets.SMTP_USER != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST || 'smtp.mailer91.com' }}
+          server_port: ${{ secrets.SMTP_PORT || 587 }}
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "🚨 Production EC2 Deployment Failed: ${{ github.repository }} [${{ github.ref_name }}]"
+          to: ${{ steps.recipient.outputs.email }}
+          from: "Exim Production Alert <${{ secrets.SMTP_USER }}>"
+          html_body: |
+            <h2 style="color: #d32f2f;">🚨 Production EC2 Deployment Failed</h2>
+            <p>An automated deployment to Production EC2 has failed on branch: <strong>${{ github.ref_name }}</strong></p>
+            <ul>
+              <li><strong>Repository:</strong> ${{ github.repository }}</li>
+              <li><strong>Commit:</strong> ${{ github.sha }}</li>
+              <li><strong>Triggered By:</strong> ${{ github.actor }}</li>
+              <li><strong>Action Run Logs:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Deployment Logs</a></li>
+            </ul>

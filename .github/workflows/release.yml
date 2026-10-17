@@ -100,8 +100,12 @@ jobs:
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
             echo "Pulling latest production image and updating service..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME || 'punit084' }}/export-main:latest
-            # Run docker compose up -d or container restart script
+            IMAGE="${{ secrets.DOCKERHUB_USERNAME || 'punit084' }}/export-main:latest"
+            docker pull "$IMAGE"
+            if [ -d "$HOME/Exim-Export" ]; then
+              cd "$HOME/Exim-Export"
+              docker compose up -d --remove-orphans
+            fi
 
   notify-on-failure:
     name: Send Production Failure Alert Email
@@ -140,7 +144,7 @@ jobs:
           echo "email=$EMAIL" >> $GITHUB_OUTPUT
 
       - name: Send Alert Email
-        if: steps.recipient.outputs.email != ''
+        if: steps.recipient.outputs.email != '' && secrets.SMTP_USER != ''
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_HOST || 'smtp.mailer91.com' }}

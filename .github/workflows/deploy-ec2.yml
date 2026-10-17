@@ -23,12 +23,18 @@ jobs:
             echo "🚀 Deploying latest 'enterprise' branch to EC2..."
             echo "=========================================================="
 
+            AUTH_TOKEN="${{ secrets.GH_PAT || github.token }}"
+            REPO_URL="https://x-access-token:${AUTH_TOKEN}@github.com/Novusha-LPP/Exim-Export.git"
+
             # Navigate to or clone the repository directory on EC2
             if [ ! -d "$HOME/Exim-Export" ]; then
               echo "Repository not found at $HOME/Exim-Export. Cloning enterprise branch..."
-              git clone -b enterprise https://github.com/Novusha-LPP/Exim-Export.git "$HOME/Exim-Export"
+              git clone -b enterprise "$REPO_URL" "$HOME/Exim-Export"
             fi
             cd "$HOME/Exim-Export"
+
+            # Ensure origin remote is authenticated with the token
+            git remote set-url origin "$REPO_URL"
 
             # Fetch latest changes from enterprise branch
             echo "📥 Pulling latest commits from enterprise..."
@@ -36,8 +42,11 @@ jobs:
             git checkout enterprise
             git reset --hard origin/enterprise
 
-            # Ensure server/.env exists so docker compose doesn't fail
-            if [ ! -f "server/.env" ]; then
+            # Inject server/.env from GitHub Secrets if available, otherwise check file exists
+            if [ -n "${{ secrets.TEST_SERVER_ENV }}" ]; then
+              echo "Injecting server/.env from TEST_SERVER_ENV GitHub secret..."
+              echo "${{ secrets.TEST_SERVER_ENV }}" > server/.env
+            elif [ ! -f "server/.env" ]; then
               if [ -f "server/.env.example" ]; then
                 echo "⚠️ server/.env not found! Initializing from server/.env.example..."
                 cp server/.env.example server/.env
@@ -45,6 +54,9 @@ jobs:
                 touch server/.env
               fi
             fi
+
+            # Remove client/.env if present so docker build args (/api) are used
+            rm -f client/.env
 
             # Build and restart containers using Docker Compose
             echo "📦 Building images and starting containers..."
@@ -95,7 +107,7 @@ jobs:
           echo "email=$EMAIL" >> $GITHUB_OUTPUT
 
       - name: Send Alert Email
-        if: steps.recipient.outputs.email != ''
+        if: steps.recipient.outputs.email != '' && secrets.SMTP_USER != ''
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_HOST || 'smtp.mailer91.com' }}
@@ -115,3 +127,4 @@ jobs:
               <li><strong>Action Run Logs:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Deployment Logs</a></li>
             </ul>
             <p style="color: #c62828; font-weight: bold;">Please check the logs to verify SSH connectivity or Docker build output on the EC2 server.</p>
+

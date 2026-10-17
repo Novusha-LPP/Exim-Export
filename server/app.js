@@ -298,7 +298,7 @@ app.use("/api/signer", signerRoutes);
 // Update Export Jobs (Wildcard route - must be last)
 app.use("/api", updateExportJobs);
 
-app.get("/", (req, res) => {
+app.get(["/", "/api"], (req, res) => {
   res.send("Export Jobs API Running");
 });
 

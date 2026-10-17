@@ -117,16 +117,16 @@ export function getTradeApis(currentBaseUrl, isImportProject = false) {
       return { importApi: resolvedImport, exportApi: resolvedExport };
     }
 
-    if (/testingimport\./i.test(base)) {
+    if (/test(ing)?import\./i.test(base)) {
       return {
         importApi: base,
-        exportApi: base.replace(/testingimport\./i, "testingexport."),
+        exportApi: base.replace(/test(ing)?import\./i, (m) => m.replace("import", "export")),
       };
     }
 
-    if (/testingexport\./i.test(base)) {
+    if (/test(ing)?export\./i.test(base)) {
       return {
-        importApi: base.replace(/testingexport\./i, "testingimport."),
+        importApi: base.replace(/test(ing)?export\./i, (m) => m.replace("export", "import")),
         exportApi: base,
       };
     }
