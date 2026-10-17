@@ -310,6 +310,7 @@ app.use(deleteFromS3Routes);
 
 // Charges & Charge Heads (must be before wildcard updateExportJobs)
 app.use("/api", chargesRoute);
+app.use(chargesRoute);
 app.use("/api/tally", tallyRoutes);
 
 // Update Export Jobs (Wildcard route - must be last)

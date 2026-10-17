@@ -237,17 +237,18 @@ router.get('/get-terminal-codes', async (req, res) => {
     }
 });
 
-router.get('/get-empty-yard-codes', async (req, res) => {
+router.get(['/get-empty-yard-codes', '/get-empty-yard-directory-list'], async (req, res) => {
     try {
-        const items = await EmptyYardDirectory.find().sort({ name: 1 });
-        const mapped = items.map(i => {
-            const obj = i.toObject();
-            return {
-                ...obj,
-                name: obj.name,
-                branches: obj.branches || []
-            };
-        });
+        const items = await EmptyYardDirectory.find().sort({ name: 1 }).lean();
+        const mapped = items.map(i => ({
+            _id: i._id,
+            name: i.name,
+            city: i.branches?.[0]?.city || '',
+            branches: i.branches || [],
+            pan: i.branches?.[0]?.pan || '',
+            tds_percent: i.tds_percent || 0,
+            openingBalance: i.openingBalance || 0
+        }));
         res.json(mapped);
     } catch (error) {
         res.status(500).json([]);
