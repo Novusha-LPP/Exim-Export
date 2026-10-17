@@ -60,6 +60,23 @@ import { UserContext } from "../../contexts/UserContext";
 import { getOptionsForBranch } from "../common/CustomHouseDropdown";
 import CustomizeReportModal from "./CustomizeReportModal.jsx";
 
+export const STANDARD_CLEARANCE_COLUMNS = [
+  { label: "Srl No.", key: "srlNo", minWidth: 50 },
+  { label: "JOB No", key: "job_no", minWidth: 100 },
+  { label: "LOCATION", key: "location", minWidth: 80 },
+  { label: "EXPORTER NAME", key: "exporter", minWidth: 150 },
+  { label: "COMMODITY", key: "commodity", minWidth: 300 },
+  { label: 'INV VALUE', key: 'invoice_value', minWidth: 170 }, // NEW PRICE COLUMN
+  { label: "SB NO.", key: "sb_no", minWidth: 100 },
+  { label: "SB DATE", key: "sb_date", minWidth: 80 },
+  { label: "CONTAINER NO.", key: "containerNumbers", minWidth: 120 },
+  { label: "NO. OF CNTR", key: "totalContainers", minWidth: 70 },
+  { label: "SIZE", key: "size", minWidth: 60 },
+  { label: "Teus", key: "teus", minWidth: 60 },
+  { label: "LEO DATE", key: "leo_date", minWidth: 80 },
+  { label: "REMARKS", key: "remarks", minWidth: 100 },
+];
+
 export const DEFAULT_CLEARANCE_COLUMNS = [
   { label: "Srl No.", key: "srlNo", minWidth: 50, category: "General", default: true },
   { label: "JOB No", key: "job_no", minWidth: 120, category: "General", default: true },
@@ -164,10 +181,19 @@ const DetailedReport = () => {
   const [year, setYear] = useState("26-27");
   const [gradeFilter, setGradeFilter] = useState(""); // ✅ New Grade Filter
   const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [exportLoading, setExportLoading] = useState(false);
-  const [exportType, setExportType] = useState('');
-  const [anchorEl, setAnchorEl] = useState(null);
-  const open = Boolean(anchorEl);
+
+  // Standard Export state (generates previous/standard fields, unaffected by customization)
+  const [standardExportLoading, setStandardExportLoading] = useState(false);
+  const [standardExportType, setStandardExportType] = useState('');
+  const [standardAnchorEl, setStandardAnchorEl] = useState(null);
+  const standardOpen = Boolean(standardAnchorEl);
+
+  // Custom Export state (generates customized fields and layout)
+  const [customExportLoading, setCustomExportLoading] = useState(false);
+  const [customExportType, setCustomExportType] = useState('');
+  const [customAnchorEl, setCustomAnchorEl] = useState(null);
+  const customOpen = Boolean(customAnchorEl);
+
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState("AMD");
   const [searchQuery, setSearchQuery] = useState("");
@@ -480,13 +506,22 @@ const DetailedReport = () => {
     setMonth(next > 12 ? "1" : String(next));
   };
 
-  // Export menu handlers
-  const handleExportClick = (event) => {
-    setAnchorEl(event.currentTarget);
+  // Export menu handlers - Standard Export
+  const handleStandardExportClick = (event) => {
+    setStandardAnchorEl(event.currentTarget);
   };
 
-  const handleExportClose = () => {
-    setAnchorEl(null);
+  const handleStandardExportClose = () => {
+    setStandardAnchorEl(null);
+  };
+
+  // Export menu handlers - Custom Export
+  const handleCustomExportClick = (event) => {
+    setCustomAnchorEl(event.currentTarget);
+  };
+
+  const handleCustomExportClose = () => {
+    setCustomAnchorEl(null);
   };
 
   // Generate summary data
@@ -1100,28 +1135,456 @@ const DetailedReport = () => {
     }
   };
 
-  // Export functionality
-  const handleExportReport = async (format) => {
-    setExportLoading(true);
-    setExportType(format);
-    setAnchorEl(null);
+  // ---------------------------------------------------------------------------
+  // 1. STANDARD EXPORT (Original report format, unaffected by customization)
+  // ---------------------------------------------------------------------------
+  const handleStandardExportReport = async (format) => {
+    setStandardExportLoading(true);
+    setStandardExportType(format);
+    setStandardAnchorEl(null);
 
     try {
       if (format === 'excel') {
-        await exportToExcel();
+        await exportStandardToExcel();
       } else if (format === 'pdf') {
-        await exportToPDF();
+        await exportStandardToPDF();
       }
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('Standard export failed:', error);
       setError(`Failed to export report as ${format.toUpperCase()}`);
     } finally {
-      setExportLoading(false);
-      setExportType('');
+      setStandardExportLoading(false);
+      setStandardExportType('');
     }
   };
 
-  const exportToExcel = async () => {
+  const exportStandardToExcel = async () => {
+    const ExcelJS = (await import('exceljs')).default;
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(reportType === 'adminFreight' ? 'Admin Freight Report' : 'Export Clearance Report');
+    const monthName = months.find(m => String(m.value) === String(month))?.label || 'Unknown';
+
+    // 1. Prepare Columns based on previously defined standard clearance columns (or admin freight)
+    const baseCols = reportType === 'adminFreight' ? adminFreightColumns : STANDARD_CLEARANCE_COLUMNS;
+    const exportCols = baseCols.filter((col) => !(col.key === 'invoice_value' && !isSrManager));
+
+    worksheet.columns = exportCols.map(col => ({
+      header: col.label,
+      key: col.key,
+      width: col.key === 'job_no' ? 22 : (col.key === 'commodity' ? 45 : (col.minWidth / 5) || 16)
+    }));
+
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true, size: 10 };
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // 2. Add Data Rows
+    detailedRows.forEach((row, index) => {
+      const invValue = row.invoice_value && row.inv_currency
+        ? `${row.inv_currency} ${(parseFloat(row.invoice_value)).toFixed(2)}`
+        : '';
+
+      const rowData = {};
+      exportCols.forEach(col => {
+        switch (col.key) {
+          case 'srlNo': rowData[col.key] = String(index + 1).padStart(3, "0"); break;
+          case 'invoice_value': rowData[col.key] = invValue; break;
+          case 'size': rowData[col.key] = deriveSize(row.noOfContrSize); break;
+          case 'containerNumbers':
+            rowData[col.key] = Array.isArray(row.containerNumbers)
+              ? row.containerNumbers.join('; ')
+              : (row.containerNumbers || '');
+            break;
+          case 'sb_date': rowData[col.key] = row.sb_date ? new Date(row.sb_date).toLocaleDateString('en-GB') : ''; break;
+          case 'leo_date': rowData[col.key] = row.leo_date ? new Date(row.leo_date).toLocaleDateString('en-GB') : ''; break;
+          case 'teus': rowData[col.key] = isLclJob(row) ? 'LCL' : (row.teus || ''); break;
+          case 'ports': {
+            rowData[col.key] = formatPortsText(row.pol, row.pod, row.country, false);
+            break;
+          }
+          case 'freight_amount': rowData[col.key] = row.freight_amount || row.rate_total || '—'; break;
+          case 'currency': {
+            let curr = row.currency || "USD";
+            if (!row.currency && row.freight_amount && typeof row.freight_amount === 'string') {
+              const match = row.freight_amount.match(/[A-Za-z]+/);
+              if (match) curr = match[0].toUpperCase();
+            }
+            rowData[col.key] = curr;
+            break;
+          }
+          default: rowData[col.key] = row[col.key] || '';
+        }
+      });
+
+      const excelRow = worksheet.addRow(rowData);
+
+      // Apply cell styling
+      excelRow.eachCell((cell, colNumber) => {
+        const colKey = exportCols[colNumber - 1].key;
+
+        // Default alignment
+        cell.alignment = { vertical: 'top', horizontal: 'center', wrapText: true };
+        if (colKey === 'exporter' || colKey === 'commodity') {
+          cell.alignment.horizontal = 'left';
+        }
+
+        // Commodity font size (8pt) smaller than others (10pt)
+        if (colKey === 'commodity') {
+          cell.font = { size: 8, name: 'Arial Narrow' };
+        } else {
+          cell.font = { size: 10, name: 'Calibri' };
+        }
+      });
+    });
+
+    // 3. Add Summaries Below Table (only for clearance report)
+    if (reportType === 'clearance') {
+      const summaryRows = generateSummaryRows();
+      const exporterSummaryRows = generateExporterSummaryRows();
+      let currentRow = worksheet.rowCount + 3;
+
+      // Location Summary
+      worksheet.getRow(currentRow).values = [`SUMMARY BY LOCATION - ${monthName} ${year}`];
+      worksheet.getRow(currentRow).font = { bold: true, size: 11 };
+      currentRow++;
+      worksheet.getRow(currentRow).values = ['Particulars', '20', '40', 'TEUS'];
+      worksheet.getRow(currentRow).font = { bold: true, size: 10 };
+      currentRow++;
+      summaryRows.forEach(row => {
+        worksheet.getRow(currentRow).values = [row.location, row.count20, row.count40, row.teus];
+        worksheet.getRow(currentRow).font = { size: 10 };
+        currentRow++;
+      });
+
+      // Exporter Summary
+      currentRow += 2;
+      worksheet.getRow(currentRow).values = [`SUMMARY BY EXPORTER - ${monthName} ${year}`];
+      worksheet.getRow(currentRow).font = { bold: true, size: 11 };
+      currentRow++;
+      worksheet.getRow(currentRow).values = ['Exporter Name', '20', '40', 'TEUS'];
+      worksheet.getRow(currentRow).font = { bold: true, size: 10 };
+      currentRow++;
+      exporterSummaryRows.forEach(row => {
+        worksheet.getRow(currentRow).values = [row.exporter, row.count20, row.count40, row.teus];
+        worksheet.getRow(currentRow).font = { size: 10 };
+        currentRow++;
+      });
+    }
+
+    // Generate filename and save
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `export_clearance_report_${monthName}_${year}_${timestamp}.xlsx`;
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), filename);
+  };
+
+  const exportStandardToPDF = async () => {
+    const jsPDF = (await import('jspdf')).default;
+    await import('jspdf-autotable');
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const monthName = months.find(m => String(m.value) === String(month))?.label || 'Unknown';
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    const title = reportType === 'adminFreight'
+      ? `Admin Freight Report of ${monthName}-${year}`
+      : `Export Clearing Details of ${monthName}-${year}`;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const textWidth = doc.getTextWidth(title);
+    const x = (pageWidth - textWidth) / 2;
+    doc.text(title, x, 15);
+
+    // Main table - build headers/data based on standard clearance columns and role
+    const baseCols = reportType === 'adminFreight' ? adminFreightColumns : STANDARD_CLEARANCE_COLUMNS;
+    const exportCols = baseCols.filter((col) => !(col.key === 'invoice_value' && !isSrManager));
+    const tableHeaders = exportCols.map(c => c.label);
+    const tableData = detailedRows.map((row, index) => {
+      const containerNos = Array.isArray(row.containerNumbers)
+        ? row.containerNumbers.join('\n')
+        : (row.containerNumbers || '');
+      const sbDate = row.sb_date ? new Date(row.sb_date).toLocaleDateString('en-GB').replace(/\//g, '-') : '';
+      const leoDate = row.leo_date ? new Date(row.leo_date).toLocaleDateString('en-GB').replace(/\//g, '-') : '';
+      const invValueDisplay = row.invoice_value && row.inv_currency
+        ? `${row.inv_currency} ${(parseFloat(row.invoice_value)).toFixed(2)}`
+        : '';
+
+      return exportCols.map((col) => {
+        switch (col.key) {
+          case 'srlNo':
+            return String(index + 1).padStart(4, '0');
+          case 'job_no':
+            return row.job_no || '';
+          case 'location':
+            return row.location || '';
+          case 'exporter':
+            return row.exporter || '';
+          case 'commodity':
+            return row.commodity || '';
+          case 'invoice_value':
+            return invValueDisplay;
+          case 'sb_no':
+            return row.sb_no || '';
+          case 'sb_date':
+            return sbDate;
+          case 'containerNumbers':
+            return containerNos;
+          case 'totalContainers':
+            return row.totalContainers || '';
+          case 'noOfContrSize':
+            return row.noOfContrSize || '';
+          case 'size':
+            return deriveSize(row.noOfContrSize);
+          case 'teus':
+            return isLclJob(row) ? 'LCL' : (row.teus || '');
+          case 'leo_date':
+            return leoDate;
+          case 'remarks':
+            return row.remarks || '';
+          case 'ports':
+            return formatPortsText(row.pol, row.pod, row.country, false);
+          case 'movement_type':
+            return row.movement_type || '';
+          case 'forwarder_name':
+            return row.forwarder_name || '';
+          case 'shipping_line':
+            return row.shipping_line || '';
+          case 'term_of_invoice':
+            return row.term_of_invoice || '';
+          case 'freight_amount':
+            return row.freight_amount || row.rate_total || '—';
+          case 'currency':
+            let curr = row.currency || "USD";
+            if (!row.currency && row.freight_amount && typeof row.freight_amount === 'string') {
+              const match = row.freight_amount.match(/[A-Za-z]+/);
+              if (match) curr = match[0].toUpperCase();
+            }
+            return curr;
+          default:
+            return row[col.key] || '';
+        }
+      });
+    });
+
+    const styleMap = {
+      srlNo: { cellWidth: 8, halign: 'center' },
+      job_no: { cellWidth: 32, halign: 'center' },
+      location: { cellWidth: 25, halign: 'center' },
+      exporter: { cellWidth: 40, halign: 'left' },
+      commodity: { halign: 'left' },
+      invoice_value: { cellWidth: 20, halign: 'center' },
+      sb_no: { cellWidth: 15, halign: 'center' },
+      sb_date: { cellWidth: 20, halign: 'center' },
+      containerNumbers: { cellWidth: 25, halign: 'center' },
+      totalContainers: { cellWidth: 8, halign: 'center' },
+      size: { cellWidth: 15, halign: 'center' },
+      teus: { cellWidth: 10, halign: 'center' },
+      leo_date: { cellWidth: 20, halign: 'center' },
+      remarks: { cellWidth: 10, halign: 'center' },
+      ports: { cellWidth: 30, halign: 'center' },
+      movement_type: { cellWidth: 15, halign: 'center' },
+      forwarder_name: { halign: 'left' },
+      shipping_line: { cellWidth: 25, halign: 'left' },
+      term_of_invoice: { cellWidth: 15, halign: 'center' },
+      freight_amount: { cellWidth: 20, halign: 'center' },
+      currency: { cellWidth: 15, halign: 'center' }
+    };
+
+    const columnStyles = {};
+    exportCols.forEach((col, idx) => {
+      const cfg = styleMap[col.key] || { halign: 'center' };
+      columnStyles[idx] = {
+        cellWidth: cfg.cellWidth || 'auto',
+        halign: cfg.halign,
+        fontSize: col.key === 'commodity' ? 5 : 7
+      };
+    });
+
+    doc.autoTable({
+      head: [tableHeaders],
+      body: tableData,
+      startY: 25,
+      styles: {
+        fontSize: 6,
+        cellPadding: 1,
+        overflow: 'linebreak',
+        lineColor: [205, 133, 63],
+        lineWidth: 0.3,
+        textColor: [0, 0, 0]
+      },
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        fontSize: 6,
+        halign: 'center',
+        valign: 'middle',
+        lineColor: [205, 133, 63],
+        lineWidth: 0.5
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        fontSize: 7.5,
+        valign: 'middle',
+        lineColor: [205, 133, 63],
+        lineWidth: 0.3
+      },
+      alternateRowStyles: {
+        fillColor: [255, 255, 255],
+      },
+      rowPageBreak: 'avoid',
+      columnStyles: columnStyles,
+      didParseCell: (data) => {
+        const colKey = exportCols[data.column.index]?.key;
+        if (colKey === 'commodity') {
+          data.cell.styles.fontSize = 6;
+        }
+      },
+      margin: { top: 25, right: 5, bottom: 15, left: 5 },
+      theme: 'grid',
+      tableLineColor: [205, 133, 63],
+      tableLineWidth: 0.5
+    });
+
+    if (reportType === 'clearance') {
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      const summaryTitle = `Summary - ${monthName} ${year}`;
+      const summaryTextWidth = doc.getTextWidth(summaryTitle);
+      const summaryX = (doc.internal.pageSize.getWidth() - summaryTextWidth) / 2;
+      doc.text(summaryTitle, summaryX, 15);
+
+      const summaryRows = generateSummaryRows();
+      const summaryHeaders = ['Particulars', '20', '40', 'TEUS'];
+      const summaryBody = summaryRows.map(row => [
+        row.location,
+        row.count20,
+        row.count40,
+        row.teus
+      ]);
+      doc.autoTable({
+        head: [summaryHeaders],
+        body: summaryBody,
+        startY: 25,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          halign: 'center',
+          valign: 'middle',
+          lineColor: [205, 133, 63],
+          lineWidth: 0.3,
+          textColor: [0, 0, 0]
+        },
+        headStyles: {
+          fillColor: [255, 224, 178],
+          textColor: [51, 51, 51],
+          fontStyle: 'bold',
+          fontSize: 8,
+          halign: 'center',
+          valign: 'middle',
+          lineColor: [205, 133, 63],
+          lineWidth: 0.5
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [51, 51, 51],
+          fontSize: 8,
+          halign: 'center',
+          valign: 'middle',
+          lineColor: [205, 133, 63],
+          lineWidth: 0.3
+        },
+        margin: { top: 25, right: 5, bottom: 15, left: 5 },
+        theme: 'grid',
+        tableLineColor: [205, 133, 63],
+        tableLineWidth: 0.5
+      });
+
+      const exporterSummaryRows = generateExporterSummaryRows();
+      const exporterHeaders = ['Exporter Name', '20', '40', 'TEUS'];
+      const exporterBody = exporterSummaryRows.map(row => [
+        row.exporter,
+        row.count20,
+        row.count40,
+        row.teus
+      ]);
+
+      doc.autoTable({
+        head: [exporterHeaders],
+        body: exporterBody,
+        startY: doc.lastAutoTable.finalY + 10,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          halign: 'center',
+          valign: 'middle',
+          lineColor: [205, 133, 63],
+          lineWidth: 0.3,
+          textColor: [0, 0, 0]
+        },
+        headStyles: {
+          fillColor: [225, 245, 254],
+          textColor: [51, 51, 51],
+          fontStyle: 'bold',
+          fontSize: 8,
+          halign: 'center',
+          valign: 'middle',
+          lineColor: [205, 133, 63],
+          lineWidth: 0.5
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [51, 51, 51],
+          fontSize: 8,
+          halign: 'center',
+          valign: 'middle',
+          lineColor: [205, 133, 63],
+          lineWidth: 0.3
+        },
+        margin: { top: 25, right: 5, bottom: 15, left: 5 },
+        theme: 'grid',
+        tableLineColor: [205, 133, 63],
+        tableLineWidth: 0.5
+      });
+    }
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${i}/${pageCount}`, doc.internal.pageSize.width - 20, doc.internal.pageSize.height - 10);
+    }
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `EXPORT_CLEARING_DETAILS_${monthName.toUpperCase()}-${year}_${timestamp}.pdf`;
+    doc.save(filename);
+  };
+
+  // ---------------------------------------------------------------------------
+  // 2. CUSTOM EXPORT (Customized fields & Job-wise / Party-wise layout)
+  // ---------------------------------------------------------------------------
+  const handleCustomExportReport = async (format) => {
+    setCustomExportLoading(true);
+    setCustomExportType(format);
+    setCustomAnchorEl(null);
+
+    try {
+      if (format === 'excel') {
+        await exportCustomToExcel();
+      } else if (format === 'pdf') {
+        await exportCustomToPDF();
+      }
+    } catch (error) {
+      console.error('Custom export failed:', error);
+      setError(`Failed to export custom report as ${format.toUpperCase()}`);
+    } finally {
+      setCustomExportLoading(false);
+      setCustomExportType('');
+    }
+  };
+
+  const exportCustomToExcel = async () => {
     const ExcelJS = (await import('exceljs')).default;
     const workbook = new ExcelJS.Workbook();
     const monthName = months.find(m => String(m.value) === String(month))?.label || 'Unknown';
@@ -1430,13 +1893,13 @@ const DetailedReport = () => {
     }
 
     const timestamp = new Date().toISOString().slice(0, 10);
-    const modePrefix = viewMode === 'partyWise' ? 'party_wise_' : '';
+    const modePrefix = viewMode === 'partyWise' ? 'party_wise_' : 'custom_';
     const filename = `${modePrefix}export_clearance_report_${monthName}_${year}_${timestamp}.xlsx`;
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), filename);
   };
 
-  const exportToPDF = async () => {
+  const exportCustomToPDF = async () => {
     const jsPDF = (await import('jspdf')).default;
     await import('jspdf-autotable');
     const doc = new jsPDF('l', 'mm', 'a4');
@@ -1834,7 +2297,7 @@ const DetailedReport = () => {
     }
 
     const timestamp = new Date().toISOString().slice(0, 10);
-    const modePrefix = viewMode === 'partyWise' ? 'PARTY_WISE_' : '';
+    const modePrefix = viewMode === 'partyWise' ? 'PARTY_WISE_' : 'CUSTOM_';
     const filename = `${modePrefix}EXPORT_CLEARING_DETAILS_${monthName.toUpperCase()}-${year}_${timestamp}.pdf`;
     doc.save(filename);
   };
@@ -1854,14 +2317,14 @@ const DetailedReport = () => {
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}
       >
-        <Box sx={{ flex: 1, display: 'flex', gap: 1 }}>
-          {/* Export Button with Dark Blue Gradient */}
+        <Box sx={{ flex: 1, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* 1. Original Standard Export Button (unaffected by customization) */}
           <Button
             variant="contained"
-            startIcon={exportLoading ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
-            endIcon={!exportLoading && <ArrowDropDownIcon />}
-            onClick={handleExportClick}
-            disabled={loading || detailedRows.length === 0 || exportLoading}
+            startIcon={standardExportLoading ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+            endIcon={!standardExportLoading && <ArrowDropDownIcon />}
+            onClick={handleStandardExportClick}
+            disabled={loading || detailedRows.length === 0 || standardExportLoading || customExportLoading}
             size="small"
             sx={{
               fontWeight: 'bold',
@@ -1869,6 +2332,7 @@ const DetailedReport = () => {
               boxShadow: '0 4px 8px rgba(26, 35, 126, 0.3)',
               border: '1px solid rgba(255,255,255,0.2)',
               color: 'white',
+              whiteSpace: 'nowrap',
               '&:hover': {
                 background: 'linear-gradient(135deg, #0d47a1 0%, #1976d2 50%, #42a5f5 100%)',
                 boxShadow: '0 6px 12px rgba(26, 35, 126, 0.4)',
@@ -1881,10 +2345,42 @@ const DetailedReport = () => {
               transition: 'all 0.3s ease'
             }}
           >
-            {exportLoading ? `Exporting ${exportType}...` : 'Export Report'}
+            {standardExportLoading ? `Exporting ${standardExportType.toUpperCase()}...` : 'Export Report'}
           </Button>
 
-          {/* Summary Button */}
+          {/* 2. NEW: Export Custom Report Button */}
+          {reportType === 'clearance' && (
+            <Button
+              variant="contained"
+              startIcon={customExportLoading ? <CircularProgress size={16} color="inherit" /> : <TuneIcon />}
+              endIcon={!customExportLoading && <ArrowDropDownIcon />}
+              onClick={handleCustomExportClick}
+              disabled={loading || detailedRows.length === 0 || standardExportLoading || customExportLoading}
+              size="small"
+              sx={{
+                fontWeight: 'bold',
+                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #0c4a6e 100%)',
+                boxShadow: '0 4px 8px rgba(2, 132, 199, 0.3)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: 'white',
+                whiteSpace: 'nowrap',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #0369a1 0%, #0284c7 50%, #38bdf8 100%)',
+                  boxShadow: '0 6px 12px rgba(2, 132, 199, 0.4)',
+                  transform: 'translateY(-1px)'
+                },
+                '&:disabled': {
+                  background: 'linear-gradient(135deg, #9e9e9e 0%, #bdbdbd 100%)',
+                  color: 'rgba(255,255,255,0.7)'
+                },
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {customExportLoading ? `Exporting ${customExportType.toUpperCase()}...` : 'Export Custom Report'}
+            </Button>
+          )}
+
+          {/* 3. Summary Button */}
           {reportType === 'clearance' && (
             <Button
               variant="outlined"
@@ -1914,11 +2410,11 @@ const DetailedReport = () => {
             </Button>
           )}
 
-          {/* Customize Columns Button */}
+          {/* 4. Customize Columns Button */}
           {reportType === 'clearance' && (
             <Button
               variant="outlined"
-              startIcon={<TuneIcon fontSize="small" sx={{ color: '#0284c7' }} />}
+              startIcon={<ViewColumnIcon fontSize="small" sx={{ color: '#0284c7' }} />}
               onClick={() => setCustomizeOpen(true)}
               size="small"
               sx={{
@@ -1938,7 +2434,7 @@ const DetailedReport = () => {
             </Button>
           )}
 
-          {/* Job-Wise vs Party-Wise Toggle */}
+          {/* 5. Job-Wise vs Party-Wise Toggle */}
           {reportType === 'clearance' && (
             <ToggleButtonGroup
               value={viewMode}
@@ -1982,16 +2478,16 @@ const DetailedReport = () => {
             </ToggleButtonGroup>
           )}
 
-          {/* Export Options Menu */}
+          {/* Standard Export Options Menu */}
           <Menu
-            anchorEl={anchorEl}
-            open={open}
-            onClose={handleExportClose}
+            anchorEl={standardAnchorEl}
+            open={standardOpen}
+            onClose={handleStandardExportClose}
             PaperProps={{
               elevation: 8,
               sx: {
                 mt: 1,
-                minWidth: 200,
+                minWidth: 230,
                 borderRadius: 2,
                 '& .MuiMenuItem-root': {
                   px: 2,
@@ -2006,13 +2502,13 @@ const DetailedReport = () => {
               }
             }}
           >
-            <MenuItem onClick={() => handleExportReport('excel')}>
+            <MenuItem onClick={() => handleStandardExportReport('excel')}>
               <ListItemIcon>
                 <TableViewIcon fontSize="small" sx={{ color: '#1976d2' }} />
               </ListItemIcon>
               <ListItemText
                 primary="Export as Excel"
-                secondary="With summary sheet"
+                secondary="Standard clearance fields with summary"
                 sx={{
                   '& .MuiListItemText-secondary': {
                     fontSize: '0.75rem',
@@ -2022,13 +2518,70 @@ const DetailedReport = () => {
               />
             </MenuItem>
             <Divider sx={{ mx: 1 }} />
-            <MenuItem onClick={() => handleExportReport('pdf')}>
+            <MenuItem onClick={() => handleStandardExportReport('pdf')}>
               <ListItemIcon>
                 <PictureAsPdfIcon fontSize="small" sx={{ color: '#d32f2f' }} />
               </ListItemIcon>
               <ListItemText
                 primary="Export as PDF"
-                secondary="With summary table"
+                secondary="Standard clearance fields with summary table"
+                sx={{
+                  '& .MuiListItemText-secondary': {
+                    fontSize: '0.75rem',
+                    color: '#666'
+                  }
+                }}
+              />
+            </MenuItem>
+          </Menu>
+
+          {/* Custom Export Options Menu */}
+          <Menu
+            anchorEl={customAnchorEl}
+            open={customOpen}
+            onClose={handleCustomExportClose}
+            PaperProps={{
+              elevation: 8,
+              sx: {
+                mt: 1,
+                minWidth: 260,
+                borderRadius: 2,
+                '& .MuiMenuItem-root': {
+                  px: 2,
+                  py: 1.5,
+                  borderRadius: 1,
+                  mx: 1,
+                  my: 0.5,
+                  '&:hover': {
+                    backgroundColor: 'rgba(2, 132, 199, 0.08)',
+                  }
+                }
+              }
+            }}
+          >
+            <MenuItem onClick={() => handleCustomExportReport('excel')}>
+              <ListItemIcon>
+                <TableViewIcon fontSize="small" sx={{ color: '#0284c7' }} />
+              </ListItemIcon>
+              <ListItemText
+                primary="Export as Excel (Customized)"
+                secondary={`Custom fields (${customColumns.length} cols) • ${viewMode === 'partyWise' ? 'Party-Wise' : 'Job-Wise'}`}
+                sx={{
+                  '& .MuiListItemText-secondary': {
+                    fontSize: '0.75rem',
+                    color: '#666'
+                  }
+                }}
+              />
+            </MenuItem>
+            <Divider sx={{ mx: 1 }} />
+            <MenuItem onClick={() => handleCustomExportReport('pdf')}>
+              <ListItemIcon>
+                <PictureAsPdfIcon fontSize="small" sx={{ color: '#d32f2f' }} />
+              </ListItemIcon>
+              <ListItemText
+                primary="Export as PDF (Customized)"
+                secondary={`Custom fields (${customColumns.length} cols) • ${viewMode === 'partyWise' ? 'Party-Wise' : 'Job-Wise'}`}
                 sx={{
                   '& .MuiListItemText-secondary': {
                     fontSize: '0.75rem',
