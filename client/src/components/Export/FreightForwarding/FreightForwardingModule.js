@@ -1191,763 +1191,762 @@ function FreightForwardingModule() {
         <>
           {/* Tabs matching ExportJobsTable */}
           <div style={{ display: "flex", borderBottom: "1px solid #e5e7eb", marginBottom: "10px", overflowX: "auto" }}>
-        {["Enquiry", "Rejected", "Pending", "Draft BL", "SOB", "Billing", "ETA Pending", "Delivery", "Completed", "Historic Rates"].map((tab) => {
-          const isActive = activeTab === tab;
-          const hasActiveFilter = !!(filters.search?.trim() || filters.shipment_type || filters.status);
+            {["Enquiry", "Rejected", "Pending", "Draft BL", "SOB", "Billing", "ETA Pending", "Delivery", "Completed", "Historic Rates"].map((tab) => {
+              const isActive = activeTab === tab;
+              const hasActiveFilter = !!(filters.search?.trim() || filters.shipment_type || filters.status);
 
-          const getCount = () => {
-            if (tab === "Historic Rates") return null;
-            return serverCounts[tab] !== undefined ? serverCounts[tab] : 0;
-          };
-          return (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: "6px 15px",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: isActive ? "700" : "600",
-                color: isActive ? "#2563eb" : "#6b7280",
-                borderBottom: isActive ? "3px solid #2563eb" : "3px solid transparent",
-                backgroundColor: "transparent",
-                border: "none",
-                outline: "none",
-                marginBottom: "-1px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                whiteSpace: "nowrap",
-                transition: "all 0.15s ease",
-              }}
-            >
-              {tab}
-              {tab !== "Historic Rates" && (
-                <span
+              const getCount = () => {
+                if (tab === "Historic Rates") return null;
+                return serverCounts[tab] !== undefined ? serverCounts[tab] : 0;
+              };
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
                   style={{
-                    padding: "1px 6px",
-                    borderRadius: "10px",
-                    fontSize: "10px",
-                    fontWeight: "700",
-                    backgroundColor: isActive ? "#eff6ff" : "#f3f4f6",
-                    color: isActive ? "#2563eb" : "#4b5563",
+                    padding: "6px 15px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: isActive ? "700" : "600",
+                    color: isActive ? "#2563eb" : "#6b7280",
+                    borderBottom: isActive ? "3px solid #2563eb" : "3px solid transparent",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                    marginBottom: "-1px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  {getCount()}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {activeTab === "Historic Rates" ? (
-        <HistoricRatesLookup />
-      ) : (
-        <>
-          {/* Filter Toolbar matching ExportJobsTable */}
-          <div style={{
-            display: "flex",
-            gap: "8px",
-            rowGap: "8px",
-            alignItems: "center",
-            marginBottom: "10px",
-            flexWrap: "wrap",
-            backgroundColor: "#fff",
-            padding: "6px 10px",
-            borderRadius: "6px",
-            border: "1px solid #e5e7eb",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          }}>
-            <input
-              value={filters.search}
-              onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-              placeholder="Search by Enquiry No, Job No, Org, Port..."
-              style={{
-                height: "32px",
-                padding: "0 10px",
-                fontSize: "12px",
-                border: filters.search ? "1px solid #2563eb" : "1px solid #cbd5e1",
-                borderRadius: "4px",
-                outline: "none",
-                color: filters.search ? "#1d4ed8" : "#333",
-                backgroundColor: filters.search ? "#eff6ff" : "#fff",
-                fontWeight: filters.search ? "600" : "normal",
-                flex: 1,
-                maxWidth: "320px",
-                boxSizing: "border-box",
-              }}
-            />
-            <select
-              value={filters.shipment_type}
-              onChange={(e) => setFilters((prev) => ({ ...prev, shipment_type: e.target.value }))}
-              style={{
-                height: "32px",
-                padding: "0 10px",
-                fontSize: "12px",
-                border: filters.shipment_type ? "1px solid #2563eb" : "1px solid #cbd5e1",
-                borderRadius: "4px",
-                backgroundColor: filters.shipment_type ? "#eff6ff" : "#fff",
-                color: filters.shipment_type ? "#1d4ed8" : "#333",
-                cursor: "pointer",
-                fontWeight: "600",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            >
-              <option value="">All Shipment Types</option>
-              <option value="Import-Sea">Import - Sea</option>
-              <option value="Export-Sea">Export - Sea</option>
-              <option value="Import-Air">Import - Air</option>
-              <option value="Export-Air">Export - Air</option>
-            </select>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
-              style={{
-                height: "32px",
-                padding: "0 10px",
-                fontSize: "12px",
-                border: filters.status ? "1px solid #2563eb" : "1px solid #cbd5e1",
-                borderRadius: "4px",
-                backgroundColor: filters.status ? "#eff6ff" : "#fff",
-                color: filters.status ? "#1d4ed8" : "#333",
-                cursor: "pointer",
-                fontWeight: "600",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            >
-              <option value="">All Status</option>
-              <option value="Open">Open</option>
-              <option value="Closed">Closed</option>
-            </select>
-
-            {(filters.search || filters.shipment_type || filters.status) && (
-              <button
-                onClick={() => setFilters({ search: "", shipment_type: "", status: "" })}
-                style={{
-                  height: "32px",
-                  padding: "0 12px",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  backgroundColor: "#fef2f2",
-                  color: "#ef4444",
-                  border: "1px solid #fca5a5",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  boxSizing: "border-box",
-                }}
-              >
-                Reset Filters
-              </button>
-            )}
-          </div>
-
-          <div style={s.tableContainer} className="ff-table-container">
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "11.5px" }}>
-              <thead>
-                <tr style={{ position: "sticky", top: 0, zIndex: 10 }}>
-                  {[
-                    isPipelineTab ? "JOB NO" : activeTab === "Rejected" ? "REJECTED NO" : "ENQUIRY NO",
-                    "SHIPPER / ORGANIZATION",
-                    "DOCUMENT INFO",
-                    "PORT & ROUTING",
-                    "CONTAINER & CARGO",
-                    "TRANSIT DATES & TERMS",
-                    "ACTIONS"
-                  ].map((h) => (
-                    <th
-                      key={h}
+                  {tab}
+                  {tab !== "Historic Rates" && (
+                    <span
                       style={{
-                        position: "sticky",
-                        top: 0,
-                        zIndex: 10,
-                        backgroundColor: "#1e3a8a",
-                        color: "#fff",
-                        textAlign: h === "ACTIONS" ? "center" : "left",
-                        padding: "9px 12px",
+                        padding: "1px 6px",
+                        borderRadius: "10px",
+                        fontSize: "10px",
                         fontWeight: "700",
-                        fontSize: "11px",
-                        letterSpacing: "0.5px",
-                        textTransform: "uppercase",
-                        borderRight: "1px solid rgba(255,255,255,0.15)",
-                        borderBottom: "2px solid #1e40af",
-                        whiteSpace: "nowrap",
-                        boxSizing: "border-box",
+                        backgroundColor: isActive ? "#eff6ff" : "#f3f4f6",
+                        color: isActive ? "#2563eb" : "#4b5563",
                       }}
                     >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                  {filteredRows.length ? (
-                    filteredRows.map((row, idx) => {
-                      let rowBg = idx % 2 === 1 ? "#f8fafc" : "#ffffff";
-                      let rowHover = "#f1f5f9";
-                      const stage = row.computedTab;
-                      
-                      if (stage === "Completed") { rowBg = idx % 2 === 1 ? "#ecfdf5" : "#f0fdf4"; rowHover = "#d1fae5"; }
-                      else if (stage === "Delivery") { rowBg = idx % 2 === 1 ? "#fff7ed" : "#fffcf2"; rowHover = "#ffedd5"; }
-                      else if (stage === "ETA Pending") { rowBg = idx % 2 === 1 ? "#fefce8" : "#fffffa"; rowHover = "#fef08a"; }
-                      else if (stage === "Billing") { rowBg = idx % 2 === 1 ? "#faf5ff" : "#fdfbfe"; rowHover = "#f3e8ff"; }
-                      else if (stage === "SOB") { rowBg = idx % 2 === 1 ? "#eef2ff" : "#f5f7fa"; rowHover = "#e0e7ff"; }
-                      else if (stage === "Draft BL") { rowBg = idx % 2 === 1 ? "#eff6ff" : "#f4fbfe"; rowHover = "#dbeafe"; }
-                      else if (stage === "Rejected") { rowBg = idx % 2 === 1 ? "#fff5f5" : "#fffafa"; rowHover = "#fee2e2"; }
+                      {getCount()}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-                      return (
-                        <tr
-                          key={row.enquiry_no}
+          {activeTab === "Historic Rates" ? (
+            <HistoricRatesLookup />
+          ) : (
+            <>
+              {/* Filter Toolbar matching ExportJobsTable */}
+              <div style={{
+                display: "flex",
+                gap: "8px",
+                rowGap: "8px",
+                alignItems: "center",
+                marginBottom: "10px",
+                flexWrap: "wrap",
+                backgroundColor: "#fff",
+                padding: "6px 10px",
+                borderRadius: "6px",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+              }}>
+                <input
+                  value={filters.search}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                  placeholder="Search by Enquiry No, Job No, Org, Port..."
+                  style={{
+                    height: "32px",
+                    padding: "0 10px",
+                    fontSize: "12px",
+                    border: filters.search ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                    borderRadius: "4px",
+                    outline: "none",
+                    color: filters.search ? "#1d4ed8" : "#333",
+                    backgroundColor: filters.search ? "#eff6ff" : "#fff",
+                    fontWeight: filters.search ? "600" : "normal",
+                    flex: 1,
+                    maxWidth: "320px",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <select
+                  value={filters.shipment_type}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, shipment_type: e.target.value }))}
+                  style={{
+                    height: "32px",
+                    padding: "0 10px",
+                    fontSize: "12px",
+                    border: filters.shipment_type ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                    borderRadius: "4px",
+                    backgroundColor: filters.shipment_type ? "#eff6ff" : "#fff",
+                    color: filters.shipment_type ? "#1d4ed8" : "#333",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <option value="">All Shipment Types</option>
+                  <option value="Import-Sea">Import - Sea</option>
+                  <option value="Export-Sea">Export - Sea</option>
+                  <option value="Import-Air">Import - Air</option>
+                  <option value="Export-Air">Export - Air</option>
+                </select>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+                  style={{
+                    height: "32px",
+                    padding: "0 10px",
+                    fontSize: "12px",
+                    border: filters.status ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                    borderRadius: "4px",
+                    backgroundColor: filters.status ? "#eff6ff" : "#fff",
+                    color: filters.status ? "#1d4ed8" : "#333",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <option value="">All Status</option>
+                  <option value="Open">Open</option>
+                  <option value="Closed">Closed</option>
+                </select>
+
+                {(filters.search || filters.shipment_type || filters.status) && (
+                  <button
+                    onClick={() => setFilters({ search: "", shipment_type: "", status: "" })}
+                    style={{
+                      height: "32px",
+                      padding: "0 12px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      backgroundColor: "#fef2f2",
+                      color: "#ef4444",
+                      border: "1px solid #fca5a5",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    Reset Filters
+                  </button>
+                )}
+              </div>
+
+              <div style={s.tableContainer} className="ff-table-container">
+                <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "11.5px" }}>
+                  <thead>
+                    <tr style={{ position: "sticky", top: 0, zIndex: 10 }}>
+                      {[
+                        isPipelineTab ? "JOB NO" : activeTab === "Rejected" ? "REJECTED NO" : "ENQUIRY NO",
+                        "SHIPPER / ORGANIZATION",
+                        "DOCUMENT INFO",
+                        "PORT & ROUTING",
+                        "CONTAINER & CARGO",
+                        "TRANSIT DATES & TERMS",
+                        "ACTIONS"
+                      ].map((h) => (
+                        <th
+                          key={h}
                           style={{
-                            borderBottom: "1px solid #e2e8f0",
-                            backgroundColor: rowBg,
-                            cursor: isPipelineTab ? "default" : (loadingJob ? "wait" : "pointer"),
-                            opacity: loadingJob ? 0.7 : 1,
-                            transition: "background-color 0.15s ease"
+                            position: "sticky",
+                            top: 0,
+                            zIndex: 10,
+                            backgroundColor: "#1e3a8a",
+                            color: "#fff",
+                            textAlign: h === "ACTIONS" ? "center" : "left",
+                            padding: "9px 12px",
+                            fontWeight: "700",
+                            fontSize: "11px",
+                            letterSpacing: "0.5px",
+                            textTransform: "uppercase",
+                            borderRight: "1px solid rgba(255,255,255,0.15)",
+                            borderBottom: "2px solid #1e40af",
+                            whiteSpace: "nowrap",
+                            boxSizing: "border-box",
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = rowHover)}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = rowBg)}
-                          onClick={() => !loadingJob && handleRowClick(row)}
                         >
-                        {/* Col 1: Job No / Identifiers / Badges */}
-                        <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "160px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                            <div style={{ display: "flex", alignItems: "center" }}>
-                              {isPipelineTab ? (
-                                <span
-                                  onClick={(e) => handleSuccessJobClick(e, row)}
-                                  style={{ cursor: "pointer", fontWeight: "800", color: "#1d4ed8", fontSize: "13px" }}
-                                >
-                                  {row.success_no || row.enquiry_no}
-                                </span>
-                              ) : (
-                                <span
-                                  style={{ fontWeight: "800", color: "#1d4ed8", fontSize: "13px" }}
-                                >
-                                  {activeTab === "Rejected" ? (row.rejected_no || row.enquiry_no) : row.enquiry_no}
-                                </span>
-                              )}
-                              <CopyButton
-                                text={isPipelineTab ? (row.success_no || row.enquiry_no) : (activeTab === "Rejected" ? (row.rejected_no || row.enquiry_no) : row.enquiry_no)}
-                                title="Copy Job No"
-                                iconSize={12}
-                              />
-                            </div>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRows.length ? (
+                      filteredRows.map((row, idx) => {
+                        let rowBg = idx % 2 === 1 ? "#f8fafc" : "#ffffff";
+                        let rowHover = "#f1f5f9";
+                        const stage = row.computedTab;
 
-                            <div style={{ fontSize: "10px", color: "#64748b", fontWeight: "600" }}>
-                              Date: {row.enquiry_date}
-                            </div>
+                        if (stage === "Completed") { rowBg = idx % 2 === 1 ? "#ecfdf5" : "#f0fdf4"; rowHover = "#d1fae5"; }
+                        else if (stage === "Delivery") { rowBg = idx % 2 === 1 ? "#fff7ed" : "#fffcf2"; rowHover = "#ffedd5"; }
+                        else if (stage === "ETA Pending") { rowBg = idx % 2 === 1 ? "#fefce8" : "#fffffa"; rowHover = "#fef08a"; }
+                        else if (stage === "Billing") { rowBg = idx % 2 === 1 ? "#faf5ff" : "#fdfbfe"; rowHover = "#f3e8ff"; }
+                        else if (stage === "SOB") { rowBg = idx % 2 === 1 ? "#eef2ff" : "#f5f7fa"; rowHover = "#e0e7ff"; }
+                        else if (stage === "Draft BL") { rowBg = idx % 2 === 1 ? "#eff6ff" : "#f4fbfe"; rowHover = "#dbeafe"; }
+                        else if (stage === "Rejected") { rowBg = idx % 2 === 1 ? "#fff5f5" : "#fffafa"; rowHover = "#fee2e2"; }
 
-                            <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
-                              {row.source_job_no && (
-                                <span style={{ color: "#334155", fontSize: "9px", fontWeight: "700", backgroundColor: "#f1f5f9", padding: "1px 5px", borderRadius: "3px", border: "1px solid #cbd5e1" }}>
-                                  Ref: {row.source_job_no}
-                                  <CopyButton text={row.source_job_no} title="Copy Ref No" iconSize={9} />
-                                </span>
-                              )}
-                              {(row.shipment_ref_no || row.bl_details?.shipment_ref_no) && (
-                                <span style={{ color: "#0f766e", fontSize: "9px", fontWeight: "700", backgroundColor: "#f0fdfa", padding: "1px 5px", borderRadius: "3px", border: "1px solid #99f6e4" }}>
-                                  HBL: {row.shipment_ref_no || row.bl_details?.shipment_ref_no}
-                                  <CopyButton text={row.shipment_ref_no || row.bl_details?.shipment_ref_no} title="Copy HBL Ref" iconSize={9} />
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Pill Badges: Shipment Type, Container Size, Consignment Type, Goods Stuffed */}
-                            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "2px" }}>
-                              {row.shipment_type && (
-                                <span style={{ fontSize: "9px", fontWeight: "700", padding: "2px 5px", borderRadius: "3px", backgroundColor: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", textTransform: "uppercase" }}>
-                                  {row.shipment_type}
-                                </span>
-                              )}
-                              {row.container_size && (
-                                <span style={{ fontSize: "9px", fontWeight: "700", padding: "2px 5px", borderRadius: "3px", backgroundColor: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" }}>
-                                  {row.container_size}
-                                </span>
-                              )}
-                              {row.consignment_type && (
-                                <span style={{ fontSize: "9px", fontWeight: "700", padding: "2px 5px", borderRadius: "3px", backgroundColor: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" }}>
-                                  {row.consignment_type}
-                                </span>
-                              )}
-                              {row.goods_stuffed && (
-                                <span style={{ fontSize: "9px", fontWeight: "700", padding: "2px 5px", borderRadius: "3px", backgroundColor: "#fef3c7", color: "#b45309", border: "1px solid #fde68a" }}>
-                                  {row.goods_stuffed}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Col 2: Shipper / Organization */}
-                        <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "180px", maxWidth: "220px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                            <div style={{ color: "#0f172a", fontWeight: "700", fontSize: "11.5px", lineHeight: "1.3", textTransform: "uppercase" }}>
-                              {String(row.shipment_type || "").startsWith("Import")
-                                ? (row.consignee_name || row.bl_details?.consignee || row.organization_name || "-")
-                                : (row.shipper_name || row.bl_details?.consignor || row.organization_name || "-")}
-                              <CopyButton
-                                text={String(row.shipment_type || "").startsWith("Import")
-                                  ? (row.consignee_name || row.bl_details?.consignee || row.organization_name)
-                                  : (row.shipper_name || row.bl_details?.consignor || row.organization_name)}
-                                title="Copy Party Name"
-                                iconSize={10}
-                              />
-                            </div>
-                            {String(row.shipment_type || "").startsWith("Import") && row.organization_name && row.organization_name !== (row.consignee_name || row.bl_details?.consignee) && (
-                              <div style={{ color: "#64748b", fontSize: "10px" }}>
-                                <span style={{ fontWeight: "600" }}>Party:</span> {row.organization_name}
-                                <CopyButton text={row.organization_name} title="Copy Organization Name" iconSize={9} />
-                              </div>
-                            )}
-                            {row.contact_person && (
-                              <div style={{ color: "#64748b", fontSize: "10px" }}>
-                                <span style={{ fontWeight: "600" }}>Contact Person:</span> {row.contact_person}
-                              </div>
-                            )}
-                            {row.email && (
-                              <div style={{ color: "#64748b", fontSize: "10px" }}>
-                                <span style={{ fontWeight: "600" }}>Email:</span> {row.email}
-                              </div>
-                            )}
-                            {row.contact_no && (
-                              <div style={{ color: "#64748b", fontSize: "10px" }}>
-                                <span style={{ fontWeight: "600" }}>Contact:</span> {row.contact_no}
-                              </div>
-                            )}
-                            {row.booking_thru && (
-                              <div style={{ color: "#64748b", fontSize: "10px" }}>
-                                <span style={{ fontWeight: "600" }}>Booking Thru:</span> {row.booking_thru}
-                              </div>
-                            )}
-                            {row.sales_person && (
-                              <div style={{ color: "#64748b", fontSize: "10px" }}>
-                                <span style={{ fontWeight: "600" }}>Sales Person:</span> {row.sales_person}
-                              </div>
-                            )}
-                            {row.remarks && !row.remarks.toLowerCase().includes("created automatically from export job") && (
-                              <div style={{ color: "#475569", fontSize: "9.5px", fontStyle: "italic", marginTop: "2px" }}>
-                                Remarks: {row.remarks}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Col 3: Document Info */}
-                        <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "160px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "10px" }}>
-                            {(row.sb_no || row.bl_details?.sb_no) ? (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>SB No: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
-                                  {row.sb_no || row.bl_details?.sb_no} {row.sb_date ? `(${formatDateDisplay(row.sb_date)})` : ""}
-                                </span>
-                                <CopyButton text={row.sb_no || row.bl_details?.sb_no} title="Copy SB No" iconSize={10} />
-                              </div>
-                            ) : null}
-                            {row.egm_no ? (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>EGM No: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
-                                  {row.egm_no} {row.egm_date ? `(${formatDateDisplay(row.egm_date)})` : ""}
-                                </span>
-                                <CopyButton text={row.egm_no} title="Copy EGM No" iconSize={10} />
-                              </div>
-                            ) : null}
-                            {row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no ? (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>MBL No: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
-                                  {row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no}{" "}
-                                  {row.mbl_date || row.bl_date || row.bl_details?.mbl_date || row.bl_details?.bl_date
-                                    ? `(${formatDateDisplay(row.mbl_date || row.bl_date || row.bl_details?.mbl_date || row.bl_details?.bl_date)})`
-                                    : ""}
-                                </span>
-                                <CopyButton text={row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no} title="Copy MBL No" iconSize={10} />
-                              </div>
-                            ) : null}
-                            {(row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no) ? (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>HBL No: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
-                                  {row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no}{" "}
-                                  {row.hbl_date || row.bl_details?.hbl_date
-                                    ? `(${formatDateDisplay(row.hbl_date || row.bl_details?.hbl_date)})`
-                                    : ""}
-                                </span>
-                                <CopyButton text={row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no} title="Copy HBL No" iconSize={10} />
-                              </div>
-                            ) : null}
-                            {!row.sb_no && !row.bl_details?.sb_no && !row.egm_no && !(row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no) && !(row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no) && (
-                              <span style={{ color: "#94a3b8", fontStyle: "italic" }}>-</span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Col 4: Port & Routing */}
-                        <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "190px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "10px" }}>
-                            {(row.place_of_receipt || row.bl_details?.place_of_acceptance) && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Receipt: </span>
-                                <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.place_of_receipt || row.bl_details?.place_of_acceptance}</span>
-                                <CopyButton text={row.place_of_receipt || row.bl_details?.place_of_acceptance} title="Copy Receipt" iconSize={10} />
-                              </div>
-                            )}
-                            <div>
-                              <span style={{ color: "#64748b", fontWeight: "600" }}>POL: </span>
-                              <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.port_of_loading || "-"}</span>
-                              <CopyButton text={row.port_of_loading} title="Copy POL" iconSize={10} />
-                            </div>
-                            <div>
-                              <span style={{ color: "#64748b", fontWeight: "600" }}>POD: </span>
-                              <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.port_of_destination || "-"}</span>
-                              <CopyButton text={row.port_of_destination} title="Copy POD" iconSize={10} />
-                            </div>
-                            {(row.vessel_name || row.bl_details?.vessel_name) && (
-                              <div style={{ color: "#1e40af", fontWeight: "700", marginTop: "2px" }}>
-                                Vessel: {row.vessel_name || row.bl_details?.vessel_name} {(row.voyage_no || row.bl_details?.voyage_no) ? `(Voy: ${row.voyage_no || row.bl_details?.voyage_no})` : ""}
-                                <CopyButton text={row.vessel_name || row.bl_details?.vessel_name} title="Copy Vessel" iconSize={10} />
-                              </div>
-                            )}
-                            {row.flight_no && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Flight: </span>
-                                <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.flight_no} {row.flight_date ? `(${formatDateDisplay(row.flight_date)})` : ""}</span>
-                                <CopyButton text={row.flight_no} title="Copy Flight No" iconSize={10} />
-                              </div>
-                            )}
-                            {row.shipping_line_airline && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Carrier: </span>
-                                <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.shipping_line_airline}</span>
-                                <CopyButton text={row.shipping_line_airline} title="Copy Carrier" iconSize={10} />
-                              </div>
-                            )}
-                            {row.bl_details?.place_of_issue && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Issue Place: </span>
-                                <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.bl_details.place_of_issue}</span>
-                              </div>
-                            )}
-                            {row.bl_details?.no_of_originals && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>No of MTD: </span>
-                                <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.bl_details.no_of_originals}</span>
-                              </div>
-                            )}
-                            {row.delay_reason && (
-                              <div style={{ color: "#b45309", backgroundColor: "#fffbeb", border: "1px solid #fde68a", padding: "2px 6px", borderRadius: "3px", marginTop: "2px" }}>
-                                <span style={{ fontWeight: "700" }}>Delay:</span> {row.delay_reason}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Col 5: Container & Cargo Details */}
-                        <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "210px", maxWidth: "250px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            {/* Containers list with Seals rendered in compact inline rows (Show max 2 unless expanded) */}
-                            {row.containers && row.containers.length > 0 && row.containers.some(c => c.container_number || c.custom_seal || c.line_seal) && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginBottom: "4px" }}>
-                                {(expandedContainers[row._id || row.id || row.enquiry_no] ? row.containers : row.containers.slice(0, 2)).map((c, cIdx) => (
-                                  <div key={cIdx} style={{ fontSize: "9.5px", display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-                                    <span style={{ fontWeight: "800", color: "#1e40af", fontFamily: "monospace", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", padding: "1px 5px", borderRadius: "3px" }}>
-                                      {c.container_number || "CNTR"}
-                                      <CopyButton text={c.container_number} title="Copy Container No" iconSize={9} />
+                        return (
+                          <tr
+                            key={row.enquiry_no}
+                            style={{
+                              borderBottom: "1px solid #e2e8f0",
+                              backgroundColor: rowBg,
+                              cursor: isPipelineTab ? "default" : (loadingJob ? "wait" : "pointer"),
+                              opacity: loadingJob ? 0.7 : 1,
+                              transition: "background-color 0.15s ease"
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = rowHover)}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = rowBg)}
+                            onClick={() => !loadingJob && handleRowClick(row)}
+                          >
+                            {/* Col 1: Job No / Identifiers / Badges */}
+                            <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "160px" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                  {isPipelineTab ? (
+                                    <span
+                                      onClick={(e) => handleSuccessJobClick(e, row)}
+                                      style={{ cursor: "pointer", fontWeight: "800", color: "#1d4ed8", fontSize: "13px" }}
+                                    >
+                                      {row.success_no || row.enquiry_no}
                                     </span>
-                                    {(c.container_size || c.type) && (
-                                      <span style={{ fontSize: "8.5px", fontWeight: "800", color: "#0369a1", backgroundColor: "#e0f2fe", border: "1px solid #bae6fd", padding: "1px 4px", borderRadius: "3px" }}>
-                                        {c.container_size || c.type}
-                                      </span>
-                                    )}
-                                    {(() => {
-                                      const customSeal = (c.custom_seal || c.customSealNo || "").trim();
-                                      const lineSeal = (c.line_seal || c.shippingLineSealNo || "").trim();
-                                      if (!customSeal && !lineSeal) return null;
+                                  ) : (
+                                    <span
+                                      style={{ fontWeight: "800", color: "#1d4ed8", fontSize: "13px" }}
+                                    >
+                                      {activeTab === "Rejected" ? (row.rejected_no || row.enquiry_no) : row.enquiry_no}
+                                    </span>
+                                  )}
+                                  <CopyButton
+                                    text={isPipelineTab ? (row.success_no || row.enquiry_no) : (activeTab === "Rejected" ? (row.rejected_no || row.enquiry_no) : row.enquiry_no)}
+                                    title="Copy Job No"
+                                    iconSize={12}
+                                  />
+                                </div>
 
-                                      if (customSeal && lineSeal) {
-                                        if (customSeal.toUpperCase() === lineSeal.toUpperCase()) {
-                                          return (
-                                            <span style={{ color: "#64748b", fontSize: "9px" }}>
-                                              Seal: <strong style={{ color: "#334155" }}>{customSeal}</strong>
-                                              <CopyButton text={customSeal} title="Copy Seal" iconSize={9} />
-                                            </span>
-                                          );
-                                        }
-                                        return (
-                                          <span style={{ color: "#64748b", fontSize: "9px", display: "inline-flex", gap: "4px", alignItems: "center" }}>
-                                            <span>
-                                              Seal: <strong style={{ color: "#334155" }}>{customSeal}</strong>
-                                              <CopyButton text={customSeal} title="Copy Custom Seal" iconSize={9} />
-                                            </span>
-                                            <span>
-                                              L.Seal: <strong style={{ color: "#334155" }}>{lineSeal}</strong>
-                                              <CopyButton text={lineSeal} title="Copy Line Seal" iconSize={9} />
-                                            </span>
-                                          </span>
-                                        );
-                                      }
+                                <div style={{ fontSize: "10px", color: "#64748b", fontWeight: "600" }}>
+                                  Date: {row.enquiry_date}
+                                </div>
 
-                                      const single = customSeal || lineSeal;
-                                      return (
-                                        <span style={{ color: "#64748b", fontSize: "9px" }}>
-                                          Seal: <strong style={{ color: "#334155" }}>{single}</strong>
-                                          <CopyButton text={single} title="Copy Seal" iconSize={9} />
-                                        </span>
-                                      );
-                                    })()}
+                                <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
+                                  {row.source_job_no && (
+                                    <span style={{ color: "#334155", fontSize: "9px", fontWeight: "700", backgroundColor: "#f1f5f9", padding: "1px 5px", borderRadius: "3px", border: "1px solid #cbd5e1" }}>
+                                      Ref: {row.source_job_no}
+                                      <CopyButton text={row.source_job_no} title="Copy Ref No" iconSize={9} />
+                                    </span>
+                                  )}
+                                  {(row.shipment_ref_no || row.bl_details?.shipment_ref_no) && (
+                                    <span style={{ color: "#0f766e", fontSize: "9px", fontWeight: "700", backgroundColor: "#f0fdfa", padding: "1px 5px", borderRadius: "3px", border: "1px solid #99f6e4" }}>
+                                      HBL: {row.shipment_ref_no || row.bl_details?.shipment_ref_no}
+                                      <CopyButton text={row.shipment_ref_no || row.bl_details?.shipment_ref_no} title="Copy HBL Ref" iconSize={9} />
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Pill Badges: Shipment Type, Container Size, Consignment Type, Goods Stuffed */}
+                                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "2px" }}>
+                                  {row.shipment_type && (
+                                    <span style={{ fontSize: "9px", fontWeight: "700", padding: "2px 5px", borderRadius: "3px", backgroundColor: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", textTransform: "uppercase" }}>
+                                      {row.shipment_type}
+                                    </span>
+                                  )}
+                                  {row.container_size && (
+                                    <span style={{ fontSize: "9px", fontWeight: "700", padding: "2px 5px", borderRadius: "3px", backgroundColor: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" }}>
+                                      {row.container_size}
+                                    </span>
+                                  )}
+                                  {row.consignment_type && (
+                                    <span style={{ fontSize: "9px", fontWeight: "700", padding: "2px 5px", borderRadius: "3px", backgroundColor: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" }}>
+                                      {row.consignment_type}
+                                    </span>
+                                  )}
+                                  {row.goods_stuffed && (
+                                    <span style={{ fontSize: "9px", fontWeight: "700", padding: "2px 5px", borderRadius: "3px", backgroundColor: "#fef3c7", color: "#b45309", border: "1px solid #fde68a" }}>
+                                      {row.goods_stuffed}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Col 2: Shipper / Organization */}
+                            <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "180px", maxWidth: "220px" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                <div style={{ color: "#0f172a", fontWeight: "700", fontSize: "11.5px", lineHeight: "1.3", textTransform: "uppercase" }}>
+                                  {String(row.shipment_type || "").startsWith("Import")
+                                    ? (row.consignee_name || row.bl_details?.consignee || row.organization_name || "-")
+                                    : (row.shipper_name || row.bl_details?.consignor || row.organization_name || "-")}
+                                  <CopyButton
+                                    text={String(row.shipment_type || "").startsWith("Import")
+                                      ? (row.consignee_name || row.bl_details?.consignee || row.organization_name)
+                                      : (row.shipper_name || row.bl_details?.consignor || row.organization_name)}
+                                    title="Copy Party Name"
+                                    iconSize={10}
+                                  />
+                                </div>
+                                {String(row.shipment_type || "").startsWith("Import") && row.organization_name && row.organization_name !== (row.consignee_name || row.bl_details?.consignee) && (
+                                  <div style={{ color: "#64748b", fontSize: "10px" }}>
+                                    <span style={{ fontWeight: "600" }}>Party:</span> {row.organization_name}
+                                    <CopyButton text={row.organization_name} title="Copy Organization Name" iconSize={9} />
                                   </div>
-                                ))}
-                                {row.containers.length > 2 && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleExpandContainers(row._id || row.id || row.enquiry_no);
-                                    }}
-                                    style={{
-                                      background: "none",
-                                      border: "none",
-                                      color: "#2563eb",
-                                      fontSize: "9.5px",
-                                      fontWeight: "700",
-                                      cursor: "pointer",
-                                      padding: "1px 0",
-                                      textAlign: "left",
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      gap: "3px"
-                                    }}
-                                  >
-                                    {expandedContainers[row._id || row.id || row.enquiry_no]
-                                      ? "▲ Show Less"
-                                      : `▼ +${row.containers.length - 2} More Containers`}
-                                  </button>
+                                )}
+                                {row.contact_person && (
+                                  <div style={{ color: "#64748b", fontSize: "10px" }}>
+                                    <span style={{ fontWeight: "600" }}>Contact Person:</span> {row.contact_person}
+                                  </div>
+                                )}
+                                {row.email && (
+                                  <div style={{ color: "#64748b", fontSize: "10px" }}>
+                                    <span style={{ fontWeight: "600" }}>Email:</span> {row.email}
+                                  </div>
+                                )}
+                                {row.contact_no && (
+                                  <div style={{ color: "#64748b", fontSize: "10px" }}>
+                                    <span style={{ fontWeight: "600" }}>Contact:</span> {row.contact_no}
+                                  </div>
+                                )}
+                                {row.booking_thru && (
+                                  <div style={{ color: "#64748b", fontSize: "10px" }}>
+                                    <span style={{ fontWeight: "600" }}>Booking Thru:</span> {row.booking_thru}
+                                  </div>
+                                )}
+                                {row.sales_person && (
+                                  <div style={{ color: "#64748b", fontSize: "10px" }}>
+                                    <span style={{ fontWeight: "600" }}>Sales Person:</span> {row.sales_person}
+                                  </div>
+                                )}
+                                {row.remarks && !row.remarks.toLowerCase().includes("created automatically from export job") && (
+                                  <div style={{ color: "#475569", fontSize: "9.5px", fontStyle: "italic", marginTop: "2px" }}>
+                                    Remarks: {row.remarks}
+                                  </div>
                                 )}
                               </div>
-                            )}
+                            </td>
 
-                            <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "10px" }}>
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Pkgs: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.no_packages || "-"} {row.package_unit || ""}</span>
+                            {/* Col 3: Document Info */}
+                            <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "160px" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "10px" }}>
+                                {(row.sb_no || row.bl_details?.sb_no) ? (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>SB No: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                      {row.sb_no || row.bl_details?.sb_no} {row.sb_date ? `(${formatDateDisplay(row.sb_date)})` : ""}
+                                    </span>
+                                    <CopyButton text={row.sb_no || row.bl_details?.sb_no} title="Copy SB No" iconSize={10} />
+                                  </div>
+                                ) : null}
+                                {row.egm_no ? (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>EGM No: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                      {row.egm_no} {row.egm_date ? `(${formatDateDisplay(row.egm_date)})` : ""}
+                                    </span>
+                                    <CopyButton text={row.egm_no} title="Copy EGM No" iconSize={10} />
+                                  </div>
+                                ) : null}
+                                {row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no ? (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>MBL No: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                      {row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no}{" "}
+                                      {row.mbl_date || row.bl_date || row.bl_details?.mbl_date || row.bl_details?.bl_date
+                                        ? `(${formatDateDisplay(row.mbl_date || row.bl_date || row.bl_details?.mbl_date || row.bl_details?.bl_date)})`
+                                        : ""}
+                                    </span>
+                                    <CopyButton text={row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no} title="Copy MBL No" iconSize={10} />
+                                  </div>
+                                ) : null}
+                                {(row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no) ? (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>HBL No: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                      {row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no}{" "}
+                                      {row.hbl_date || row.bl_details?.hbl_date
+                                        ? `(${formatDateDisplay(row.hbl_date || row.bl_details?.hbl_date)})`
+                                        : ""}
+                                    </span>
+                                    <CopyButton text={row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no} title="Copy HBL No" iconSize={10} />
+                                  </div>
+                                ) : null}
+                                {!row.sb_no && !row.bl_details?.sb_no && !row.egm_no && !(row.mbl_no || row.bl_no || row.bl_details?.mbl_no || row.bl_details?.bl_no) && !(row.hbl_no || row.bl_details?.hbl_no || row.shipment_ref_no || row.bl_details?.shipment_ref_no) && (
+                                  <span style={{ color: "#94a3b8", fontStyle: "italic" }}>-</span>
+                                )}
                               </div>
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Gross Wt: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.gross_weight || "-"} {row.gross_weight_unit || ""}</span>
-                              </div>
-                              {row.net_weight && (
+                            </td>
+
+                            {/* Col 4: Port & Routing */}
+                            <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "190px" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "10px" }}>
+                                {(row.place_of_receipt || row.bl_details?.place_of_acceptance) && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Receipt: </span>
+                                    <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.place_of_receipt || row.bl_details?.place_of_acceptance}</span>
+                                    <CopyButton text={row.place_of_receipt || row.bl_details?.place_of_acceptance} title="Copy Receipt" iconSize={10} />
+                                  </div>
+                                )}
                                 <div>
-                                  <span style={{ color: "#64748b", fontWeight: "600" }}>Net Wt: </span>
-                                  <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.net_weight} {row.net_weight_unit || ""}</span>
+                                  <span style={{ color: "#64748b", fontWeight: "600" }}>POL: </span>
+                                  <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.port_of_loading || "-"}</span>
+                                  <CopyButton text={row.port_of_loading} title="Copy POL" iconSize={10} />
                                 </div>
-                              )}
-                              {row.volume_cbm && (
                                 <div>
-                                  <span style={{ color: "#64748b", fontWeight: "600" }}>Volume: </span>
-                                  <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.volume_cbm} {row.volume_unit || "CBM"}</span>
+                                  <span style={{ color: "#64748b", fontWeight: "600" }}>POD: </span>
+                                  <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.port_of_destination || "-"}</span>
+                                  <CopyButton text={row.port_of_destination} title="Copy POD" iconSize={10} />
                                 </div>
-                              )}
-                              {row.chargeable_weight && (
-                                <div>
-                                  <span style={{ color: "#64748b", fontWeight: "600" }}>Chg Wt: </span>
-                                  <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.chargeable_weight} {row.chargeable_weight_unit || "KG"}</span>
+                                {(row.vessel_name || row.bl_details?.vessel_name) && (
+                                  <div style={{ color: "#1e40af", fontWeight: "700", marginTop: "2px" }}>
+                                    Vessel: {row.vessel_name || row.bl_details?.vessel_name} {(row.voyage_no || row.bl_details?.voyage_no) ? `(Voy: ${row.voyage_no || row.bl_details?.voyage_no})` : ""}
+                                    <CopyButton text={row.vessel_name || row.bl_details?.vessel_name} title="Copy Vessel" iconSize={10} />
+                                  </div>
+                                )}
+                                {row.flight_no && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Flight: </span>
+                                    <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.flight_no} {row.flight_date ? `(${formatDateDisplay(row.flight_date)})` : ""}</span>
+                                    <CopyButton text={row.flight_no} title="Copy Flight No" iconSize={10} />
+                                  </div>
+                                )}
+                                {row.shipping_line_airline && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Carrier: </span>
+                                    <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.shipping_line_airline}</span>
+                                    <CopyButton text={row.shipping_line_airline} title="Copy Carrier" iconSize={10} />
+                                  </div>
+                                )}
+                                {row.bl_details?.place_of_issue && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Issue Place: </span>
+                                    <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.bl_details.place_of_issue}</span>
+                                  </div>
+                                )}
+                                {row.bl_details?.no_of_originals && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>No of MTD: </span>
+                                    <span style={{ color: "#0f172a", fontWeight: "700" }}>{row.bl_details.no_of_originals}</span>
+                                  </div>
+                                )}
+                                {row.delay_reason && (
+                                  <div style={{ color: "#b45309", backgroundColor: "#fffbeb", border: "1px solid #fde68a", padding: "2px 6px", borderRadius: "3px", marginTop: "2px" }}>
+                                    <span style={{ fontWeight: "700" }}>Delay:</span> {row.delay_reason}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Col 5: Container & Cargo Details */}
+                            <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "210px", maxWidth: "250px" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                {/* Containers list with Seals rendered in compact inline rows (Show max 2 unless expanded) */}
+                                {row.containers && row.containers.length > 0 && row.containers.some(c => c.container_number || c.custom_seal || c.line_seal) && (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginBottom: "4px" }}>
+                                    {(expandedContainers[row._id || row.id || row.enquiry_no] ? row.containers : row.containers.slice(0, 2)).map((c, cIdx) => (
+                                      <div key={cIdx} style={{ fontSize: "9.5px", display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                                        <span style={{ fontWeight: "800", color: "#1e40af", fontFamily: "monospace", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", padding: "1px 5px", borderRadius: "3px" }}>
+                                          {c.container_number || "CNTR"}
+                                          <CopyButton text={c.container_number} title="Copy Container No" iconSize={9} />
+                                        </span>
+                                        {(c.container_size || c.type) && (
+                                          <span style={{ fontSize: "8.5px", fontWeight: "800", color: "#0369a1", backgroundColor: "#e0f2fe", border: "1px solid #bae6fd", padding: "1px 4px", borderRadius: "3px" }}>
+                                            {c.container_size || c.type}
+                                          </span>
+                                        )}
+                                        {(() => {
+                                          const customSeal = (c.custom_seal || c.customSealNo || "").trim();
+                                          const lineSeal = (c.line_seal || c.shippingLineSealNo || "").trim();
+                                          if (!customSeal && !lineSeal) return null;
+
+                                          if (customSeal && lineSeal) {
+                                            if (customSeal.toUpperCase() === lineSeal.toUpperCase()) {
+                                              return (
+                                                <span style={{ color: "#64748b", fontSize: "9px" }}>
+                                                  Seal: <strong style={{ color: "#334155" }}>{customSeal}</strong>
+                                                  <CopyButton text={customSeal} title="Copy Seal" iconSize={9} />
+                                                </span>
+                                              );
+                                            }
+                                            return (
+                                              <span style={{ color: "#64748b", fontSize: "9px", display: "inline-flex", gap: "4px", alignItems: "center" }}>
+                                                <span>
+                                                  Seal: <strong style={{ color: "#334155" }}>{customSeal}</strong>
+                                                  <CopyButton text={customSeal} title="Copy Custom Seal" iconSize={9} />
+                                                </span>
+                                                <span>
+                                                  L.Seal: <strong style={{ color: "#334155" }}>{lineSeal}</strong>
+                                                  <CopyButton text={lineSeal} title="Copy Line Seal" iconSize={9} />
+                                                </span>
+                                              </span>
+                                            );
+                                          }
+
+                                          const single = customSeal || lineSeal;
+                                          return (
+                                            <span style={{ color: "#64748b", fontSize: "9px" }}>
+                                              Seal: <strong style={{ color: "#334155" }}>{single}</strong>
+                                              <CopyButton text={single} title="Copy Seal" iconSize={9} />
+                                            </span>
+                                          );
+                                        })()}
+                                      </div>
+                                    ))}
+                                    {row.containers.length > 2 && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleExpandContainers(row._id || row.id || row.enquiry_no);
+                                        }}
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          color: "#2563eb",
+                                          fontSize: "9.5px",
+                                          fontWeight: "700",
+                                          cursor: "pointer",
+                                          padding: "1px 0",
+                                          textAlign: "left",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: "3px"
+                                        }}
+                                      >
+                                        {expandedContainers[row._id || row.id || row.enquiry_no]
+                                          ? "▲ Show Less"
+                                          : `▼ +${row.containers.length - 2} More Containers`}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "10px" }}>
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Pkgs: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.no_packages || "-"} {row.package_unit || ""}</span>
+                                  </div>
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Gross Wt: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.gross_weight || "-"} {row.gross_weight_unit || ""}</span>
+                                  </div>
+                                  {row.net_weight && (
+                                    <div>
+                                      <span style={{ color: "#64748b", fontWeight: "600" }}>Net Wt: </span>
+                                      <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.net_weight} {row.net_weight_unit || ""}</span>
+                                    </div>
+                                  )}
+                                  {row.volume_cbm && (
+                                    <div>
+                                      <span style={{ color: "#64748b", fontWeight: "600" }}>Volume: </span>
+                                      <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.volume_cbm} {row.volume_unit || "CBM"}</span>
+                                    </div>
+                                  )}
+                                  {row.chargeable_weight && (
+                                    <div>
+                                      <span style={{ color: "#64748b", fontWeight: "600" }}>Chg Wt: </span>
+                                      <span style={{ fontWeight: "700", color: "#0f172a" }}>{row.chargeable_weight} {row.chargeable_weight_unit || "KG"}</span>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
 
-                            {/* Dimensions Grid Summary if present */}
-                            {row.dimensions && row.dimensions.length > 0 && row.dimensions.some(d => d.length && d.breadth && d.height) && (
-                              <div style={{ fontSize: "9px", color: "#6b21a8", backgroundColor: "#faf5ff", border: "1px solid #e9d5ff", padding: "3px 6px", borderRadius: "3px", marginTop: "2px" }}>
-                                <span style={{ fontWeight: "800" }}>Dims: </span>
-                                {row.dimensions.map((d, dIdx) => (
-                                  <span key={dIdx}>
-                                    {dIdx > 0 ? " | " : ""}
-                                    {d.no_packages ? `${d.no_packages} pkgs ` : ""}({d.length}x{d.breadth}x{d.height} {d.uom})
-                                  </span>
-                                ))}
+                                {/* Dimensions Grid Summary if present */}
+                                {row.dimensions && row.dimensions.length > 0 && row.dimensions.some(d => d.length && d.breadth && d.height) && (
+                                  <div style={{ fontSize: "9px", color: "#6b21a8", backgroundColor: "#faf5ff", border: "1px solid #e9d5ff", padding: "3px 6px", borderRadius: "3px", marginTop: "2px" }}>
+                                    <span style={{ fontWeight: "800" }}>Dims: </span>
+                                    {row.dimensions.map((d, dIdx) => (
+                                      <span key={dIdx}>
+                                        {dIdx > 0 ? " | " : ""}
+                                        {d.no_packages ? `${d.no_packages} pkgs ` : ""}({d.length}x{d.breadth}x{d.height} {d.uom})
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        </td>
+                            </td>
 
-                        {/* Col 6: Transit Dates & Terms */}
-                        <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "175px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "10px" }}>
-                            {(row.booking_date || row.bl_details?.booking_date) && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Booking: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
-                                  {(row.booking_no || row.bl_details?.booking_no) ? `${row.booking_no || row.bl_details?.booking_no} (${formatDateDisplay(row.booking_date || row.bl_details?.booking_date)})` : formatDateDisplay(row.booking_date || row.bl_details?.booking_date)}
-                                </span>
-                                <CopyButton text={row.booking_no || row.bl_details?.booking_no} title="Copy Booking No" iconSize={10} />
-                              </div>
-                            )}
-                            {(row.cut_off_date || row.bl_details?.cut_off_date) && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Cut-off: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.cut_off_date || row.bl_details?.cut_off_date)}</span>
-                              </div>
-                            )}
-                            {(row.sailing_date || row.bl_details?.sailing_date) && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>ETD: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.sailing_date || row.bl_details?.sailing_date)}</span>
-                              </div>
-                            )}
-                            {(row.eta_date || row.bl_details?.eta_date) && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>ETA: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.eta_date || row.bl_details?.eta_date)}</span>
-                              </div>
-                            )}
-                            {(row.arrival_date || row.bl_details?.arrival_date) && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Arrival: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.arrival_date || row.bl_details?.arrival_date)}</span>
-                              </div>
-                            )}
-                            {row.consol_date && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Consol: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
-                                  {row.consol_no ? `${row.consol_no} (${formatDateDisplay(row.consol_date)})` : formatDateDisplay(row.consol_date)}
-                                </span>
-                              </div>
-                            )}
-                            {(row.final_delivery_date || row.delivery_date || row.bl_details?.final_delivery_date || row.bl_details?.delivery_date) && (
-                              <div>
-                                <span style={{ color: "#64748b", fontWeight: "600" }}>Delivery: </span>
-                                <span style={{ fontWeight: "700", color: "#0f172a" }}>
-                                  {formatDateDisplay(row.final_delivery_date || row.delivery_date || row.bl_details?.final_delivery_date || row.bl_details?.delivery_date)}
-                                </span>
-                              </div>
-                            )}
+                            {/* Col 6: Transit Dates & Terms */}
+                            <td style={{ padding: "10px 12px", verticalAlign: "top", minWidth: "175px" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "10px" }}>
+                                {(row.booking_date || row.bl_details?.booking_date) && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Booking: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                      {(row.booking_no || row.bl_details?.booking_no) ? `${row.booking_no || row.bl_details?.booking_no} (${formatDateDisplay(row.booking_date || row.bl_details?.booking_date)})` : formatDateDisplay(row.booking_date || row.bl_details?.booking_date)}
+                                    </span>
+                                    <CopyButton text={row.booking_no || row.bl_details?.booking_no} title="Copy Booking No" iconSize={10} />
+                                  </div>
+                                )}
+                                {(row.cut_off_date || row.bl_details?.cut_off_date) && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Cut-off: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.cut_off_date || row.bl_details?.cut_off_date)}</span>
+                                  </div>
+                                )}
+                                {(row.sailing_date || row.bl_details?.sailing_date) && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>ETD: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.sailing_date || row.bl_details?.sailing_date)}</span>
+                                  </div>
+                                )}
+                                {(row.eta_date || row.bl_details?.eta_date) && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>ETA: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.eta_date || row.bl_details?.eta_date)}</span>
+                                  </div>
+                                )}
+                                {(row.arrival_date || row.bl_details?.arrival_date) && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Arrival: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>{formatDateDisplay(row.arrival_date || row.bl_details?.arrival_date)}</span>
+                                  </div>
+                                )}
+                                {row.consol_date && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Consol: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                      {row.consol_no ? `${row.consol_no} (${formatDateDisplay(row.consol_date)})` : formatDateDisplay(row.consol_date)}
+                                    </span>
+                                  </div>
+                                )}
+                                {(row.final_delivery_date || row.delivery_date || row.bl_details?.final_delivery_date || row.bl_details?.delivery_date) && (
+                                  <div>
+                                    <span style={{ color: "#64748b", fontWeight: "600" }}>Delivery: </span>
+                                    <span style={{ fontWeight: "700", color: "#0f172a" }}>
+                                      {formatDateDisplay(row.final_delivery_date || row.delivery_date || row.bl_details?.final_delivery_date || row.bl_details?.delivery_date)}
+                                    </span>
+                                  </div>
+                                )}
 
-                            {/* Terms & Freight Type Badges */}
-                            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "2px" }}>
-                              {(row.shipment_terms || row.bl_details?.shipment_terms) && (
-                                <span style={{ color: "#0f766e", fontWeight: "700", backgroundColor: "#f0fdfa", padding: "1px 5px", borderRadius: "3px", border: "1px solid #99f6e4", fontSize: "9px" }}>
-                                  {row.shipment_terms || row.bl_details?.shipment_terms}
-                                </span>
-                              )}
-                              {(row.freight_type || row.bl_details?.freight_type) && (
-                                <span style={{ color: "#1e40af", fontWeight: "700", backgroundColor: "#eff6ff", padding: "1px 5px", borderRadius: "3px", border: "1px solid #bfdbfe", fontSize: "9px" }}>
-                                  {row.freight_type || row.bl_details?.freight_type}
-                                </span>
-                              )}
-                              {(row.cargo_type || row.bl_details?.cargo_type) && (
-                                <span style={{ color: "#334155", fontWeight: "700", backgroundColor: "#f1f5f9", padding: "1px 5px", borderRadius: "3px", border: "1px solid #cbd5e1", fontSize: "9px" }}>
-                                  {row.cargo_type || row.bl_details?.cargo_type}
-                                </span>
-                              )}
-                            </div>
+                                {/* Terms & Freight Type Badges */}
+                                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "2px" }}>
+                                  {(row.shipment_terms || row.bl_details?.shipment_terms) && (
+                                    <span style={{ color: "#0f766e", fontWeight: "700", backgroundColor: "#f0fdfa", padding: "1px 5px", borderRadius: "3px", border: "1px solid #99f6e4", fontSize: "9px" }}>
+                                      {row.shipment_terms || row.bl_details?.shipment_terms}
+                                    </span>
+                                  )}
+                                  {(row.freight_type || row.bl_details?.freight_type) && (
+                                    <span style={{ color: "#1e40af", fontWeight: "700", backgroundColor: "#eff6ff", padding: "1px 5px", borderRadius: "3px", border: "1px solid #bfdbfe", fontSize: "9px" }}>
+                                      {row.freight_type || row.bl_details?.freight_type}
+                                    </span>
+                                  )}
+                                  {(row.cargo_type || row.bl_details?.cargo_type) && (
+                                    <span style={{ color: "#334155", fontWeight: "700", backgroundColor: "#f1f5f9", padding: "1px 5px", borderRadius: "3px", border: "1px solid #cbd5e1", fontSize: "9px" }}>
+                                      {row.cargo_type || row.bl_details?.cargo_type}
+                                    </span>
+                                  )}
+                                </div>
 
-                            {/* Manual Weights Summary */}
-                            {(row.net_weight_kg || row.gross_weight_kg || row.total_no_of_pkgs) && (
-                              <div style={{ color: "#475569", fontSize: "9px", marginTop: "2px", borderTop: "1px dashed #e2e8f0", paddingTop: "2px" }}>
-                                <span style={{ fontWeight: "700" }}>Manual:</span> {row.net_weight_kg ? `N: ${row.net_weight_kg}kg ` : ""}{row.gross_weight_kg ? `G: ${row.gross_weight_kg}kg ` : ""}{row.total_no_of_pkgs ? `P: ${row.total_no_of_pkgs}` : ""}
+                                {/* Manual Weights Summary */}
+                                {(row.net_weight_kg || row.gross_weight_kg || row.total_no_of_pkgs) && (
+                                  <div style={{ color: "#475569", fontSize: "9px", marginTop: "2px", borderTop: "1px dashed #e2e8f0", paddingTop: "2px" }}>
+                                    <span style={{ fontWeight: "700" }}>Manual:</span> {row.net_weight_kg ? `N: ${row.net_weight_kg}kg ` : ""}{row.gross_weight_kg ? `G: ${row.gross_weight_kg}kg ` : ""}{row.total_no_of_pkgs ? `P: ${row.total_no_of_pkgs}` : ""}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        </td>
+                            </td>
 
-                        {/* Col 7: Actions */}
-                        <td style={{ padding: "10px 12px", verticalAlign: "top", textAlign: "center" }}>
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }} onClick={(e) => e.stopPropagation()}>
-                            {activeTab === "Draft BL" && (
-                              <Button
-                                variant="contained"
-                                size="small"
-                                color="success"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updatePipelineValue(row._id || row.enquiry_no, "draftApproved", true);
-                                }}
-                                sx={{
-                                  textTransform: "none",
-                                  backgroundColor: "#10b981",
-                                  fontWeight: 700,
-                                  fontSize: "10.5px",
-                                  height: "26px",
-                                  "&:hover": { backgroundColor: "#059669" },
-                                }}
-                              >
-                                Approve
-                              </Button>
-                            )}
+                            {/* Col 7: Actions */}
+                            <td style={{ padding: "10px 12px", verticalAlign: "top", textAlign: "center" }}>
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }} onClick={(e) => e.stopPropagation()}>
+                                {activeTab === "Draft BL" && (
+                                  <Button
+                                    variant="contained"
+                                    size="small"
+                                    color="success"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updatePipelineValue(row._id || row.enquiry_no, "draftApproved", true);
+                                    }}
+                                    sx={{
+                                      textTransform: "none",
+                                      backgroundColor: "#10b981",
+                                      fontWeight: 700,
+                                      fontSize: "10.5px",
+                                      height: "26px",
+                                      "&:hover": { backgroundColor: "#059669" },
+                                    }}
+                                  >
+                                    Approve
+                                  </Button>
+                                )}
 
-                            <DocsUploadCell row={row} onUpdate={handleUpdateEnquiry} />
+                                <DocsUploadCell row={row} onUpdate={handleUpdateEnquiry} />
 
-                            {row.status === "Converted" && (
-                              <Tooltip title="Track Shipment">
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setTrackingEnquiry(row);
-                                  }}
-                                  sx={{
-                                    border: "1px solid #e2e8f0",
-                                    backgroundColor: "#f8fafc",
-                                    color: "#fc8019",
-                                    "&:hover": { backgroundColor: "#fff5ec", borderColor: "#fc8019" }
-                                  }}
-                                >
-                                  <LocalShippingIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-
-                            {row.shipment_type !== "Import-Air" && row.shipment_type !== "Export-Air" && (
-                              <Tooltip title="Generate BL">
-                                <span>
-                                  <FreightBillOfLadingGenerator enquiry={row}>
+                                {row.status === "Converted" && (
+                                  <Tooltip title="Track Shipment">
                                     <IconButton
                                       size="small"
-                                      onClick={(e) => e.stopPropagation()}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTrackingEnquiry(row);
+                                      }}
                                       sx={{
                                         border: "1px solid #e2e8f0",
                                         backgroundColor: "#f8fafc",
-                                        color: "#334155",
-                                        "&:hover": { backgroundColor: "#e2e8f0", color: "#0f172a" }
+                                        color: "#fc8019",
+                                        "&:hover": { backgroundColor: "#fff5ec", borderColor: "#fc8019" }
                                       }}
                                     >
-                                      <ReceiptIcon fontSize="small" />
+                                      <LocalShippingIcon fontSize="small" />
                                     </IconButton>
-                                  </FreightBillOfLadingGenerator>
-                                </span>
-                              </Tooltip>
-                            )}
-                          </div>
+                                  </Tooltip>
+                                )}
+
+
+                                <Tooltip title="Generate BL">
+                                  <span>
+                                    <FreightBillOfLadingGenerator enquiry={row}>
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => e.stopPropagation()}
+                                        sx={{
+                                          border: "1px solid #e2e8f0",
+                                          backgroundColor: "#f8fafc",
+                                          color: "#334155",
+                                          "&:hover": { backgroundColor: "#e2e8f0", color: "#0f172a" }
+                                        }}
+                                      >
+                                        <ReceiptIcon fontSize="small" />
+                                      </IconButton>
+                                    </FreightBillOfLadingGenerator>
+                                  </span>
+                                </Tooltip>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={7} style={{ padding: "40px 24px", textAlign: "center", color: "#64748b", fontSize: "13px" }}>
+                          No enquiries found. Click <strong>+ Create Enquiry</strong> to start.
                         </td>
                       </tr>
-                    );
-                  })
-                  ) : (
-                    <tr>
-                      <td colSpan={7} style={{ padding: "40px 24px", textAlign: "center", color: "#64748b", fontSize: "13px" }}>
-                        No enquiries found. Click <strong>+ Create Enquiry</strong> to start.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Table Footer */}
-            <div style={s.footer}>
-              <div>
-                Showing {filteredRows.length} Records
+                    )}
+                  </tbody>
+                </table>
               </div>
-            </div>
-          </>
-        )}
-    </>
-  )}
+
+              {/* Table Footer */}
+              <div style={s.footer}>
+                <div>
+                  Showing {filteredRows.length} Records
+                </div>
+              </div>
+            </>
+          )}
+        </>
+      )}
 
       <Dialog
         open={openCreate}

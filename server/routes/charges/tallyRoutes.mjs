@@ -359,7 +359,9 @@ const resolveJobNumberQuery = (jobNoInput) => {
                 branchRegexStr = "^(COK|COC|GC)";
             } else if (prefixPart.startsWith("GB") || prefixPart.startsWith("BAR")) {
                 branchRegexStr = "^(BAR|GB)";
-            } else if (prefixPart === "GIA" || prefixPart === "GEA" || prefixPart === "GIR" || prefixPart === "GER" || prefixPart.startsWith("GE") || prefixPart.startsWith("AMD") || prefixPart.startsWith("AHM")) {
+            } else if (prefixPart.startsWith("GEN")) {
+                branchRegexStr = "^GEN";
+            } else if (prefixPart === "GIA" || prefixPart === "GEA" || prefixPart === "GIR" || prefixPart === "GER" || (prefixPart.startsWith("GE") && !prefixPart.startsWith("GEN")) || prefixPart.startsWith("AMD") || prefixPart.startsWith("AHM")) {
                 branchRegexStr = "^(AMD|AHM|GEA|GER|GIA|GIR|GE)";
             } else if (prefixPart.startsWith("KAN") || prefixPart.startsWith("KANDLA")) {
                 branchRegexStr = "^(KAN|KANDLA)";
@@ -371,7 +373,7 @@ const resolveJobNumberQuery = (jobNoInput) => {
         }
 
         if (branchRegexStr) {
-            const branchSpecificRegex = new RegExp(`${branchRegexStr}.*0*${seqNum}(?:/|-|$)${yearRegexPart}`, "i");
+            const branchSpecificRegex = new RegExp(`${branchRegexStr}.*(?:^|/|-)0*${seqNum}(?:/|-|$)${yearRegexPart}`, "i");
             conditions.push({ job_no: { $regex: branchSpecificRegex } });
             conditions.push({ job_number: { $regex: branchSpecificRegex } });
             conditions.push({ tally_club_ref_no: { $regex: branchSpecificRegex } });
@@ -1264,9 +1266,21 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
             }
             if (!job && entry.jobNo) {
                 const firstJob = String(entry.jobNo).split(",")[0].trim();
-                job = await ExJobModel.findOne({
-                    $or: resolveJobNumberQuery(firstJob)
-                }).sort({ is_club_job_parent: -1 }).lean();
+                const safeNo = firstJob.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                try {
+                    job = await ExJobModel.findOne({
+                        $or: [
+                            { job_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                            { tally_club_ref_no: { $regex: new RegExp("^" + safeNo + "$", "i") } }
+                        ]
+                    }).lean();
+                } catch (e) { }
+
+                if (!job) {
+                    job = await ExJobModel.findOne({
+                        $or: resolveJobNumberQuery(firstJob)
+                    }).sort({ is_club_job_parent: -1 }).lean();
+                }
 
                 if (!job) {
                     job = await FreightEnquiryModel.findOne({
@@ -1323,26 +1337,44 @@ router.get("/purchase-entry", authApiKey, async (req, res) => {
         let c1ParentJobNo = null;
 
         const firstJobRaw = String(entry.jobNo).split(",")[0].trim();
-        let rawJobDB = null;
-        try {
-            rawJobDB = await ExJobModel.findOne({
-                $or: resolveJobNumberQuery(firstJobRaw)
-            }).sort({ is_club_job_parent: -1 }).lean();
-
-            if (!rawJobDB) {
-                rawJobDB = await FreightEnquiryModel.findOne({
-                    $or: resolveJobNumberQuery(firstJobRaw)
+        let rawJobDB = job;
+        if (!rawJobDB && entry.jobRef) {
+            try {
+                rawJobDB = await ExJobModel.findById(entry.jobRef).lean();
+            } catch (e) { }
+        }
+        if (!rawJobDB) {
+            const safeNo = firstJobRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            try {
+                rawJobDB = await ExJobModel.findOne({
+                    $or: [
+                        { job_no: { $regex: new RegExp("^" + safeNo + "$", "i") } },
+                        { tally_club_ref_no: { $regex: new RegExp("^" + safeNo + "$", "i") } }
+                    ]
                 }).lean();
-            }
+            } catch (e) { }
+        }
+        if (!rawJobDB) {
+            try {
+                rawJobDB = await ExJobModel.findOne({
+                    $or: resolveJobNumberQuery(firstJobRaw)
+                }).sort({ is_club_job_parent: -1 }).lean();
 
-            if (!rawJobDB && importDbConnection && importDbConnection.readyState === 1) {
-                try {
-                    rawJobDB = await importDbConnection.db.collection("jobs").findOne({
+                if (!rawJobDB) {
+                    rawJobDB = await FreightEnquiryModel.findOne({
                         $or: resolveJobNumberQuery(firstJobRaw)
-                    });
-                } catch (e) { }
-            }
-        } catch (e) { }
+                    }).lean();
+                }
+
+                if (!rawJobDB && importDbConnection && importDbConnection.readyState === 1) {
+                    try {
+                        rawJobDB = await importDbConnection.db.collection("jobs").findOne({
+                            $or: resolveJobNumberQuery(firstJobRaw)
+                        });
+                    } catch (e) { }
+                }
+            } catch (e) { }
+        }
 
         const isFreightForwardingJob = isFreightJob(rawJobDB) || String(firstJobRaw).toUpperCase().includes("FF-") || String(firstJobRaw).toUpperCase().startsWith("FF");
         let isClub = !isFreightForwardingJob && entry.isClubJob;

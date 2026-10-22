@@ -1,5 +1,6 @@
 import express from 'express';
 import AirPort from '../../model/Directorties/AirPort.js';
+import SeaPort from '../../model/Directorties/SeaPort.js';
 
 const router = express.Router();
 
@@ -8,8 +9,9 @@ router.get('/', async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 10,
-      search = ''
+      limit = req.query.search ? 50 : 10,
+      search = '',
+      country = ''
     } = req.query;
 
     const pageNum = parseInt(page);
@@ -22,15 +24,38 @@ router.get('/', async (req, res) => {
       query.$or = [
         { portCode: { $regex: search, $options: 'i' } },
         { portName: { $regex: search, $options: 'i' } },
-        { uneceCode: { $regex: search, $options: 'i' } }
+        { uneceCode: { $regex: search, $options: 'i' } },
+        { country: { $regex: search, $options: 'i' } }
       ];
     }
 
+    if (country) {
+      query.country = { $regex: `^${country}$`, $options: 'i' };
+    }
+
     const total = await AirPort.countDocuments(query);
-    const airPorts = await AirPort.find(query)
+    let airPorts = await AirPort.find(query)
       .sort({ portCode: 1 })
       .skip(skip)
-      .limit(limitNum);
+      .limit(limitNum)
+      .lean();
+
+    // If a search was performed, also supplement from SeaPort if not already present
+    if (search && airPorts.length < limitNum) {
+      const existingCodes = new Set(
+        airPorts.map((p) => (p.portCode || '').toUpperCase().trim())
+      );
+      const seaPorts = await SeaPort.find(query)
+        .limit(limitNum - airPorts.length)
+        .lean();
+      for (const sp of seaPorts) {
+        const code = (sp.portCode || '').toUpperCase().trim();
+        if (code && !existingCodes.has(code)) {
+          existingCodes.add(code);
+          airPorts.push(sp);
+        }
+      }
+    }
 
     res.json({
       success: true,
@@ -63,7 +88,13 @@ router.get('/:id', async (req, res) => {
 // POST /api/airPorts - Create new air port
 router.post('/', async (req, res) => {
   try {
-    const airPort = new AirPort(req.body);
+    const payload = { ...req.body };
+    if (payload.portCode) payload.portCode = payload.portCode.toUpperCase().trim();
+    if (payload.uneceCode) payload.uneceCode = payload.uneceCode.toUpperCase().trim();
+    if (payload.country) payload.country = payload.country.toUpperCase().trim();
+    if (payload.portName) payload.portName = payload.portName.trim();
+
+    const airPort = new AirPort(payload);
     const savedAirPort = await airPort.save();
 
     res.status(201).json({
@@ -84,9 +115,15 @@ router.post('/', async (req, res) => {
 // PUT /api/airPorts/:id - Update air port
 router.put('/:id', async (req, res) => {
   try {
+    const payload = { ...req.body };
+    if (payload.portCode) payload.portCode = payload.portCode.toUpperCase().trim();
+    if (payload.uneceCode) payload.uneceCode = payload.uneceCode.toUpperCase().trim();
+    if (payload.country) payload.country = payload.country.toUpperCase().trim();
+    if (payload.portName) payload.portName = payload.portName.trim();
+
     const airPort = await AirPort.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      payload,
       { new: true, runValidators: true }
     );
 

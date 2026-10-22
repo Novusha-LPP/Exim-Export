@@ -23,6 +23,7 @@ import { populateJobSubcollections, syncJobSubcollections } from "../../services
 import jobQueryRoutes from "./jobQueryRoutes.mjs";
 import impexcubeRoutes from "./impexcubeRoutes.mjs";
 import jobLockRoutes from "./jobLockRoutes.mjs";
+import Directory from "../../model/Directorties/Directory.js";
 
 const router = express.Router();
 
@@ -655,6 +656,23 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
 
     const updateData = { ...req.body, updatedAt: new Date() };
     delete updateData._id;
+
+    // Verify exporter is approved if being updated
+    if (
+      updateData.exporter &&
+      (!existingJob || updateData.exporter.trim().toLowerCase() !== (existingJob.exporter || "").trim().toLowerCase())
+    ) {
+      const orgDoc = await Directory.findOne({
+        directoryName: { $regex: `^${escapeRegex(updateData.exporter.trim())}$`, $options: "i" },
+        approvalStatus: "Approved",
+      }).lean();
+
+      if (!orgDoc) {
+        return res.status(403).json({
+          message: `Cannot assign organization '${updateData.exporter}'. Only Approved organizations can be assigned to jobs. Approval from HOD or Admin is required.`,
+        });
+      }
+    }
 
     if (existingJob) {
       // Billing validation check

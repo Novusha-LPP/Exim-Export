@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Paper,
   Typography,
@@ -53,6 +53,8 @@ import DirectoryForm from "./DirectoryForm.js";
 import axios from "axios";
 import DirectoryService from "../Directories/DirectoryService";
 import { formatDate } from "../../../utils/dateUtils";
+import { UserContext } from "../../../contexts/UserContext";
+import { isHodOrAdmin } from "../../../utils/roleUtils";
 
 // Directory Listing Table Columns
 const TABLE_COLUMNS = [
@@ -105,7 +107,7 @@ const getFirstGstNo = (branchInfo) => {
 };
 
 // Attachments View Dialog
-const AttachmentsViewDialog = ({ open, directory, onClose, onApprove }) => {
+const AttachmentsViewDialog = ({ open, directory, onClose, onApprove, canApprove }) => {
   if (!directory) return null;
 
   const kycDocs = directory.kycDocuments || {};
@@ -330,15 +332,29 @@ const AttachmentsViewDialog = ({ open, directory, onClose, onApprove }) => {
         sx={{ p: 2, borderTop: "1px solid #e2e8f0", justifyContent: "space-between" }}
       >
         {directory.approvalStatus === "Pending" ? (
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<CheckCircleIcon />}
-            onClick={() => onApprove(directory)}
-            sx={{ textTransform: "none", fontWeight: 700 }}
-          >
-            Approve Directory Now
-          </Button>
+          canApprove ? (
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircleIcon />}
+              onClick={() => onApprove(directory)}
+              sx={{ textTransform: "none", fontWeight: 700 }}
+            >
+              Approve Directory Now
+            </Button>
+          ) : (
+            <Tooltip title="Only HOD or Admin can approve organizations">
+              <span>
+                <Chip
+                  label="Pending Approval (HOD / Admin only)"
+                  color="warning"
+                  variant="outlined"
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              </span>
+            </Tooltip>
+          )
         ) : (
           <div />
         )}
@@ -448,6 +464,8 @@ const DirectoryDetailView = ({ directory }) => (
 
 // Main Component
 const ExportDirectory = () => {
+  const { user } = useContext(UserContext);
+  const canApprove = isHodOrAdmin(user?.role);
   const [directories, setDirectories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -558,6 +576,13 @@ const ExportDirectory = () => {
   };
 
   const handleApproveDirectly = async (directory) => {
+    if (!canApprove) {
+      showSnackbar(
+        "Permission Denied: Only HOD or Admin can approve organizations.",
+        "error",
+      );
+      return;
+    }
     try {
       await DirectoryService.approve(directory._id);
       showSnackbar(
@@ -919,23 +944,37 @@ const ExportDirectory = () => {
 
                         {/* Direct Approve button for Pending tab */}
                         {directory.approvalStatus === "Pending" && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            size="small"
-                            startIcon={<CheckCircleIcon fontSize="small" />}
-                            onClick={() => handleApproveDirectly(directory)}
-                            sx={{
-                              textTransform: "none",
-                              fontWeight: 700,
-                              fontSize: "0.75rem",
-                              py: 0.25,
-                              px: 1,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            Approve
-                          </Button>
+                          canApprove ? (
+                            <Button
+                              variant="contained"
+                              color="success"
+                              size="small"
+                              startIcon={<CheckCircleIcon fontSize="small" />}
+                              onClick={() => handleApproveDirectly(directory)}
+                              sx={{
+                                textTransform: "none",
+                                fontWeight: 700,
+                                fontSize: "0.75rem",
+                                py: 0.25,
+                                px: 1,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              Approve
+                            </Button>
+                          ) : (
+                            <Tooltip title="Only HOD or Admin can approve organizations">
+                              <span>
+                                <Chip
+                                  label="Pending Approval"
+                                  color="warning"
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ fontSize: "0.7rem", height: 22, cursor: "not-allowed" }}
+                                />
+                              </span>
+                            </Tooltip>
+                          )
                         )}
 
                         <IconButton
@@ -996,6 +1035,7 @@ const ExportDirectory = () => {
         directory={attachmentDialog.directory}
         onClose={() => setAttachmentDialog({ open: false, directory: null })}
         onApprove={handleApproveDirectly}
+        canApprove={canApprove}
       />
 
       {/* Directory Dialog */}
@@ -1024,6 +1064,7 @@ const ExportDirectory = () => {
               onSave={handleSave}
               onCancel={() => setOpenDialog(false)}
               readOnly={viewMode}
+              canApprove={canApprove}
             />
           )}
         </DialogContent>

@@ -1224,6 +1224,8 @@ function useExportExcelUpload(inputRef, onSuccess) {
 
             let skippedCount = 0;
             let successCount = 0;
+            let unapprovedSkippedCount = 0;
+            let unapprovedExportersList = [];
 
             for (let i = 0; i < modifiedData.length; i += CHUNK_SIZE) {
                 const chunk = modifiedData.slice(i, i + CHUNK_SIZE);
@@ -1252,6 +1254,10 @@ function useExportExcelUpload(inputRef, onSuccess) {
                     if (uploadResponse.data) {
                         successCount += (uploadResponse.data.count || 0);
                         skippedCount += (uploadResponse.data.skipped || 0);
+                        unapprovedSkippedCount += (uploadResponse.data.unapprovedSkipped || 0);
+                        if (uploadResponse.data.unapprovedExporters?.length) {
+                            unapprovedExportersList.push(...uploadResponse.data.unapprovedExporters);
+                        }
                     }
 
                     // Update progress
@@ -1272,13 +1278,20 @@ function useExportExcelUpload(inputRef, onSuccess) {
                 const durationSeconds = ((endTime - startTime) / 1000).toFixed(2);
 
                 if (skippedCount === modifiedData.length && successCount === 0) {
-                    setError(`Error: All ${skippedCount} records were skipped. Missing or invalid Job Numbers.`);
+                    if (unapprovedSkippedCount > 0) {
+                        const uniqueUnapproved = [...new Set(unapprovedExportersList)].slice(0, 5).join(", ");
+                        setError(`All ${skippedCount} jobs were skipped. ${unapprovedSkippedCount} jobs belong to unapproved organizations: ${uniqueUnapproved}. Organizations must be approved by HOD or Admin.`);
+                    } else {
+                        setError(`Error: All ${skippedCount} records were skipped. Missing or invalid Job Numbers.`);
+                    }
                     setLoading(false);
                     return;
                 }
 
                 setUploadStats({
                     count: successCount > 0 ? successCount : modifiedData.length,
+                    skipped: skippedCount,
+                    unapprovedSkipped: unapprovedSkippedCount,
                     timeTaken: durationSeconds,
                 });
 

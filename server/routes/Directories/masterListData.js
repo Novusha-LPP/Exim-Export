@@ -479,7 +479,7 @@ export const eximCodes = [
     { code: "03", description: "Advance licence" },
     { code: "19", description: "Drawback (DBK)" },
     { code: "21", description: "EQU/EPZ/SEZ/EHTP/STP" },
-    { code: "43", description: "Drawback and zero duty PECG" },
+    { code: "43", description: "Drawback and zero duty EPCG" },
     { code: "50", description: "EPCG and Advance license" },
     { code: "60", description: "DRAWBACK AND ROSCTL" },
     { code: "61", description: "EPCG, DRAWBACK AND ROSCTL" },

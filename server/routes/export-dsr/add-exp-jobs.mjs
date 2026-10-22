@@ -4,6 +4,7 @@ import ExLastJobsDate from "../../model/export/ExLastJobDate.mjs";
 import auditMiddleware from "../../middleware/auditTrail.mjs";
 import JobSequence from "../../model/export/JobSequence.mjs";
 import { getNextJobSequence, updateJobSequenceIfHigher } from "../../utils/jobNumberGenerator.mjs";
+import Directory from "../../model/Directorties/Directory.js";
 
 const router = express.Router();
 
@@ -31,6 +32,26 @@ router.post(
         return res.status(400).json({
           success: false,
           message: "Missing required fields: exporter, branch_code, and transportMode are required.",
+        });
+      }
+
+      // Enforce Organization Approval Check
+      const cleanOrgName = (exporter || "").trim();
+      const orgDirectory = await Directory.findOne({
+        organization: { $regex: new RegExp(`^${cleanOrgName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") }
+      }).lean();
+
+      if (!orgDirectory) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot create job: Organization "${exporter}" does not exist in the directory. Please register and get approval from HOD or Admin first.`,
+        });
+      }
+
+      if (orgDirectory.approvalStatus !== "Approved") {
+        return res.status(403).json({
+          success: false,
+          message: `Cannot create job: Organization "${exporter}" is not approved (Current status: "${orgDirectory.approvalStatus || 'Pending'}"). Jobs can only be created for organizations approved by HOD or Admin.`,
         });
       }
 
@@ -202,6 +223,21 @@ router.post(
           success: false,
           message: `Source job ${sourceJobNo} not found.`,
         });
+      }
+
+      // Check Source Job Organization Approval Status in Directory
+      const cleanSourceOrg = (sourceJob.exporter || "").trim();
+      if (cleanSourceOrg) {
+        const sourceOrgDir = await Directory.findOne({
+          organization: { $regex: new RegExp(`^${cleanSourceOrg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") }
+        }).lean();
+
+        if (!sourceOrgDir || sourceOrgDir.approvalStatus !== "Approved") {
+          return res.status(403).json({
+            success: false,
+            message: `Cannot copy job: Organization "${sourceJob.exporter}" is not approved (Current status: "${sourceOrgDir?.approvalStatus || 'Not found in Directory'}"). Job creation requires approval from HOD or Admin.`,
+          });
+        }
       }
 
       let newJobNo;

@@ -425,6 +425,27 @@ const EditChargeModal = ({
 
   const normalize = (str) => (str || '').toString().replace(/[^a-z0-9]/gi, '').toUpperCase();
 
+  const partyMatchesSearch = (item, searchTerm) => {
+    if (!searchTerm || !searchTerm.trim()) return true;
+    const target = (item.name || item.organization || '').toLowerCase().trim();
+    const query = searchTerm.toLowerCase().trim();
+    if (target.includes(query)) return true;
+
+    // Normalize common phonetic variations (e.g. 'shubam' vs 'shubham')
+    const normTarget = target.replace(/bh/g, 'b').replace(/ph/g, 'f').replace(/dh/g, 'd').replace(/th/g, 't').replace(/kh/g, 'k').replace(/gh/g, 'g').replace(/ch/g, 'c').replace(/[^a-z0-9]/g, '');
+    const normQuery = query.replace(/bh/g, 'b').replace(/ph/g, 'f').replace(/dh/g, 'd').replace(/th/g, 't').replace(/kh/g, 'k').replace(/gh/g, 'g').replace(/ch/g, 'c').replace(/[^a-z0-9]/g, '');
+    if (normTarget.includes(normQuery)) return true;
+
+    // Token prefix matching
+    const queryWords = query.split(/\s+/).filter(Boolean);
+    const targetWords = target.split(/\s+/).filter(Boolean);
+    if (queryWords.every(qw => targetWords.some(tw => tw.startsWith(qw) || tw.replace(/bh/g, 'b').startsWith(qw.replace(/bh/g, 'b'))))) {
+      return true;
+    }
+
+    return false;
+  };
+
   // Smart party finder: when multiple entries share the same name across directories,
   // prefer the one that has actual branch data (GST, address, etc.)
   const smartFindParty = (list, name) => {
@@ -507,7 +528,7 @@ const EditChargeModal = ({
 
       // Auto-populate TDS if selecting a shipping line or CFS or transporter
       if (section === 'cost' && field === 'partyName') {
-        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders];
+        const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...emptyYardList, ...generalOrgList, ...forwarders];
         const matchedSL = smartFindParty(allParties, value);
         if (matchedSL && matchedSL.tds_percent > 0) {
           updated[index][section].isTds = true;
@@ -614,7 +635,7 @@ const EditChargeModal = ({
         } else {
           // GST Split Logic for Cost
           const partyName = sectionRef.partyName;
-          const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders];
+          const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...emptyYardList, ...generalOrgList, ...forwarders];
           const party = smartFindParty(allParties, partyName);
           const branchIndex = sectionRef.branchIndex || 0;
           const gstin = party?.branches?.[branchIndex]?.gst || party?.branchInfo?.[branchIndex]?.gstNo || "";
@@ -1100,36 +1121,28 @@ const EditChargeModal = ({
                                     </div>
                                     {activeDropdown.index === i && activeDropdown.section === 'revenue' && (row.revenue?.partyName?.length >= 1 || activeDropdown.clicked) && (
                                       <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                        {(
-                                          row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
-                                          row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations :
-                                          row.revenue?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
-                                          row.revenue?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
-                                          row.revenue?.partyType?.toUpperCase() === 'FORWARDER' ? forwarders :
-                                          row.revenue?.partyType?.toUpperCase() === 'OTHERS' || row.revenue?.partyType?.toUpperCase() === 'OTHER' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders] :
-                                          organizations
-                                        )
-                                          .filter(item => !row.revenue?.partyName || item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))
-                                          .slice(0, 20)
-                                          .map((item, idx) => (
-                                            <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
-                                              <span className="ep-item-name">{item.name || item.organization}</span>
-                                              <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
-                                            </li>
-                                          ))}
-                                        {(
-                                          (
-                                            row.revenue?.partyType?.toUpperCase() === 'AGENT' || row.revenue?.partyType?.toUpperCase() === 'CARRIER' ? shippingLines :
-                                            row.revenue?.partyType?.toUpperCase() === 'CUSTOMER' ? organizations :
-                                            row.revenue?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
-                                            row.revenue?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
-                                            row.revenue?.partyType?.toUpperCase() === 'FORWARDER' ? forwarders :
-                                            row.revenue?.partyType?.toUpperCase() === 'OTHERS' || row.revenue?.partyType?.toUpperCase() === 'OTHER' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders] :
-                                            organizations
-                                          )
-                                          .filter(item => !row.revenue?.partyName || item.name.toLowerCase().includes(row.revenue.partyName.toLowerCase()))
-                                          .length === 0
-                                        ) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
+                                        {(() => {
+                                            const pType = (row.revenue?.partyType || 'Customer').toUpperCase();
+                                            let list = [];
+                                            if (pType === 'AGENT' || pType === 'CARRIER') list = shippingLines;
+                                            else if (pType === 'CUSTOMER') list = organizations;
+                                            else if (pType === 'VENDOR') list = suppliers;
+                                            else if (pType === 'TRANSPORTER') list = transporters;
+                                            else if (pType === 'FORWARDER') list = forwarders;
+                                            else if (pType === 'EMPTY YARD' || pType === 'EMPTY_YARD') list = emptyYardList;
+                                            else list = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...emptyYardList, ...generalOrgList, ...forwarders];
+
+                                            const filtered = list.filter(item => partyMatchesSearch(item, row.revenue?.partyName)).slice(0, 30);
+                                            if (filtered.length === 0) {
+                                              return <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>;
+                                            }
+                                            return filtered.map((item, idx) => (
+                                              <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
+                                                <span className="ep-item-name">{item.name || item.organization}</span>
+                                                <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
+                                              </li>
+                                            ));
+                                          })()}
                                       </ul>
                                     )}
                                   </div>
@@ -1154,7 +1167,7 @@ const EditChargeModal = ({
                                   </button>
                                 </div>
                                 {(() => {
-                                  const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders];
+                                  const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...emptyYardList, ...generalOrgList, ...forwarders];
                                   const party = smartFindParty(allParties, row.revenue?.partyName);
                                   if (party && party.branches?.length > 1) {
                                     return (
@@ -1269,7 +1282,7 @@ const EditChargeModal = ({
                                   <div className="ep-row">
                                     <span className="ep-label">PAYABLE TYPE</span>
                                     <select className="form-input" value={row.cost?.partyType || 'Others'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
-                                      <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option><option>Forwarder</option><option>General Org</option>
+                                      <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option><option>Empty Yard</option><option>Forwarder</option><option>General Org</option>
                                     </select>
                                   </div>
                                   <div className="ep-row">
@@ -1301,35 +1314,32 @@ const EditChargeModal = ({
                                       </div>
                                       {activeDropdown.index === i && activeDropdown.section === 'cost' && (row.cost?.partyName?.length >= 1 || activeDropdown.clicked) && (
                                         <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                          {(row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
-                                            row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders] :
-                                              row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
-                                                row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
-                                                  row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
-                                                    row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
-                                                      row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes :
-                                                        row.cost?.partyType?.toUpperCase() === 'FORWARDER' ? forwarders :
-                                                          row.cost?.partyType?.toUpperCase() === 'GENERAL ORG' ? generalOrgList : [])
-                                            .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
-                                            .slice(0, 20)
-                                            .map((item, idx) => (
+                                        {(() => {
+                                            const pType = (row.cost?.partyType || 'Others').toUpperCase();
+                                            let list = [];
+                                            if (pType === 'AGENT') list = shippingLines;
+                                            else if (pType === 'VENDOR') list = suppliers;
+                                            else if (pType === 'TRANSPORTER') list = transporters;
+                                            else if (pType === 'EXPORTER') list = organizations;
+                                            else if (pType === 'CFS') list = cfsList;
+                                            else if (pType === 'TERMINAL') list = terminalCodes;
+                                            else if (pType === 'EMPTY YARD' || pType === 'EMPTY_YARD') list = emptyYardList;
+                                            else if (pType === 'FORWARDER') list = forwarders;
+                                            else if (pType === 'GENERAL ORG') list = generalOrgList;
+                                            else list = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...emptyYardList, ...generalOrgList, ...forwarders];
+
+                                            const filtered = list.filter(item => partyMatchesSearch(item, row.cost?.partyName)).slice(0, 30);
+                                            if (filtered.length === 0) {
+                                              return <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>;
+                                            }
+                                            return filtered.map((item, idx) => (
                                               <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'cost', item)}>
                                                 <span className="ep-item-name">{item.name || item.organization}</span>
                                                 <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
                                               </li>
-                                            ))}
-                                          {((row.cost?.partyType?.toUpperCase() === 'AGENT' ? shippingLines :
-                                            row.cost?.partyType?.toUpperCase() === 'OTHERS' ? [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders] :
-                                              row.cost?.partyType?.toUpperCase() === 'VENDOR' ? suppliers :
-                                                row.cost?.partyType?.toUpperCase() === 'TRANSPORTER' ? transporters :
-                                                  row.cost?.partyType?.toUpperCase() === 'EXPORTER' ? organizations :
-                                                    row.cost?.partyType?.toUpperCase() === 'CFS' ? cfsList :
-                                                      row.cost?.partyType?.toUpperCase() === 'TERMINAL' ? terminalCodes :
-                                                        row.cost?.partyType?.toUpperCase() === 'FORWARDER' ? forwarders :
-                                                          row.cost?.partyType?.toUpperCase() === 'GENERAL ORG' ? generalOrgList : [])
-                                            .filter(item => !row.cost?.partyName || item.name.toLowerCase().includes(row.cost.partyName.toLowerCase()))
-                                            .length === 0) && <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>}
-                                        </ul>
+                                            ));
+                                          })()}
+                                      </ul>
                                       )}
                                     </div>
                                   </div>
@@ -1341,7 +1351,7 @@ const EditChargeModal = ({
                                     </div>
                                   </div>
                                   {(() => {
-                                    const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...generalOrgList, ...forwarders];
+                                    const allParties = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...emptyYardList, ...generalOrgList, ...forwarders];
                                     const party = smartFindParty(allParties, row.cost?.partyName);
                                     if (party && party.branches?.length > 1) {
                                       return (

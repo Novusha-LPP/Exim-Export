@@ -290,6 +290,7 @@ app.use(deleteFromS3Routes);
 
 // Charges & Charge Heads (must be before wildcard updateExportJobs)
 app.use("/api", chargesRoute);
+app.use(chargesRoute);
 app.use("/api/tally", tallyRoutes);
 
 // DSC Signer Routes (must be before wildcard updateExportJobs)

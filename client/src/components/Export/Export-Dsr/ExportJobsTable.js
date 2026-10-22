@@ -84,6 +84,15 @@ import {
   getJobScrollAndEgmInfo,
   getCurrentFinancialYear,
 } from "./utils/exportTableUtils";
+// Lazy-loaded standard document generators
+const ExportChecklistGenerator = lazy(() => import("./StandardDocuments/ExportChecklistGenerator"));
+const ConsignmentNoteGenerator = lazy(() => import("./StandardDocuments/ConsignmentNoteGenerator"));
+const FileCoverGenerator = lazy(() => import("./StandardDocuments/FileCoverGenerator"));
+const ForwardingNoteTharGenerator = lazy(() => import("./StandardDocuments/ForwardingNoteTharGenerator"));
+const AnnexureCGenerator = lazy(() => import("./StandardDocuments/AnnexureCGenerator"));
+const ConcorForwardingNoteGenerator = lazy(() => import("./StandardDocuments/ConcorForwardingNoteGenerator.js"));
+const VGMAuthorizationGenerator = lazy(() => import("./StandardDocuments/VGMAuthorizationGenerator"));
+const FreightCertificateGenerator = lazy(() => import("./StandardDocuments/FreightCertificateGenerator"));
 
 import {
   QuickUploadButton,
@@ -717,10 +726,10 @@ const ExportJobsTable = () => {
     const isPendingOrSentTab = ["Pending", "Booking Pending", "Handover Pending", "Prepare for Billing", "Sent for Billing", "club-jobs"].includes(activeTab);
     if (isPendingOrSentTab) {
       baseJobs = baseJobs.filter(job => {
-        const isCompleted = job.detailedStatus === "Billing Done" || 
-          String(job.status || "").toLowerCase() === "completed" || 
+        const isCompleted = job.detailedStatus === "Billing Done" ||
+          String(job.status || "").toLowerCase() === "completed" ||
           hasClubBillingDate(job) ||
-          job.isJobCanceled === true || 
+          job.isJobCanceled === true ||
           String(job.status || "").toLowerCase() === "cancelled";
         return !isCompleted;
       });
@@ -763,10 +772,10 @@ const ExportJobsTable = () => {
             String(subJob.status || "").toLowerCase() !== "completed" &&
             String(subJob.status || "").toLowerCase() !== "cancelled"
           );
-          const isParentCompleted = parent.detailedStatus === "Billing Done" || 
-            String(parent.status || "").toLowerCase() === "completed" || 
+          const isParentCompleted = parent.detailedStatus === "Billing Done" ||
+            String(parent.status || "").toLowerCase() === "completed" ||
             hasClubBillingDate(parent) ||
-            parent.isJobCanceled === true || 
+            parent.isJobCanceled === true ||
             String(parent.status || "").toLowerCase() === "cancelled";
           if (isParentCompleted) return;
         }
@@ -3295,89 +3304,89 @@ const ExportJobsTable = () => {
 
           {/* Table */}
           <div style={s.tableContainer} className="table-container-responsive">
-                <table style={s.table}>
-                  <colgroup>
-                    <col style={{ minWidth: "175px" }} />
-                    <col style={{ minWidth: "180px" }} />
-                    <col style={{ minWidth: "110px" }} />
-                    <col style={{ minWidth: "100px" }} />
-                    <col style={{ minWidth: "130px" }} />
-                    <col style={{ minWidth: "130px" }} />
-                    <col style={{ minWidth: "160px" }} />
-                    <col style={{ minWidth: "80px" }} />
-                    <col style={{ minWidth: "85px" }} />
-                  </colgroup>
-                  <thead>
-                    <tr
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
-                        position: "sticky",
-                        top: 0,
-                        zIndex: 1,
-                      }}
-                    >
-                      <th
-                        style={{ ...s.th, width: "12%", minWidth: "110px", cursor: "pointer", userSelect: "none" }}
-                        onClick={() => handleSort('job_no')}
-                        title="Click to sort by Job Number"
-                      >
-                        Job No
-                        {sortConfig.key === 'job_no' && (
-                          <span style={{ marginLeft: "5px", fontSize: "10px" }}>
-                            {sortConfig.direction === 'asc' ? '▲' : '▼'}
-                          </span>
-                        )}
-                      </th>
-                      <th style={{ ...s.th, width: "18%", minWidth: "170px" }}>Exporter</th>
-                      <th style={{ ...s.th, width: "11%", minWidth: "105px" }}>Invoice</th>
-                      <th style={{ ...s.th, width: "8%", minWidth: "80px" }}>SB No</th>
-                      <th style={{ ...s.th, width: "13%", minWidth: "130px" }}>Port</th>
-                      <th style={{ ...s.th, width: "12%", minWidth: "140px" }}>Container</th>
-                      <th style={{ ...s.th, width: "8%", minWidth: "90px", textAlign: "center" }}>Handover</th>
-                      <th style={{ ...s.th, width: "7%", minWidth: "80px", textAlign: "center" }}>Docs</th>
-                      <th style={{ ...s.th, width: "9%", minWidth: "120px", textAlign: "center" }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan="9" style={s.message}>
-                          Loading jobs...
-                        </td>
-                      </tr>
-                    ) : sortedJobs.length === 0 ? (
-                      <tr>
-                        <td colSpan="9" style={s.message}>
-                          No jobs found.
-                        </td>
-                      </tr>
-                    ) : (
-                      groupedJobs.reduce((acc, job) => {
-                        acc.push(job);
-                        if (job.subRows && job.subRows.length > 0) {
-                          acc.push(...job.subRows.map(subJob => ({ ...subJob, isSubRow: true })));
-                        }
-                        return acc;
-                      }, []).map((job, idx) => {
-                        const isJobBilled = Boolean(job.detailedStatus === "Billing Done" || hasClubBillingDate(job));
-                        const currentStatus = isJobBilled ? "Billing Done" : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
-                          ? job.detailedStatus[job.detailedStatus.length - 1]
-                          : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "";
-                        const theme = getStatusTheme(currentStatus);
+            <table style={s.table}>
+              <colgroup>
+                <col style={{ minWidth: "175px" }} />
+                <col style={{ minWidth: "180px" }} />
+                <col style={{ minWidth: "110px" }} />
+                <col style={{ minWidth: "100px" }} />
+                <col style={{ minWidth: "130px" }} />
+                <col style={{ minWidth: "130px" }} />
+                <col style={{ minWidth: "160px" }} />
+                <col style={{ minWidth: "80px" }} />
+                <col style={{ minWidth: "85px" }} />
+              </colgroup>
+              <thead>
+                <tr
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 1,
+                  }}
+                >
+                  <th
+                    style={{ ...s.th, width: "12%", minWidth: "110px", cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSort('job_no')}
+                    title="Click to sort by Job Number"
+                  >
+                    Job No
+                    {sortConfig.key === 'job_no' && (
+                      <span style={{ marginLeft: "5px", fontSize: "10px" }}>
+                        {sortConfig.direction === 'asc' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </th>
+                  <th style={{ ...s.th, width: "18%", minWidth: "170px" }}>Exporter</th>
+                  <th style={{ ...s.th, width: "11%", minWidth: "105px" }}>Invoice</th>
+                  <th style={{ ...s.th, width: "8%", minWidth: "80px" }}>SB No</th>
+                  <th style={{ ...s.th, width: "13%", minWidth: "130px" }}>Port</th>
+                  <th style={{ ...s.th, width: "12%", minWidth: "140px" }}>Container</th>
+                  <th style={{ ...s.th, width: "8%", minWidth: "90px", textAlign: "center" }}>Handover</th>
+                  <th style={{ ...s.th, width: "7%", minWidth: "80px", textAlign: "center" }}>Docs</th>
+                  <th style={{ ...s.th, width: "9%", minWidth: "120px", textAlign: "center" }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="9" style={s.message}>
+                      Loading jobs...
+                    </td>
+                  </tr>
+                ) : sortedJobs.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" style={s.message}>
+                      No jobs found.
+                    </td>
+                  </tr>
+                ) : (
+                  groupedJobs.reduce((acc, job) => {
+                    acc.push(job);
+                    if (job.subRows && job.subRows.length > 0) {
+                      acc.push(...job.subRows.map(subJob => ({ ...subJob, isSubRow: true })));
+                    }
+                    return acc;
+                  }, []).map((job, idx) => {
+                    const isJobBilled = Boolean(job.detailedStatus === "Billing Done" || hasClubBillingDate(job));
+                    const currentStatus = isJobBilled ? "Billing Done" : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
+                      ? job.detailedStatus[job.detailedStatus.length - 1]
+                      : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status) || "";
+                    const theme = getStatusTheme(currentStatus);
 
-                        return (
-                          <tr
-                            key={job._id || idx}
-                            style={{
-                              backgroundColor: theme.bg,
-                              borderLeft: `4px solid ${job.isSubRow ? "#94a3b8" : theme.border}`,
-                              cursor: "default",
-                              transition: "all 0.2s ease",
-                            }}
-                            className="table-row-hover job-row-glow"
-                          >
-                            {/* <td
+                    return (
+                      <tr
+                        key={job._id || idx}
+                        style={{
+                          backgroundColor: theme.bg,
+                          borderLeft: `4px solid ${job.isSubRow ? "#94a3b8" : theme.border}`,
+                          cursor: "default",
+                          transition: "all 0.2s ease",
+                        }}
+                        className="table-row-hover job-row-glow"
+                      >
+                        {/* <td
                         style={{
                           ...s.td,
                           textAlign: "center",
@@ -3387,446 +3396,405 @@ const ExportJobsTable = () => {
                         {(page - 1) * LIMIT + idx + 1}
                       </td> */}
 
-                            {/* Column 2: Job No */}
-                            <td
-                              style={{
-                                ...s.td,
-                                left: 0,
-                                backgroundColor: (() => {
-                                  const docClicks = job.docClicks || {};
-                                  const checklistUser = docClicks.checklist?.clickedBy;
-                                  const fileCoverUser = docClicks.file_cover?.clickedBy;
-                                  const esanchitUser = docClicks.esanchit?.clickedBy;
-                                  const hasCustomFileGenerated = checklistUser && fileCoverUser && esanchitUser &&
-                                    checklistUser === fileCoverUser && checklistUser === esanchitUser && !job.send_for_billing;
+                        {/* Column 2: Job No */}
+                        <td
+                          style={{
+                            ...s.td,
+                            left: 0,
+                            backgroundColor: (() => {
+                              const docClicks = job.docClicks || {};
+                              const checklistUser = docClicks.checklist?.clickedBy;
+                              const fileCoverUser = docClicks.file_cover?.clickedBy;
+                              const esanchitUser = docClicks.esanchit?.clickedBy;
+                              const hasCustomFileGenerated = checklistUser && fileCoverUser && esanchitUser &&
+                                checklistUser === fileCoverUser && checklistUser === esanchitUser && !job.send_for_billing;
 
-                                  if (hasCustomFileGenerated) return "#e6f4ea";
-                                  if (job.sb_or_seal_changed_notif) return "#ffedd5";
-                                  if (jobQueriesStatus[job.job_no]?.hasOpenClientQueries) return "#fee2e2";
-                                  if (job.operational_lock) return "#f7f6d3cc";
-                                  return "inherit";
-                                })(),
-                                position: "sticky",
-                                cursor: "pointer", // Make the whole cell look clickable
-                                paddingLeft: job.parent_club_job ? "24px" : "15px"
+                              if (hasCustomFileGenerated) return "#e6f4ea";
+                              if (job.sb_or_seal_changed_notif) return "#ffedd5";
+                              if (jobQueriesStatus[job.job_no]?.hasOpenClientQueries) return "#fee2e2";
+                              if (job.operational_lock) return "#f7f6d3cc";
+                              return "inherit";
+                            })(),
+                            position: "sticky",
+                            cursor: "pointer", // Make the whole cell look clickable
+                            paddingLeft: job.parent_club_job ? "24px" : "15px"
+                          }}
+                          onClick={(e) => navigateToJob(job, e)} // Click anywhere in cell navigates
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              marginBottom: "4px"
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontWeight: "800",
+                                color: jobQueriesStatus[job.job_no]?.hasOpenClientQueries ? "#dc2626" : "#1e40af",
+                                fontSize: "12px",
+                                letterSpacing: "0.2px",
+                                whiteSpace: "nowrap"
                               }}
-                              onClick={(e) => navigateToJob(job, e)} // Click anywhere in cell navigates
+                            >
+                              {job.parent_club_job && (
+                                <span style={{ color: "#9ca3af", fontWeight: "bold" }}>↳</span>
+                              )}
+                              <div
+                                style={{
+                                  fontWeight: "800",
+                                  color: "#1e40af",
+                                  fontSize: "12px",
+                                  letterSpacing: "0.2px",
+                                  whiteSpace: "nowrap",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px"
+                                }}
+                              >
+                                {job.job_no}
+                                {job.sb_or_seal_changed_notif && (
+                                  <Tooltip title={`Changed: ${job.sb_or_seal_changed_details?.message || ''} by ${job.sb_or_seal_changed_details?.changedBy || ''}`}>
+                                    <span style={{ fontSize: "14px" }}>🔔</span>
+                                  </Tooltip>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", gap: "4px", marginTop: "2px", alignItems: "center" }}>
+                                {job.is_club_job_parent && (
+                                  <span style={{ fontSize: "9px", background: "#dbeafe", color: "#1e40af", padding: "1px 5px", borderRadius: "3px", fontWeight: "bold" }}>CLUB</span>
+                                )}
+                                {(job.is_client_job || job.created_by_client) && (
+                                  <span style={{ fontSize: "9px", background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a", padding: "1px 5px", borderRadius: "3px", fontWeight: "bold" }}>CLIENT</span>
+                                )}
+                              </div>
+                            </div>
+                            {job.isLocked && (
+                              <Tooltip title="Job is Locked">
+                                <LockIcon style={{ fontSize: 14, color: "#dc2626", marginLeft: 4 }} />
+                              </Tooltip>
+                            )}
+                            <IconButton
+                              size="small"
+                              onClick={(e) => handleCopyText(job.job_no, e)}
+                              style={{ padding: 2 }}
+                              title="Copy Job No"
+                            >
+                              <ContentCopyIcon style={{ fontSize: 12 }} />
+                            </IconButton>
+                          </div>
+
+                          <div
+                            style={{
+                              color: "#32363dff",
+                              fontSize: "10px",
+                              fontWeight: "normal",
+                              marginBottom: "4px",
+                              whiteSpace: "nowrap"
+                            }}
+                          >
+                            {formatDate(job.job_date)}
+                          </div>
+                          {(() => {
+                            const docClicks = job.docClicks || {};
+                            const checklistUser = docClicks.checklist?.clickedBy;
+                            const fileCoverUser = docClicks.file_cover?.clickedBy;
+                            const esanchitUser = docClicks.esanchit?.clickedBy;
+                            const hasCustomFileGenerated = checklistUser && fileCoverUser && esanchitUser &&
+                              checklistUser === fileCoverUser && checklistUser === esanchitUser && !job.send_for_billing;
+
+                            if (hasCustomFileGenerated) {
+                              return (
+                                <div style={{
+                                  color: "#065f46",
+                                  fontSize: "9.5px",
+                                  fontWeight: "bold",
+                                  backgroundColor: "#a7f3d0",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  marginTop: "4px",
+                                  display: "inline-block",
+                                  width: "fit-content",
+                                  whiteSpace: "nowrap",
+                                  border: "1px solid #6ee7b7"
+                                }}>
+                                  Custome file generated: {checklistUser}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                          {job.exporter_ref_no && job.exporter_ref_no !== (job.invoices?.[0]?.invoiceNumber || job.invoices?.[0]?.invoiceNo) && (
+                            <div
+                              style={{
+                                color: "#111",
+                                fontSize: "10px",
+                                fontWeight: "700",
+                                marginBottom: "4px",
+                                backgroundColor: "#f3f4f6",
+                                padding: "2px 4px",
+                                borderRadius: "3px",
+                                width: "fit-content",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "2px",
+                              }}
+                            >
+                              REF: {job.exporter_ref_no}
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleCopyText(job.exporter_ref_no, e)}
+                                style={{ padding: 0, marginLeft: 1, color: "#6b7280" }}
+                                title="Copy Ref No"
+                              >
+                                <ContentCopyIcon style={{ fontSize: 9 }} />
+                              </IconButton>
+                            </div>
+                          )}
+
+                          {job.custom_house && (
+                            <div
+                              style={{
+                                marginTop: "2px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "2px"
+                              }}
                             >
                               <div
                                 style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  marginBottom: "4px"
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontWeight: "800",
-                                    color: jobQueriesStatus[job.job_no]?.hasOpenClientQueries ? "#dc2626" : "#1e40af",
-                                    fontSize: "12px",
-                                    letterSpacing: "0.2px",
-                                    whiteSpace: "nowrap"
-                                  }}
-                                >
-                                  {job.parent_club_job && (
-                                    <span style={{ color: "#9ca3af", fontWeight: "bold" }}>↳</span>
-                                  )}
-                                  <div
-                                    style={{
-                                      fontWeight: "800",
-                                      color: "#1e40af",
-                                      fontSize: "12px",
-                                      letterSpacing: "0.2px",
-                                      whiteSpace: "nowrap",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "4px"
-                                    }}
-                                  >
-                                    {job.job_no}
-                                    {job.sb_or_seal_changed_notif && (
-                                      <Tooltip title={`Changed: ${job.sb_or_seal_changed_details?.message || ''} by ${job.sb_or_seal_changed_details?.changedBy || ''}`}>
-                                        <span style={{ fontSize: "14px" }}>🔔</span>
-                                      </Tooltip>
-                                    )}
-                                  </div>
-                                  <div style={{ display: "flex", gap: "4px", marginTop: "2px", alignItems: "center" }}>
-                                    {job.is_club_job_parent && (
-                                      <span style={{ fontSize: "9px", background: "#dbeafe", color: "#1e40af", padding: "1px 5px", borderRadius: "3px", fontWeight: "bold" }}>CLUB</span>
-                                    )}
-                                    {(job.is_client_job || job.created_by_client) && (
-                                      <span style={{ fontSize: "9px", background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a", padding: "1px 5px", borderRadius: "3px", fontWeight: "bold" }}>CLIENT</span>
-                                    )}
-                                  </div>
-                                </div>
-                                {job.isLocked && (
-                                  <Tooltip title="Job is Locked">
-                                    <LockIcon style={{ fontSize: 14, color: "#dc2626", marginLeft: 4 }} />
-                                  </Tooltip>
-                                )}
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => handleCopyText(job.job_no, e)}
-                                  style={{ padding: 2 }}
-                                  title="Copy Job No"
-                                >
-                                  <ContentCopyIcon style={{ fontSize: 12 }} />
-                                </IconButton>
-                              </div>
-
-                              <div
-                                style={{
-                                  color: "#32363dff",
+                                  padding: "2px 6px",
+                                  borderRadius: "3px",
                                   fontSize: "10px",
-                                  fontWeight: "normal",
-                                  marginBottom: "4px",
-                                  whiteSpace: "nowrap"
+                                  fontWeight: "600",
+                                  color: "#030303ff",
+                                  backgroundColor: "#f3f4f6",
+                                  width: "fit-content",
                                 }}
                               >
-                                {formatDate(job.job_date)}
+                                {job.custom_house}
                               </div>
-                              {(() => {
-                                const docClicks = job.docClicks || {};
-                                const checklistUser = docClicks.checklist?.clickedBy;
-                                const fileCoverUser = docClicks.file_cover?.clickedBy;
-                                const esanchitUser = docClicks.esanchit?.clickedBy;
-                                const hasCustomFileGenerated = checklistUser && fileCoverUser && esanchitUser &&
-                                  checklistUser === fileCoverUser && checklistUser === esanchitUser && !job.send_for_billing;
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleCopyText(job.custom_house, e)}
+                                style={{ padding: 2 }}
+                                title="Copy Custom House"
+                              >
+                                <ContentCopyIcon style={{ fontSize: 9, color: "#6b7280" }} />
+                              </IconButton>
+                            </div>
+                          )}
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "5px",
+                              alignItems: "center",
+                              marginTop: "6px",
+                            }}
+                          >
+                            {/* Consignment Type */}
+                            <div
+                              style={{
+                                padding: "2px 6px",
+                                background: "#f3f4f6",
+                                border: "1px solid #e5e7eb",
+                                borderRadius: "3px",
+                                fontSize: "10px",
+                                fontWeight: "600",
+                                color: "#030303ff",
+                              }}
+                            >
+                              {job.consignmentType || "-"}
+                            </div>
 
-                                if (hasCustomFileGenerated) {
-                                  return (
-                                    <div style={{
-                                      color: "#065f46",
-                                      fontSize: "9.5px",
-                                      fontWeight: "bold",
-                                      backgroundColor: "#a7f3d0",
-                                      padding: "2px 6px",
-                                      borderRadius: "4px",
-                                      marginTop: "4px",
-                                      display: "inline-block",
-                                      width: "fit-content",
-                                      whiteSpace: "nowrap",
-                                      border: "1px solid #6ee7b7"
-                                    }}>
-                                      Custome file generated: {checklistUser}
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-                              {job.exporter_ref_no && job.exporter_ref_no !== (job.invoices?.[0]?.invoiceNumber || job.invoices?.[0]?.invoiceNo) && (
-                                <div
-                                  style={{
-                                    color: "#111",
-                                    fontSize: "10px",
-                                    fontWeight: "700",
-                                    marginBottom: "4px",
-                                    backgroundColor: "#f3f4f6",
-                                    padding: "2px 4px",
-                                    borderRadius: "3px",
-                                    width: "fit-content",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "2px",
-                                  }}
-                                >
-                                  REF: {job.exporter_ref_no}
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => handleCopyText(job.exporter_ref_no, e)}
-                                    style={{ padding: 0, marginLeft: 1, color: "#6b7280" }}
-                                    title="Copy Ref No"
-                                  >
-                                    <ContentCopyIcon style={{ fontSize: 9 }} />
-                                  </IconButton>
-                                </div>
-                              )}
-
-                              {job.custom_house && (
-                                <div
-                                  style={{
-                                    marginTop: "2px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "2px"
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      padding: "2px 6px",
-                                      borderRadius: "3px",
-                                      fontSize: "10px",
-                                      fontWeight: "600",
-                                      color: "#030303ff",
-                                      backgroundColor: "#f3f4f6",
-                                      width: "fit-content",
-                                    }}
-                                  >
-                                    {job.custom_house}
-                                  </div>
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => handleCopyText(job.custom_house, e)}
-                                    style={{ padding: 2 }}
-                                    title="Copy Custom House"
-                                  >
-                                    <ContentCopyIcon style={{ fontSize: 9, color: "#6b7280" }} />
-                                  </IconButton>
-                                </div>
-                              )}
+                            {/* Stuffing Location */}
+                            {job.goods_stuffed_at && (
                               <div
                                 style={{
-                                  display: "flex",
-                                  gap: "5px",
-                                  alignItems: "center",
-                                  marginTop: "6px",
+                                  padding: "2px 6px",
+                                  background: "#f3f4f6",
+                                  border: "1px solid #e5e7eb",
+                                  borderRadius: "3px",
+                                  fontSize: "10px",
+                                  fontWeight: "600",
+                                  color: "#030303ff",
                                 }}
                               >
-                                {/* Consignment Type */}
-                                <div
-                                  style={{
-                                    padding: "2px 6px",
-                                    background: "#f3f4f6",
-                                    border: "1px solid #e5e7eb",
-                                    borderRadius: "3px",
-                                    fontSize: "10px",
-                                    fontWeight: "600",
-                                    color: "#030303ff",
-                                  }}
-                                >
-                                  {job.consignmentType || "-"}
-                                </div>
-
-                                {/* Stuffing Location */}
-                                {job.goods_stuffed_at && (
-                                  <div
-                                    style={{
-                                      padding: "2px 6px",
-                                      background: "#f3f4f6",
-                                      border: "1px solid #e5e7eb",
-                                      borderRadius: "3px",
-                                      fontSize: "10px",
-                                      fontWeight: "600",
-                                      color: "#030303ff",
-                                    }}
-                                  >
-                                    {job.goods_stuffed_at}
-                                  </div>
-                                )}
+                                {job.goods_stuffed_at}
                               </div>
+                            )}
+                          </div>
 
-                              {/* Job Owner */}
-                              {job.job_owner && (
-                                <div
-                                  style={{
-                                    marginTop: "4px",
-                                    padding: "2px 6px",
-                                    background: "#f3f4f6",
-                                    border: "1px solid #e5e7eb",
-                                    borderRadius: "3px",
-                                    fontSize: "10px",
-                                    fontWeight: "600",
-                                    color: "#030303ff",
-                                    width: "fit-content",
-                                  }}
-                                >
-                                  {getOwnerName(job.job_owner)}
-                                </div>
+                          {/* Job Owner */}
+                          {job.job_owner && (
+                            <div
+                              style={{
+                                marginTop: "4px",
+                                padding: "2px 6px",
+                                background: "#f3f4f6",
+                                border: "1px solid #e5e7eb",
+                                borderRadius: "3px",
+                                fontSize: "10px",
+                                fontWeight: "600",
+                                color: "#030303ff",
+                                width: "fit-content",
+                              }}
+                            >
+                              {getOwnerName(job.job_owner)}
+                            </div>
+                          )}
+
+                          {/* EGM No & Date */}
+                          {(job.egm_no || job.egm_date) && (
+                            <div
+                              style={{
+                                fontSize: "10px",
+                                fontWeight: "700",
+                                color: "#dc2626",
+                                marginTop: "4px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "2px",
+                              }}
+                            >
+                              <span>EGM: {job.egm_no || "N/A"}</span>
+                              {job.egm_date && (
+                                <span style={{ color: "#ef4444", fontWeight: "500" }}>
+                                  ({formatDate(job.egm_date)})
+                                </span>
                               )}
-
-                              {/* EGM No & Date */}
-                              {(job.egm_no || job.egm_date) && (
-                                <div
-                                  style={{
-                                    fontSize: "10px",
-                                    fontWeight: "700",
-                                    color: "#dc2626",
-                                    marginTop: "4px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "2px",
-                                  }}
-                                >
-                                  <span>EGM: {job.egm_no || "N/A"}</span>
-                                  {job.egm_date && (
-                                    <span style={{ color: "#ef4444", fontWeight: "500" }}>
-                                      ({formatDate(job.egm_date)})
-                                    </span>
-                                  )}
-                                  {job.egm_no && (
-                                    <IconButton
-                                      size="small"
-                                      onClick={(e) => handleCopyText(job.egm_no, e)}
-                                      style={{ padding: 0, marginLeft: 2 }}
-                                      title="Copy EGM No"
-                                    >
-                                      <ContentCopyIcon style={{ fontSize: 9, color: "#dc2626" }} />
-                                    </IconButton>
-                                  )}
-                                </div>
-                              )}
-
-                            </td>
-
-                            {/* Column 3: Exporter */}
-                            <td style={s.td}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: "4px",
-                                  marginBottom: "4px",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontWeight: "700",
-                                    color: "rgba(0,0,0,0.85)",
-                                    fontSize: "12px",
-                                    lineHeight: "1.3",
-                                  }}
-                                >
-                                  {job.exporter}
-                                  {job.exporter_branch_name && job.exporter_branch_name.toLowerCase() !== "main" && (
-                                    <span style={{ fontWeight: "500", color: "#64748b", fontSize: "10px" }}>
-                                      {` (${job.exporter_branch_name})`}
-                                    </span>
-                                  )}
-                                </div>
+                              {job.egm_no && (
                                 <IconButton
                                   size="small"
-                                  onClick={(e) => handleCopyText(job.exporter, e)}
-                                  style={{ padding: 2, flexShrink: 0 }}
-                                  title="Copy Exporter"
+                                  onClick={(e) => handleCopyText(job.egm_no, e)}
+                                  style={{ padding: 0, marginLeft: 2 }}
+                                  title="Copy EGM No"
                                 >
-                                  <ContentCopyIcon style={{ fontSize: 11, color: "#6b7280" }} />
+                                  <ContentCopyIcon style={{ fontSize: 9, color: "#dc2626" }} />
+                                </IconButton>
+                              )}
+                            </div>
+                          )}
+
+                        </td>
+
+                        {/* Column 3: Exporter */}
+                        <td style={s.td}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "4px",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontWeight: "700",
+                                color: "rgba(0,0,0,0.85)",
+                                fontSize: "12px",
+                                lineHeight: "1.3",
+                              }}
+                            >
+                              {job.exporter}
+                              {job.exporter_branch_name && job.exporter_branch_name.toLowerCase() !== "main" && (
+                                <span style={{ fontWeight: "500", color: "#64748b", fontSize: "10px" }}>
+                                  {` (${job.exporter_branch_name})`}
+                                </span>
+                              )}
+                            </div>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => handleCopyText(job.exporter, e)}
+                              style={{ padding: 2, flexShrink: 0 }}
+                              title="Copy Exporter"
+                            >
+                              <ContentCopyIcon style={{ fontSize: 11, color: "#6b7280" }} />
+                            </IconButton>
+                          </div>
+                          {/* IE Code below exporter name */}
+                          {job.ieCode && (
+                            <div style={{ fontSize: "10px", color: "#64748b", marginBottom: "4px", fontWeight: "600", display: "flex", alignItems: "center", gap: "2px" }}>
+                              IE: {job.ieCode}
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleCopyText(job.ieCode, e)}
+                                style={{ padding: 0, marginLeft: 2 }}
+                                title="Copy IE Code"
+                              >
+                                <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                              </IconButton>
+                            </div>
+                          )}
+                          <div style={{ fontSize: "10px", color: "#475569", display: "flex", flexDirection: "column", gap: "2px" }}>
+                            {(job.forwarder || job.operations?.[0]?.statusDetails?.[0]?.forwarderName) && (
+                              <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                <span style={{ fontWeight: "700", color: "#fc8019", fontSize: "9px" }}>FWDR:</span>
+                                <span style={{ color: "#fc8019", fontWeight: "700", fontSize: "10px" }}>
+                                  {job.forwarder || job.operations[0].statusDetails[0].forwarderName}
+                                </span>
+                              </div>
+                            )}
+                            {job.consignees?.[0]?.consignee_name && (
+                              <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                <span style={{ fontWeight: "700", color: "#94a3b8", fontSize: "9px" }}>CONS:</span>
+                                <span style={{ color: "#334155", fontWeight: "500", fontSize: "10px" }}>
+                                  {job.consignees[0].consignee_name.length > 35
+                                    ? `${job.consignees[0].consignee_name.substring(0, 35)}...`
+                                    : job.consignees[0].consignee_name}
+                                </span>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => handleCopyText(job.consignees[0].consignee_name, e)}
+                                  style={{ padding: 0, marginLeft: 2 }}
+                                  title="Copy Consignee"
+                                >
+                                  <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
                                 </IconButton>
                               </div>
-                              {/* IE Code below exporter name */}
-                              {job.ieCode && (
-                                <div style={{ fontSize: "10px", color: "#64748b", marginBottom: "4px", fontWeight: "600", display: "flex", alignItems: "center", gap: "2px" }}>
-                                  IE: {job.ieCode}
+                            )}
+
+                            {(() => {
+                              const thirdPartyName =
+                                job.buyerThirdPartyInfo?.thirdParty?.name ||
+                                job.buyerThirdPartyInfo?.buyer?.name ||
+                                (typeof job.buyerThirdPartyInfo === "string" ? job.buyerThirdPartyInfo : "") ||
+                                job.third_party_name ||
+                                job.third_party ||
+                                "";
+                              if (!thirdPartyName) return null;
+                              return (
+                                <div style={{ display: "flex", gap: "4px", alignItems: "baseline" }}>
+                                  <span style={{ fontWeight: "700", color: "#94a3b8", fontSize: "9px" }}>3rd PARTY:</span>
+                                  <span style={{ color: "#64748b", fontStyle: "italic", fontSize: "10px" }}>
+                                    {thirdPartyName.length > 30
+                                      ? `${thirdPartyName.substring(0, 28)}...`
+                                      : thirdPartyName}
+                                  </span>
                                   <IconButton
                                     size="small"
-                                    onClick={(e) => handleCopyText(job.ieCode, e)}
+                                    onClick={(e) => handleCopyText(thirdPartyName, e)}
                                     style={{ padding: 0, marginLeft: 2 }}
-                                    title="Copy IE Code"
+                                    title="Copy 3rd Party"
                                   >
                                     <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
                                   </IconButton>
                                 </div>
-                              )}
-                              <div style={{ fontSize: "10px", color: "#475569", display: "flex", flexDirection: "column", gap: "2px" }}>
-                                {(job.forwarder || job.operations?.[0]?.statusDetails?.[0]?.forwarderName) && (
-                                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                    <span style={{ fontWeight: "700", color: "#fc8019", fontSize: "9px" }}>FWDR:</span>
-                                    <span style={{ color: "#fc8019", fontWeight: "700", fontSize: "10px" }}>
-                                      {job.forwarder || job.operations[0].statusDetails[0].forwarderName}
-                                    </span>
-                                  </div>
-                                )}
-                                {job.consignees?.[0]?.consignee_name && (
-                                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                                    <span style={{ fontWeight: "700", color: "#94a3b8", fontSize: "9px" }}>CONS:</span>
-                                    <span style={{ color: "#334155", fontWeight: "500", fontSize: "10px" }}>
-                                      {job.consignees[0].consignee_name.length > 35
-                                        ? `${job.consignees[0].consignee_name.substring(0, 35)}...`
-                                        : job.consignees[0].consignee_name}
-                                    </span>
-                                    <IconButton
-                                      size="small"
-                                      onClick={(e) => handleCopyText(job.consignees[0].consignee_name, e)}
-                                      style={{ padding: 0, marginLeft: 2 }}
-                                      title="Copy Consignee"
-                                    >
-                                      <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
-                                    </IconButton>
-                                  </div>
-                                )}
+                              );
+                            })()}
+                          </div>
 
-                                {(() => {
-                                  const thirdPartyName =
-                                    job.buyerThirdPartyInfo?.thirdParty?.name ||
-                                    job.buyerThirdPartyInfo?.buyer?.name ||
-                                    (typeof job.buyerThirdPartyInfo === "string" ? job.buyerThirdPartyInfo : "") ||
-                                    job.third_party_name ||
-                                    job.third_party ||
-                                    "";
-                                  if (!thirdPartyName) return null;
-                                  return (
-                                    <div style={{ display: "flex", gap: "4px", alignItems: "baseline" }}>
-                                      <span style={{ fontWeight: "700", color: "#94a3b8", fontSize: "9px" }}>3rd PARTY:</span>
-                                      <span style={{ color: "#64748b", fontStyle: "italic", fontSize: "10px" }}>
-                                        {thirdPartyName.length > 30
-                                          ? `${thirdPartyName.substring(0, 28)}...`
-                                          : thirdPartyName}
-                                      </span>
-                                      <IconButton
-                                        size="small"
-                                        onClick={(e) => handleCopyText(thirdPartyName, e)}
-                                        style={{ padding: 0, marginLeft: 2 }}
-                                        title="Copy 3rd Party"
-                                      >
-                                        <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
-                                      </IconButton>
-                                    </div>
-                                  );
-                                })()}
-                              </div>
+                          {/* Booking No section */}
+                          {(() => {
+                            const bookings = [];
+                            if (job.booking_no) {
+                              bookings.push(job.booking_no);
+                            }
 
-                              {/* Booking No section */}
-                              {(() => {
-                                const bookings = [];
-                                if (job.booking_no) {
-                                  bookings.push(job.booking_no);
-                                }
-
-                                if (bookings.length > 0) {
-                                  const firstBooking = bookings[0];
-                                  return (
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "4px",
-                                        marginTop: "4px",
-                                      }}
-                                    >
-                                      <span
-                                        style={{
-                                          fontSize: "10px",
-                                          fontWeight: "700",
-                                          color: "#4b5563",
-                                        }}
-                                      >
-                                        Bk No:
-                                      </span>
-                                      <span
-                                        style={{ fontSize: "10px", color: "#1f2937" }}
-                                      >
-                                        {firstBooking}
-                                      </span>
-                                      <IconButton
-                                        size="small"
-                                        onClick={(e) =>
-                                          handleCopyText(firstBooking, e)
-                                        }
-                                        style={{ padding: 0 }}
-                                        title="Copy Booking No"
-                                      >
-                                        <ContentCopyIcon
-                                          style={{ fontSize: 10, color: "#6b7280" }}
-                                        />
-                                      </IconButton>
-                                    </div>
-                                  );
-                                }
-                              })()}
-
-                              {/* Shipping Line section */}
-                              {job.shipping_line_airline && (
+                            if (bookings.length > 0) {
+                              const firstBooking = bookings[0];
+                              return (
                                 <div
                                   style={{
                                     display: "flex",
@@ -3842,457 +3810,442 @@ const ExportJobsTable = () => {
                                       color: "#4b5563",
                                     }}
                                   >
-                                    S/L:
+                                    Bk No:
                                   </span>
                                   <span
-                                    style={{ fontSize: "10px", color: "#1f2937", fontWeight: "600" }}
+                                    style={{ fontSize: "10px", color: "#1f2937" }}
                                   >
-                                    {job.shipping_line_airline}
+                                    {firstBooking}
                                   </span>
-                                </div>
-                              )}
-                            </td>
-
-
-
-                            {/* Column 4: Invoice */}
-                            <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#c6f6d5" : "inherit" }}>
-                              {(job.invoices && job.invoices.length > 0) ? (
-                                (() => {
-                                  const invoiceKey = job._id || job.job_no || idx;
-                                  const isInvExpanded = !!expandedInvoices[invoiceKey];
-                                  const visibleInvoices = isInvExpanded ? job.invoices : job.invoices.slice(0, 2);
-                                  const hiddenInvCount = Math.max(job.invoices.length - 2, 0);
-
-                                  return (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                                      {visibleInvoices.map((inv, invIdx) => (
-                                        <div
-                                          key={inv._id || inv.invoiceNumber || invIdx}
-                                          style={{
-                                            borderBottom: invIdx < visibleInvoices.length - 1 ? "1px dashed #cbd5e1" : "none",
-                                            paddingBottom: invIdx < visibleInvoices.length - 1 ? "6px" : "0px",
-                                            marginBottom: invIdx < visibleInvoices.length - 1 ? "6px" : "0px",
-                                          }}
-                                        >
-                                          <div
-                                            style={{
-                                              display: "flex",
-                                              alignItems: "center",
-                                              justifyContent: "space-between",
-                                            }}
-                                          >
-                                            <div
-                                              style={{
-                                                fontWeight: "600",
-                                                marginBottom: "2px",
-                                              }}
-                                            >
-                                              {inv.invoiceNumber || inv.invoiceNo || "-"}
-                                            </div>
-                                            {(inv.invoiceNumber || inv.invoiceNo) && (
-                                              <IconButton
-                                                size="small"
-                                                onClick={(e) =>
-                                                  handleCopyText(
-                                                    inv.invoiceNumber || inv.invoiceNo,
-                                                    e
-                                                  )
-                                                }
-                                                style={{ padding: 2 }}
-                                                title="Copy Invoice No"
-                                              >
-                                                <ContentCopyIcon style={{ fontSize: 12 }} />
-                                              </IconButton>
-                                            )}
-                                          </div>
-                                          <div style={{ color: "#4b5563", fontSize: "10px" }}>
-                                            {formatDate(inv.invoiceDate || inv.invoice_date)}
-                                          </div>
-                                          <div
-                                            style={{
-                                              color: "#1e293b",
-                                              fontSize: "11px",
-                                              fontWeight: "800",
-                                              marginTop: "4px",
-                                              backgroundColor: "rgba(0,0,0,0.03)",
-                                              padding: "2px 4px",
-                                              borderRadius: "4px",
-                                              display: "inline-block"
-                                            }}
-                                          >
-                                            <span style={{ color: "#64748b", fontWeight: "600" }}>{inv.termsOfInvoice || inv.terms_of_invoice}</span>{" "}
-                                            {inv.currency}{" "}
-                                            {(inv.invoiceValue ?? inv.amount ?? 0)?.toLocaleString()}
-                                          </div>
-                                        </div>
-                                      ))}
-                                      {job.invoices.length > 2 && (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => toggleInvoices(e, invoiceKey)}
-                                          style={{
-                                            alignSelf: "flex-start",
-                                            border: isInvExpanded ? "none" : "1px solid #f59e0b",
-                                            background: isInvExpanded ? "transparent" : "#fff7ed",
-                                            color: isInvExpanded ? "#475569" : "#b45309",
-                                            fontSize: "10px",
-                                            fontWeight: "700",
-                                            cursor: "pointer",
-                                            padding: isInvExpanded ? "2px 0" : "3px 8px",
-                                            borderRadius: "999px",
-                                            marginTop: "2px",
-                                          }}
-                                        >
-                                          {isInvExpanded ? "Show less" : `Show ${hiddenInvCount} more`}
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })()
-                              ) : (
-                                <div style={{ color: "#94a3b8" }}>-</div>
-                              )}
-                              {job.operations?.[0]?.statusDetails?.[0]?.billing_details?.agency_bill_no && (
-                                <div style={{ fontSize: "9.5px", color: "#0f766e", fontWeight: "700", marginTop: "4px" }}>
-                                  Bill (A): {job.operations[0].statusDetails[0].billing_details.agency_bill_no}
-                                  {job.operations[0].statusDetails[0].billing_details.agency_bill_date && ` / ${formatDate(job.operations[0].statusDetails[0].billing_details.agency_bill_date)}`}
-                                </div>
-                              )}
-                              {job.operations?.[0]?.statusDetails?.[0]?.billing_details?.reimbursement_bill_no && (
-                                <div style={{ fontSize: "9.5px", color: "#b45309", fontWeight: "700", marginTop: "2px" }}>
-                                  Bill (R): {job.operations[0].statusDetails[0].billing_details.reimbursement_bill_no}
-                                  {job.operations[0].statusDetails[0].billing_details.reimbursement_bill_date && ` / ${formatDate(job.operations[0].statusDetails[0].billing_details.reimbursement_bill_date)}`}
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Column 5: SB */}
-                            <td style={s.td}>
-                              {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
-                                <>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "space-between",
-                                    }}
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) =>
+                                      handleCopyText(firstBooking, e)
+                                    }
+                                    style={{ padding: 0 }}
+                                    title="Copy Booking No"
                                   >
-                                    <Tooltip title={job.sb_no && job.sb_date && job.custom_house ? "Click to track SB on ICEGATE" : ""}>
+                                    <ContentCopyIcon
+                                      style={{ fontSize: 10, color: "#6b7280" }}
+                                    />
+                                  </IconButton>
+                                </div>
+                              );
+                            }
+                          })()}
+
+                          {/* Shipping Line section */}
+                          {job.shipping_line_airline && (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                marginTop: "4px",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: "10px",
+                                  fontWeight: "700",
+                                  color: "#4b5563",
+                                }}
+                              >
+                                S/L:
+                              </span>
+                              <span
+                                style={{ fontSize: "10px", color: "#1f2937", fontWeight: "600" }}
+                              >
+                                {job.shipping_line_airline}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+
+
+
+                        {/* Column 4: Invoice */}
+                        <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#c6f6d5" : "inherit" }}>
+                          {(job.invoices && job.invoices.length > 0) ? (
+                            (() => {
+                              const invoiceKey = job._id || job.job_no || idx;
+                              const isInvExpanded = !!expandedInvoices[invoiceKey];
+                              const visibleInvoices = isInvExpanded ? job.invoices : job.invoices.slice(0, 2);
+                              const hiddenInvCount = Math.max(job.invoices.length - 2, 0);
+
+                              return (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                  {visibleInvoices.map((inv, invIdx) => (
+                                    <div
+                                      key={inv._id || inv.invoiceNumber || invIdx}
+                                      style={{
+                                        borderBottom: invIdx < visibleInvoices.length - 1 ? "1px dashed #cbd5e1" : "none",
+                                        paddingBottom: invIdx < visibleInvoices.length - 1 ? "6px" : "0px",
+                                        marginBottom: invIdx < visibleInvoices.length - 1 ? "6px" : "0px",
+                                      }}
+                                    >
                                       <div
                                         style={{
-                                          fontWeight: "800",
-                                          fontSize: "13px",
-                                          color: job.sb_no && job.sb_date && job.custom_house ? "#2563eb" : "#b91c1c",
-                                          marginBottom: "2px",
-                                          cursor: job.sb_no && job.sb_date && job.custom_house ? "pointer" : "default",
-                                          textDecoration: job.sb_no && job.sb_date && job.custom_house ? "underline" : "none",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "space-between",
                                         }}
-                                        onClick={(e) => job.sb_no && job.sb_date && job.custom_house && handleSBTrack(job, e)}
                                       >
-                                        {job.sb_no || "-"}
-                                      </div>
-                                    </Tooltip>
-                                    <div style={{ display: "flex", alignItems: "center" }}>
-                                      {job.sb_no && job.sb_date && job.custom_house && (
-                                        <Tooltip title="Track on ICEGATE">
-                                          <IconButton
-                                            size="small"
-                                            onClick={(e) => handleSBTrack(job, e)}
-                                            style={{ padding: 2 }}
-                                          >
-                                            <TrackChangesIcon style={{ fontSize: 12, color: "#2563eb" }} />
-                                          </IconButton>
-                                        </Tooltip>
-                                      )}
-                                      {job.sb_no && (
-                                        <IconButton
-                                          size="small"
-                                          onClick={(e) => handleCopyText(job.sb_no, e)}
-                                          style={{ padding: 2 }}
-                                          title="Copy SB No"
-                                        >
-                                          <ContentCopyIcon style={{ fontSize: 12 }} />
-                                        </IconButton>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div style={{ color: "#4b5563", fontSize: "10px" }}>
-                                    {formatDate(job.sb_date)}
-                                  </div>
-                                  {(() => {
-                                    const scrollInfo = getJobScrollAndEgmInfo(job);
-                                    return (
-                                      <>
-                                        {scrollInfo.dbkScrolls.length > 0 && (
-                                          <div style={{ marginTop: "4px" }}>
-                                            {scrollInfo.dbkScrolls.map((item, i) => (
-                                              <div key={i} style={{ fontSize: "9.5px", color: "#2563eb", fontWeight: "700" }}>
-                                                DBK Scroll: {item.no} {item.date ? `(${formatDate(item.date)})` : ""}
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                        {scrollInfo.rosctlScrolls.length > 0 && (
-                                          <div style={{ marginTop: "2px" }}>
-                                            {scrollInfo.rosctlScrolls.map((item, i) => (
-                                              <div key={i} style={{ fontSize: "9.5px", color: "#059669", fontWeight: "700" }}>
-                                                RoSCTL Scroll: {item.no} {item.date ? `(${formatDate(item.date)})` : ""}
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </>
-                                    );
-                                  })()}
-                                </>
-                              ) : (
-                                <div style={{ color: "#94a3b8", fontSize: "10px" }}>N/A</div>
-                              )}
-                            </td>
-
-                            {/* Column 6: Port */}
-                            <td style={s.td}>
-                              {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
-                                <>
-                                  <div style={{ marginBottom: "6px", display: "flex", flexDirection: "column", gap: "1px" }}>
-                                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                      <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DEST</span>
-                                      <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.destination_port || "-"}</span>
-                                      {job.destination_port && (
-                                        <IconButton
-                                          size="small"
-                                          onClick={(e) => handleCopyText(job.destination_port, e)}
-                                          style={{ padding: 0, marginLeft: 2 }}
-                                          title="Copy Destination Port"
-                                        >
-                                          <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
-                                        </IconButton>
-                                      )}
-                                    </div>
-                                    <div style={{ fontSize: "10px", color: "#64748b", fontStyle: "italic", paddingLeft: "41px" }}>
-                                      {job.destination_country || "-"}
-                                    </div>
-                                  </div>
-                                  <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-                                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                      <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>POL</span>
-                                      <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_loading || "-"}</span>
-                                      {job.port_of_loading && (
-                                        <IconButton
-                                          size="small"
-                                          onClick={(e) => handleCopyText(job.port_of_loading, e)}
-                                          style={{ padding: 0, marginLeft: 2 }}
-                                          title="Copy Port of Loading"
-                                        >
-                                          <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
-                                        </IconButton>
-                                      )}
-                                    </div>
-                                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                      <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DISCH</span>
-                                      <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_discharge || "-"}</span>
-                                      {job.port_of_discharge && (
-                                        <IconButton
-                                          size="small"
-                                          onClick={(e) => handleCopyText(job.port_of_discharge, e)}
-                                          style={{ padding: 0, marginLeft: 2 }}
-                                          title="Copy Port of Discharge"
-                                        >
-                                          <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
-                                        </IconButton>
-                                      )}
-                                    </div>
-                                  </div>
-                                </>
-                              ) : (
-                                <div style={{ color: "#94a3b8", fontSize: "10px" }}>N/A</div>
-                              )}
-                            </td>
-
-                            {/* Column 7: Container Placement */}
-                            <td style={s.td}>
-                              {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
-                                <div style={{ marginBottom: "2px" }}>
-                                  {job.containers && job.containers.length > 0 ? (
-                                    (() => {
-                                      const validContainers = job.containers.filter((c) => c.containerNo && (!c._sourceJobNo || String(c._sourceJobNo).toUpperCase() === String(job.job_no).toUpperCase()));
-                                      const containerKey = job._id || job.job_no || idx;
-                                      const isExpanded = !!expandedContainers[containerKey];
-                                      const visibleContainers = isExpanded ? validContainers : validContainers.slice(0, 3);
-                                      const hiddenCount = Math.max(validContainers.length - 3, 0);
-
-                                      if (validContainers.length === 0) {
-                                        return <div style={{ fontWeight: "600", color: "#94a3b8" }}>-</div>;
-                                      }
-
-                                      return (
                                         <div
                                           style={{
                                             fontWeight: "600",
-                                            fontSize: "11px",
-                                            color: "#374151",
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            gap: "2px",
+                                            marginBottom: "2px",
                                           }}
                                         >
-                                          {visibleContainers.map((container, index) => (
-                                            <div
-                                              key={`${container.containerNo}-${index}`}
+                                          {inv.invoiceNumber || inv.invoiceNo || "-"}
+                                        </div>
+                                        {(inv.invoiceNumber || inv.invoiceNo) && (
+                                          <IconButton
+                                            size="small"
+                                            onClick={(e) =>
+                                              handleCopyText(
+                                                inv.invoiceNumber || inv.invoiceNo,
+                                                e
+                                              )
+                                            }
+                                            style={{ padding: 2 }}
+                                            title="Copy Invoice No"
+                                          >
+                                            <ContentCopyIcon style={{ fontSize: 12 }} />
+                                          </IconButton>
+                                        )}
+                                      </div>
+                                      <div style={{ color: "#4b5563", fontSize: "10px" }}>
+                                        {formatDate(inv.invoiceDate || inv.invoice_date)}
+                                      </div>
+                                      <div
+                                        style={{
+                                          color: "#1e293b",
+                                          fontSize: "11px",
+                                          fontWeight: "800",
+                                          marginTop: "4px",
+                                          backgroundColor: "rgba(0,0,0,0.03)",
+                                          padding: "2px 4px",
+                                          borderRadius: "4px",
+                                          display: "inline-block"
+                                        }}
+                                      >
+                                        <span style={{ color: "#64748b", fontWeight: "600" }}>{inv.termsOfInvoice || inv.terms_of_invoice}</span>{" "}
+                                        {inv.currency}{" "}
+                                        {(inv.invoiceValue ?? inv.amount ?? 0)?.toLocaleString()}
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {job.invoices.length > 2 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => toggleInvoices(e, invoiceKey)}
+                                      style={{
+                                        alignSelf: "flex-start",
+                                        border: isInvExpanded ? "none" : "1px solid #f59e0b",
+                                        background: isInvExpanded ? "transparent" : "#fff7ed",
+                                        color: isInvExpanded ? "#475569" : "#b45309",
+                                        fontSize: "10px",
+                                        fontWeight: "700",
+                                        cursor: "pointer",
+                                        padding: isInvExpanded ? "2px 0" : "3px 8px",
+                                        borderRadius: "999px",
+                                        marginTop: "2px",
+                                      }}
+                                    >
+                                      {isInvExpanded ? "Show less" : `Show ${hiddenInvCount} more`}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })()
+                          ) : (
+                            <div style={{ color: "#94a3b8" }}>-</div>
+                          )}
+                          {job.operations?.[0]?.statusDetails?.[0]?.billing_details?.agency_bill_no && (
+                            <div style={{ fontSize: "9.5px", color: "#0f766e", fontWeight: "700", marginTop: "4px" }}>
+                              Bill (A): {job.operations[0].statusDetails[0].billing_details.agency_bill_no}
+                              {job.operations[0].statusDetails[0].billing_details.agency_bill_date && ` / ${formatDate(job.operations[0].statusDetails[0].billing_details.agency_bill_date)}`}
+                            </div>
+                          )}
+                          {job.operations?.[0]?.statusDetails?.[0]?.billing_details?.reimbursement_bill_no && (
+                            <div style={{ fontSize: "9.5px", color: "#b45309", fontWeight: "700", marginTop: "2px" }}>
+                              Bill (R): {job.operations[0].statusDetails[0].billing_details.reimbursement_bill_no}
+                              {job.operations[0].statusDetails[0].billing_details.reimbursement_bill_date && ` / ${formatDate(job.operations[0].statusDetails[0].billing_details.reimbursement_bill_date)}`}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Column 5: SB */}
+                        <td style={s.td}>
+                          {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
+                            <>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                }}
+                              >
+                                <Tooltip title={job.sb_no && job.sb_date && job.custom_house ? "Click to track SB on ICEGATE" : ""}>
+                                  <div
+                                    style={{
+                                      fontWeight: "800",
+                                      fontSize: "13px",
+                                      color: job.sb_no && job.sb_date && job.custom_house ? "#2563eb" : "#b91c1c",
+                                      marginBottom: "2px",
+                                      cursor: job.sb_no && job.sb_date && job.custom_house ? "pointer" : "default",
+                                      textDecoration: job.sb_no && job.sb_date && job.custom_house ? "underline" : "none",
+                                    }}
+                                    onClick={(e) => job.sb_no && job.sb_date && job.custom_house && handleSBTrack(job, e)}
+                                  >
+                                    {job.sb_no || "-"}
+                                  </div>
+                                </Tooltip>
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                  {job.sb_no && job.sb_date && job.custom_house && (
+                                    <Tooltip title="Track on ICEGATE">
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => handleSBTrack(job, e)}
+                                        style={{ padding: 2 }}
+                                      >
+                                        <TrackChangesIcon style={{ fontSize: 12, color: "#2563eb" }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                  {job.sb_no && (
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyText(job.sb_no, e)}
+                                      style={{ padding: 2 }}
+                                      title="Copy SB No"
+                                    >
+                                      <ContentCopyIcon style={{ fontSize: 12 }} />
+                                    </IconButton>
+                                  )}
+                                </div>
+                              </div>
+                              <div style={{ color: "#4b5563", fontSize: "10px" }}>
+                                {formatDate(job.sb_date)}
+                              </div>
+                              {(() => {
+                                const scrollInfo = getJobScrollAndEgmInfo(job);
+                                return (
+                                  <>
+                                    {scrollInfo.dbkScrolls.length > 0 && (
+                                      <div style={{ marginTop: "4px" }}>
+                                        {scrollInfo.dbkScrolls.map((item, i) => (
+                                          <div key={i} style={{ fontSize: "9.5px", color: "#2563eb", fontWeight: "700" }}>
+                                            DBK Scroll: {item.no} {item.date ? `(${formatDate(item.date)})` : ""}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {scrollInfo.rosctlScrolls.length > 0 && (
+                                      <div style={{ marginTop: "2px" }}>
+                                        {scrollInfo.rosctlScrolls.map((item, i) => (
+                                          <div key={i} style={{ fontSize: "9.5px", color: "#059669", fontWeight: "700" }}>
+                                            RoSCTL Scroll: {item.no} {item.date ? `(${formatDate(item.date)})` : ""}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </>
+                          ) : (
+                            <div style={{ color: "#94a3b8", fontSize: "10px" }}>N/A</div>
+                          )}
+                        </td>
+
+                        {/* Column 6: Port */}
+                        <td style={s.td}>
+                          {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
+                            <>
+                              <div style={{ marginBottom: "6px", display: "flex", flexDirection: "column", gap: "1px" }}>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                  <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DEST</span>
+                                  <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.destination_port || "-"}</span>
+                                  {job.destination_port && (
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyText(job.destination_port, e)}
+                                      style={{ padding: 0, marginLeft: 2 }}
+                                      title="Copy Destination Port"
+                                    >
+                                      <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                                    </IconButton>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: "10px", color: "#64748b", fontStyle: "italic", paddingLeft: "41px" }}>
+                                  {job.destination_country || "-"}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                  <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>POL</span>
+                                  <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_loading || "-"}</span>
+                                  {job.port_of_loading && (
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyText(job.port_of_loading, e)}
+                                      style={{ padding: 0, marginLeft: 2 }}
+                                      title="Copy Port of Loading"
+                                    >
+                                      <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                                    </IconButton>
+                                  )}
+                                </div>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                  <span style={{ fontWeight: "800", fontSize: "9px", color: "#94a3b8", width: "35px" }}>DISCH</span>
+                                  <span style={{ fontSize: "11px", color: "#1e293b", fontWeight: "700" }}>{job.port_of_discharge || "-"}</span>
+                                  {job.port_of_discharge && (
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => handleCopyText(job.port_of_discharge, e)}
+                                      style={{ padding: 0, marginLeft: 2 }}
+                                      title="Copy Port of Discharge"
+                                    >
+                                      <ContentCopyIcon style={{ fontSize: 9, color: "#94a3b8" }} />
+                                    </IconButton>
+                                  )}
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{ color: "#94a3b8", fontSize: "10px" }}>N/A</div>
+                          )}
+                        </td>
+
+                        {/* Column 7: Container Placement */}
+                        <td style={s.td}>
+                          {!(job.isGeneralJob || job.exporter === "GENERAL JOB") ? (
+                            <div style={{ marginBottom: "2px" }}>
+                              {job.containers && job.containers.length > 0 ? (
+                                (() => {
+                                  const validContainers = job.containers.filter((c) => c.containerNo && (!c._sourceJobNo || String(c._sourceJobNo).toUpperCase() === String(job.job_no).toUpperCase()));
+                                  const containerKey = job._id || job.job_no || idx;
+                                  const isExpanded = !!expandedContainers[containerKey];
+                                  const visibleContainers = isExpanded ? validContainers : validContainers.slice(0, 3);
+                                  const hiddenCount = Math.max(validContainers.length - 3, 0);
+
+                                  if (validContainers.length === 0) {
+                                    return <div style={{ fontWeight: "600", color: "#94a3b8" }}>-</div>;
+                                  }
+
+                                  return (
+                                    <div
+                                      style={{
+                                        fontWeight: "600",
+                                        fontSize: "11px",
+                                        color: "#374151",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "2px",
+                                      }}
+                                    >
+                                      {visibleContainers.map((container, index) => (
+                                        <div
+                                          key={`${container.containerNo}-${index}`}
+                                          style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            backgroundColor: "rgba(37, 99, 235, 0.04)",
+                                            padding: "2px 4px",
+                                            borderRadius: "4px",
+                                            marginBottom: "2px",
+                                            border: "1px solid rgba(37, 99, 235, 0.08)",
+                                            gap: "4px"
+                                          }}
+                                        >
+                                          <div style={{ display: "flex", alignItems: "center", gap: "4px", minWidth: 0, flex: 1, flexWrap: "wrap" }}>
+                                            <a
+                                              href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
                                               style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                backgroundColor: "rgba(37, 99, 235, 0.04)",
-                                                padding: "2px 4px",
-                                                borderRadius: "4px",
-                                                marginBottom: "2px",
-                                                border: "1px solid rgba(37, 99, 235, 0.08)",
-                                                gap: "4px"
+                                                fontWeight: "800",
+                                                textDecoration: "none",
+                                                cursor: "pointer",
+                                                fontSize: "11px",
+                                                color: "#2563eb",
+                                                whiteSpace: "nowrap",
                                               }}
+                                              onMouseOver={(e) => (e.target.style.textDecoration = "underline")}
+                                              onMouseOut={(e) => (e.target.style.textDecoration = "none")}
+                                              onClick={(e) => e.stopPropagation()}
                                             >
-                                              <div style={{ display: "flex", alignItems: "center", gap: "4px", minWidth: 0, flex: 1, flexWrap: "wrap" }}>
-                                                <a
-                                                  href={`https://www.ldb.co.in/ldb/containersearch/39/${container.containerNo}/1726651147706`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
+                                              {container.containerNo}
+                                            </a>
+
+                                            {/* Container type/size badge inline */}
+                                            {(() => {
+                                              let size = container.container_size || container.containerSize || container.size || container.cntr_size || container.isoCode || "";
+                                              let type = container.container_type || container.containerType || container.type || container.cntr_type || container.equipmentType || "";
+
+                                              if (!size && !type) {
+                                                const firstC = job.containers?.[0];
+                                                if (firstC) {
+                                                  size = firstC.container_size || firstC.containerSize || firstC.size || firstC.cntr_size || firstC.isoCode || "";
+                                                  type = firstC.container_type || firstC.containerType || firstC.type || firstC.cntr_type || firstC.equipmentType || "";
+                                                }
+                                              }
+
+                                              if (!size && !type) {
+                                                size = job.container_size || job.containerSize || job.container_qty_type || "";
+                                                type = job.container_type || job.containerType || "";
+                                              }
+
+                                              const sizeLbl = size ? getContainerSizeLabel(size) : "";
+                                              const typeLbl = type ? getContainerSizeLabel(type) : "";
+
+                                              let badgeText = "";
+                                              if (sizeLbl && typeLbl) {
+                                                if (sizeLbl.toUpperCase() === typeLbl.toUpperCase()) {
+                                                  badgeText = sizeLbl;
+                                                } else if (typeLbl.toUpperCase().includes(sizeLbl.toUpperCase())) {
+                                                  badgeText = typeLbl;
+                                                } else if (sizeLbl.toUpperCase().includes(typeLbl.toUpperCase())) {
+                                                  badgeText = sizeLbl;
+                                                } else {
+                                                  badgeText = `${sizeLbl} ${typeLbl}`;
+                                                }
+                                              } else {
+                                                badgeText = sizeLbl || typeLbl;
+                                              }
+
+                                              if (!badgeText) return null;
+
+                                              return (
+                                                <span
                                                   style={{
+                                                    fontSize: "8.5px",
+                                                    color: "#1e293b",
                                                     fontWeight: "800",
-                                                    textDecoration: "none",
-                                                    cursor: "pointer",
-                                                    fontSize: "11px",
-                                                    color: "#2563eb",
+                                                    backgroundColor: "#e2e8f0",
+                                                    padding: "1px 4px",
+                                                    borderRadius: "2px",
                                                     whiteSpace: "nowrap",
+                                                    border: "1px solid #cbd5e1"
                                                   }}
-                                                  onMouseOver={(e) => (e.target.style.textDecoration = "underline")}
-                                                  onMouseOut={(e) => (e.target.style.textDecoration = "none")}
-                                                  onClick={(e) => e.stopPropagation()}
+                                                  title={`Size: ${size || '-'}, Type: ${type || '-'}`}
                                                 >
-                                                  {container.containerNo}
-                                                </a>
+                                                  {badgeText}
+                                                </span>
+                                              );
+                                            })()}
 
-                                                {/* Container type/size badge inline */}
-                                                {(() => {
-                                                  let size = container.container_size || container.containerSize || container.size || container.cntr_size || container.isoCode || "";
-                                                  let type = container.container_type || container.containerType || container.type || container.cntr_type || container.equipmentType || "";
+                                            {/* Container Seal Display (Customs & Self/Line Seal dedup) */}
+                                            {(() => {
+                                              const customSeal = (container.sealNo || container.customSealNo || container.custom_seal || "").trim();
+                                              const lineOrSelf = (container.shippingLineSealNo || container.lineSeal || container.line_seal || container.selfSealNo || container.selfSeal || "").trim();
+                                              if (!customSeal && !lineOrSelf) return null;
 
-                                                  if (!size && !type) {
-                                                    const firstC = job.containers?.[0];
-                                                    if (firstC) {
-                                                      size = firstC.container_size || firstC.containerSize || firstC.size || firstC.cntr_size || firstC.isoCode || "";
-                                                      type = firstC.container_type || firstC.containerType || firstC.type || firstC.cntr_type || firstC.equipmentType || "";
-                                                    }
-                                                  }
-
-                                                  if (!size && !type) {
-                                                    size = job.container_size || job.containerSize || job.container_qty_type || "";
-                                                    type = job.container_type || job.containerType || "";
-                                                  }
-
-                                                  const sizeLbl = size ? getContainerSizeLabel(size) : "";
-                                                  const typeLbl = type ? getContainerSizeLabel(type) : "";
-
-                                                  let badgeText = "";
-                                                  if (sizeLbl && typeLbl) {
-                                                    if (sizeLbl.toUpperCase() === typeLbl.toUpperCase()) {
-                                                      badgeText = sizeLbl;
-                                                    } else if (typeLbl.toUpperCase().includes(sizeLbl.toUpperCase())) {
-                                                      badgeText = typeLbl;
-                                                    } else if (sizeLbl.toUpperCase().includes(typeLbl.toUpperCase())) {
-                                                      badgeText = sizeLbl;
-                                                    } else {
-                                                      badgeText = `${sizeLbl} ${typeLbl}`;
-                                                    }
-                                                  } else {
-                                                    badgeText = sizeLbl || typeLbl;
-                                                  }
-
-                                                  if (!badgeText) return null;
-
-                                                  return (
-                                                    <span
-                                                      style={{
-                                                        fontSize: "8.5px",
-                                                        color: "#1e293b",
-                                                        fontWeight: "800",
-                                                        backgroundColor: "#e2e8f0",
-                                                        padding: "1px 4px",
-                                                        borderRadius: "2px",
-                                                        whiteSpace: "nowrap",
-                                                        border: "1px solid #cbd5e1"
-                                                      }}
-                                                      title={`Size: ${size || '-'}, Type: ${type || '-'}`}
-                                                    >
-                                                      {badgeText}
-                                                    </span>
-                                                  );
-                                                })()}
-
-                                                {/* Container Seal Display (Customs & Self/Line Seal dedup) */}
-                                                {(() => {
-                                                  const customSeal = (container.sealNo || container.customSealNo || container.custom_seal || "").trim();
-                                                  const lineOrSelf = (container.shippingLineSealNo || container.lineSeal || container.line_seal || container.selfSealNo || container.selfSeal || "").trim();
-                                                  if (!customSeal && !lineOrSelf) return null;
-
-                                                  if (customSeal && lineOrSelf) {
-                                                    if (customSeal.toUpperCase() === lineOrSelf.toUpperCase()) {
-                                                      return (
-                                                        <span
-                                                          style={{
-                                                            fontSize: "8.5px",
-                                                            color: "#475569",
-                                                            backgroundColor: "#f8fafc",
-                                                            border: "1px solid #cbd5e1",
-                                                            borderRadius: "2px",
-                                                            padding: "1px 4px",
-                                                            whiteSpace: "nowrap",
-                                                            display: "inline-flex",
-                                                            alignItems: "center",
-                                                            gap: "2px"
-                                                          }}
-                                                          title={`Seal: ${customSeal}`}
-                                                        >
-                                                          Seal: <strong style={{ color: "#0f172a" }}>{customSeal}</strong>
-                                                          <IconButton size="small" onClick={(e) => handleCopyText(customSeal, e)} style={{ padding: 0 }} title="Copy Seal">
-                                                            <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
-                                                          </IconButton>
-                                                        </span>
-                                                      );
-                                                    }
-                                                    return (
-                                                      <span
-                                                        style={{
-                                                          fontSize: "8.5px",
-                                                          color: "#475569",
-                                                          backgroundColor: "#f8fafc",
-                                                          border: "1px solid #cbd5e1",
-                                                          borderRadius: "2px",
-                                                          padding: "1px 4px",
-                                                          whiteSpace: "nowrap",
-                                                          display: "inline-flex",
-                                                          alignItems: "center",
-                                                          gap: "4px"
-                                                        }}
-                                                        title={`Customs: ${customSeal} | Line: ${lineOrSelf}`}
-                                                      >
-                                                        <span style={{ display: "inline-flex", alignItems: "center", gap: "1px" }}>
-                                                          C.Seal: <strong style={{ color: "#0f172a" }}>{customSeal}</strong>
-                                                          <IconButton size="small" onClick={(e) => handleCopyText(customSeal, e)} style={{ padding: 0 }} title="Copy Custom Seal">
-                                                            <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
-                                                          </IconButton>
-                                                        </span>
-                                                        <span style={{ display: "inline-flex", alignItems: "center", gap: "1px" }}>
-                                                          L.Seal: <strong style={{ color: "#0f172a" }}>{lineOrSelf}</strong>
-                                                          <IconButton size="small" onClick={(e) => handleCopyText(lineOrSelf, e)} style={{ padding: 0 }} title="Copy Line Seal">
-                                                            <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
-                                                          </IconButton>
-                                                        </span>
-                                                      </span>
-                                                    );
-                                                  }
-
-                                                  const single = customSeal || lineOrSelf;
+                                              if (customSeal && lineOrSelf) {
+                                                if (customSeal.toUpperCase() === lineOrSelf.toUpperCase()) {
                                                   return (
                                                     <span
                                                       style={{
@@ -4307,543 +4260,731 @@ const ExportJobsTable = () => {
                                                         alignItems: "center",
                                                         gap: "2px"
                                                       }}
-                                                      title={`Seal: ${single}`}
+                                                      title={`Seal: ${customSeal}`}
                                                     >
-                                                      Seal: <strong style={{ color: "#0f172a" }}>{single}</strong>
-                                                      <IconButton size="small" onClick={(e) => handleCopyText(single, e)} style={{ padding: 0 }} title="Copy Seal">
+                                                      Seal: <strong style={{ color: "#0f172a" }}>{customSeal}</strong>
+                                                      <IconButton size="small" onClick={(e) => handleCopyText(customSeal, e)} style={{ padding: 0 }} title="Copy Seal">
                                                         <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
                                                       </IconButton>
                                                     </span>
                                                   );
-                                                })()}
-                                              </div>
+                                                }
+                                                return (
+                                                  <span
+                                                    style={{
+                                                      fontSize: "8.5px",
+                                                      color: "#475569",
+                                                      backgroundColor: "#f8fafc",
+                                                      border: "1px solid #cbd5e1",
+                                                      borderRadius: "2px",
+                                                      padding: "1px 4px",
+                                                      whiteSpace: "nowrap",
+                                                      display: "inline-flex",
+                                                      alignItems: "center",
+                                                      gap: "4px"
+                                                    }}
+                                                    title={`Customs: ${customSeal} | Line: ${lineOrSelf}`}
+                                                  >
+                                                    <span style={{ display: "inline-flex", alignItems: "center", gap: "1px" }}>
+                                                      C.Seal: <strong style={{ color: "#0f172a" }}>{customSeal}</strong>
+                                                      <IconButton size="small" onClick={(e) => handleCopyText(customSeal, e)} style={{ padding: 0 }} title="Copy Custom Seal">
+                                                        <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
+                                                      </IconButton>
+                                                    </span>
+                                                    <span style={{ display: "inline-flex", alignItems: "center", gap: "1px" }}>
+                                                      L.Seal: <strong style={{ color: "#0f172a" }}>{lineOrSelf}</strong>
+                                                      <IconButton size="small" onClick={(e) => handleCopyText(lineOrSelf, e)} style={{ padding: 0 }} title="Copy Line Seal">
+                                                        <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
+                                                      </IconButton>
+                                                    </span>
+                                                  </span>
+                                                );
+                                              }
 
-                                              <div style={{ display: "flex", alignItems: "center", gap: "1px", flexShrink: 0 }}>
-                                                {/* Shipping Line Tracking Link */}
-                                                {(() => {
-                                                  const bookingNo = job.booking_no || "";
-                                                  const containerFirst = job.containers?.[0]?.containerNo || "";
-                                                  const urls = buildShippingLineUrls(bookingNo, containerFirst);
+                                              const single = customSeal || lineOrSelf;
+                                              return (
+                                                <span
+                                                  style={{
+                                                    fontSize: "8.5px",
+                                                    color: "#475569",
+                                                    backgroundColor: "#f8fafc",
+                                                    border: "1px solid #cbd5e1",
+                                                    borderRadius: "2px",
+                                                    padding: "1px 4px",
+                                                    whiteSpace: "nowrap",
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    gap: "2px"
+                                                  }}
+                                                  title={`Seal: ${single}`}
+                                                >
+                                                  Seal: <strong style={{ color: "#0f172a" }}>{single}</strong>
+                                                  <IconButton size="small" onClick={(e) => handleCopyText(single, e)} style={{ padding: 0 }} title="Copy Seal">
+                                                    <ContentCopyIcon style={{ fontSize: 7, color: "#64748b" }} />
+                                                  </IconButton>
+                                                </span>
+                                              );
+                                            })()}
+                                          </div>
 
-                                                  let linerRaw = job.shipping_line_airline || "";
-                                                  let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
+                                          <div style={{ display: "flex", alignItems: "center", gap: "1px", flexShrink: 0 }}>
+                                            {/* Shipping Line Tracking Link */}
+                                            {(() => {
+                                              const bookingNo = job.booking_no || "";
+                                              const containerFirst = job.containers?.[0]?.containerNo || "";
+                                              const urls = buildShippingLineUrls(bookingNo, containerFirst);
 
-                                                  const matchKey = Object.keys(urls).find(key => liner.toUpperCase().includes(key.toUpperCase()));
-                                                  const url = matchKey ? urls[matchKey] : "#";
+                                              let linerRaw = job.shipping_line_airline || "";
+                                              let liner = linerRaw.includes(" - ") ? linerRaw.split(" - ").pop().trim() : linerRaw.trim();
 
-                                                  if (liner && url !== "#") {
-                                                    return (
-                                                      <Tooltip title={`Track on ${liner}`}>
-                                                        <a
-                                                          href={url}
-                                                          target="_blank"
-                                                          rel="noopener noreferrer"
-                                                          onClick={(e) => e.stopPropagation()}
-                                                          style={{ display: 'flex', alignItems: 'center', padding: 2 }}
-                                                        >
-                                                          <FontAwesomeIcon icon={faShip} style={{ fontSize: 9, color: "#2563eb" }} />
-                                                        </a>
-                                                      </Tooltip>
-                                                    );
-                                                  }
-                                                  return null;
-                                                })()}
+                                              const matchKey = Object.keys(urls).find(key => liner.toUpperCase().includes(key.toUpperCase()));
+                                              const url = matchKey ? urls[matchKey] : "#";
 
-                                                {/* CONCOR Container Track Button */}
-                                                {job.custom_house?.toUpperCase().includes("ICD") && (
-                                                  <Tooltip title="Track on CONCOR India">
-                                                    <IconButton
-                                                      size="small"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setContainerTrackContainers(job.containers || []);
-                                                        setContainerTrackOpen(true);
-                                                      }}
-                                                      style={{ padding: 2 }}
+                                              if (liner && url !== "#") {
+                                                return (
+                                                  <Tooltip title={`Track on ${liner}`}>
+                                                    <a
+                                                      href={url}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      onClick={(e) => e.stopPropagation()}
+                                                      style={{ display: 'flex', alignItems: 'center', padding: 2 }}
                                                     >
-                                                      <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 9, color: "#7c3aed" }} />
-                                                    </IconButton>
+                                                      <FontAwesomeIcon icon={faShip} style={{ fontSize: 9, color: "#2563eb" }} />
+                                                    </a>
                                                   </Tooltip>
-                                                )}
+                                                );
+                                              }
+                                              return null;
+                                            })()}
 
+                                            {/* CONCOR Container Track Button */}
+                                            {job.custom_house?.toUpperCase().includes("ICD") && (
+                                              <Tooltip title="Track on CONCOR India">
                                                 <IconButton
                                                   size="small"
-                                                  onClick={(e) => handleCopyText(container.containerNo, e)}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setContainerTrackContainers(job.containers || []);
+                                                    setContainerTrackOpen(true);
+                                                  }}
                                                   style={{ padding: 2 }}
-                                                  title="Copy Container No"
                                                 >
-                                                  <ContentCopyIcon style={{ fontSize: 9, color: "#64748b" }} />
+                                                  <FontAwesomeIcon icon={faAnchor} style={{ fontSize: 9, color: "#7c3aed" }} />
                                                 </IconButton>
-                                              </div>
-                                            </div>
-                                          ))}
-                                          {hiddenCount > 0 && (
-                                            <button
-                                              type="button"
-                                              onClick={(e) => toggleContainers(e, containerKey)}
-                                              style={{
-                                                alignSelf: "flex-start",
-                                                border: isExpanded ? "none" : "1px solid #f59e0b",
-                                                background: isExpanded ? "transparent" : "#fff7ed",
-                                                color: isExpanded ? "#475569" : "#b45309",
-                                                fontSize: "10px",
-                                                fontWeight: "700",
-                                                cursor: "pointer",
-                                                padding: isExpanded ? "2px 0" : "3px 8px",
-                                                borderRadius: "999px",
-                                              }}
+                                              </Tooltip>
+                                            )}
+
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => handleCopyText(container.containerNo, e)}
+                                              style={{ padding: 2 }}
+                                              title="Copy Container No"
                                             >
-                                              {isExpanded ? "Show less" : `Show ${hiddenCount} more`}
-                                            </button>
-                                          )}
+                                              <ContentCopyIcon style={{ fontSize: 9, color: "#64748b" }} />
+                                            </IconButton>
+                                          </div>
                                         </div>
-                                      );
-                                    })()
-                                  ) : (
-                                    <div style={{ fontWeight: "600", color: "#94a3b8" }}>-</div>
-                                  )}
-                                </div>
+                                      ))}
+                                      {hiddenCount > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => toggleContainers(e, containerKey)}
+                                          style={{
+                                            alignSelf: "flex-start",
+                                            border: isExpanded ? "none" : "1px solid #f59e0b",
+                                            background: isExpanded ? "transparent" : "#fff7ed",
+                                            color: isExpanded ? "#475569" : "#b45309",
+                                            fontSize: "10px",
+                                            fontWeight: "700",
+                                            cursor: "pointer",
+                                            padding: isExpanded ? "2px 0" : "3px 8px",
+                                            borderRadius: "999px",
+                                          }}
+                                        >
+                                          {isExpanded ? "Show less" : `Show ${hiddenCount} more`}
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })()
                               ) : (
-                                <div style={{ color: "#94a3b8", fontSize: "10px" }}>N/A</div>
+                                <div style={{ fontWeight: "600", color: "#94a3b8" }}>-</div>
                               )}
-                              {!(job.isGeneralJob || job.exporter === "GENERAL JOB") && (
-                                <>
-                                  {/* Compact Packages/Weight details */}
-                                  <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "9px", color: "#475569", marginTop: "4px", backgroundColor: "#f1f5f9", padding: "2px 4px", borderRadius: "3px", flexWrap: "wrap", border: "1px solid #e2e8f0" }}>
-                                    <span style={{ fontWeight: "800", color: "#1e293b", display: "flex", alignItems: "center", gap: "2px" }}>
-                                      {job.total_no_of_pkgs} {job.package_unit || "PKG"}
-                                      {job.total_no_of_pkgs && (
-                                        <IconButton size="small" onClick={(e) => handleCopyText(`${job.total_no_of_pkgs} ${job.package_unit || ""}`.trim(), e)} style={{ padding: 0 }} title="Copy PKG">
-                                          <ContentCopyIcon style={{ fontSize: 8, color: "#94a3b8" }} />
-                                        </IconButton>
-                                      )}
-                                    </span>
-                                    <span style={{ color: "#cbd5e1" }}>|</span>
-                                    <span style={{ fontWeight: "700" }}>G:</span>
-                                    <span style={{ fontWeight: "600", color: "#334155" }}>
-                                      {job.gross_weight_kg}
-                                      {job.gross_weight_kg && (
-                                        <IconButton size="small" onClick={(e) => handleCopyText(String(job.gross_weight_kg), e)} style={{ padding: 0 }} title="Copy G.Wt">
-                                          <ContentCopyIcon style={{ fontSize: 8, color: "#94a3b8" }} />
-                                        </IconButton>
-                                      )}
-                                    </span>
-                                    <span style={{ color: "#cbd5e1" }}>|</span>
-                                    <span style={{ fontWeight: "700" }}>N:</span>
-                                    <span style={{ fontWeight: "600", color: "#334155" }}>
-                                      {job.net_weight_kg}
-                                      {job.net_weight_kg && (
-                                        <IconButton size="small" onClick={(e) => handleCopyText(String(job.net_weight_kg), e)} style={{ padding: 0 }} title="Copy N.Wt">
-                                          <ContentCopyIcon style={{ fontSize: 8, color: "#94a3b8" }} />
-                                        </IconButton>
-                                      )}
-                                    </span>
-                                  </div>
+                            </div>
+                          ) : (
+                            <div style={{ color: "#94a3b8", fontSize: "10px" }}>N/A</div>
+                          )}
+                          {!(job.isGeneralJob || job.exporter === "GENERAL JOB") && (
+                            <>
+                              {/* Compact Packages/Weight details */}
+                              <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "9px", color: "#475569", marginTop: "4px", backgroundColor: "#f1f5f9", padding: "2px 4px", borderRadius: "3px", flexWrap: "wrap", border: "1px solid #e2e8f0" }}>
+                                <span style={{ fontWeight: "800", color: "#1e293b", display: "flex", alignItems: "center", gap: "2px" }}>
+                                  {job.total_no_of_pkgs} {job.package_unit || "PKG"}
+                                  {job.total_no_of_pkgs && (
+                                    <IconButton size="small" onClick={(e) => handleCopyText(`${job.total_no_of_pkgs} ${job.package_unit || ""}`.trim(), e)} style={{ padding: 0 }} title="Copy PKG">
+                                      <ContentCopyIcon style={{ fontSize: 8, color: "#94a3b8" }} />
+                                    </IconButton>
+                                  )}
+                                </span>
+                                <span style={{ color: "#cbd5e1" }}>|</span>
+                                <span style={{ fontWeight: "700" }}>G:</span>
+                                <span style={{ fontWeight: "600", color: "#334155" }}>
+                                  {job.gross_weight_kg}
+                                  {job.gross_weight_kg && (
+                                    <IconButton size="small" onClick={(e) => handleCopyText(String(job.gross_weight_kg), e)} style={{ padding: 0 }} title="Copy G.Wt">
+                                      <ContentCopyIcon style={{ fontSize: 8, color: "#94a3b8" }} />
+                                    </IconButton>
+                                  )}
+                                </span>
+                                <span style={{ color: "#cbd5e1" }}>|</span>
+                                <span style={{ fontWeight: "700" }}>N:</span>
+                                <span style={{ fontWeight: "600", color: "#334155" }}>
+                                  {job.net_weight_kg}
+                                  {job.net_weight_kg && (
+                                    <IconButton size="small" onClick={(e) => handleCopyText(String(job.net_weight_kg), e)} style={{ padding: 0 }} title="Copy N.Wt">
+                                      <ContentCopyIcon style={{ fontSize: 8, color: "#94a3b8" }} />
+                                    </IconButton>
+                                  )}
+                                </span>
+                              </div>
 
-                                  {/* Compact Checkboxes */}
-                                  <div style={{ display: "flex", gap: "5px", alignItems: "center", justifyContent: "space-between", marginTop: "4px", padding: "2px 4px", backgroundColor: "#eff6ff", borderRadius: "3px", border: "1px solid #bfdbfe", flexWrap: "wrap" }}>
-                                    <label style={{ display: "flex", alignItems: "center", gap: "1px", fontSize: "9px", fontWeight: "700", color: "#1976d2", cursor: "pointer", userSelect: "none" }}>
-                                      <input
-                                        type="checkbox"
-                                        checked={!!job.vgm_done}
-                                        onChange={(e) => handleCheckboxChange(job, "vgm_done", e.target.checked)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
-                                      />
-                                      <span
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          e.preventDefault();
-                                          if (job.job_no) {
-                                            const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/vgm/${encodeURIComponent(job.job_no)}`;
-                                            window.open(url, "_blank");
-                                          }
-                                        }}
-                                        style={{ textDecoration: "underline", color: "#1976d2" }}
-                                        title="Open ODEX VGM Tracker"
-                                      >
-                                        VGM
-                                      </span>
-                                    </label>
-
-                                    <label style={{ display: "flex", alignItems: "center", gap: "1px", fontSize: "9px", fontWeight: "700", color: "#1976d2", cursor: "pointer", userSelect: "none" }}>
-                                      <input
-                                        type="checkbox"
-                                        checked={!!job.form13_done}
-                                        onChange={(e) => handleCheckboxChange(job, "form13_done", e.target.checked)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
-                                      />
-                                      <span
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          e.preventDefault();
-                                          if (job.job_no) {
-                                            const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/form13/${encodeURIComponent(job.job_no)}`;
-                                            window.open(url, "_blank");
-                                          }
-                                        }}
-                                        style={{ textDecoration: "underline", color: "#1976d2" }}
-                                        title="Open Form 13 ODEX Tracker"
-                                      >
-                                        F-13
-                                      </span>
-                                    </label>
-
-                                    <label style={{ display: "flex", alignItems: "center", gap: "1px", fontSize: "9px", fontWeight: "700", color: "#1976d2", cursor: "pointer", userSelect: "none" }}>
-                                      <input
-                                        type="checkbox"
-                                        checked={!!job.shipping_bill_done}
-                                        onChange={(e) => handleCheckboxChange(job, "shipping_bill_done", e.target.checked)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
-                                      />
-                                      <span
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          e.preventDefault();
-                                          if (job.job_no) {
-                                            const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/esb/${encodeURIComponent(job.job_no)}`;
-                                            window.open(url, "_blank");
-                                          }
-                                        }}
-                                        style={{ textDecoration: "underline", color: "#1976d2" }}
-                                        title="Open ESB ODEX Tracker"
-                                      >
-                                        E-SB
-                                      </span>
-                                    </label>
-
-                                    <label style={{ display: "flex", alignItems: "center", gap: "1px", fontSize: "9px", fontWeight: "700", color: "#2563eb", cursor: "pointer", userSelect: "none" }}>
-                                      <input
-                                        type="checkbox"
-                                        checked={!!job.freight_done}
-                                        onChange={(e) => handleFreightCheckboxChange(job, e.target.checked)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
-                                      />
-                                      FRT
-                                    </label>
-                                  </div>
-                                </>
-                              )}
-                            </td>
-
-                            {/* Column 8: Handover DATE */}
-                            <td style={s.td}>
-                              {!(job.isGeneralJob || job.exporter === "GENERAL JOB") && (
-                                <>
-                                  {(() => {
-                                    const opDetails = job.operations?.[0]?.statusDetails?.[0] || {};
-                                    const isLcl = job.consignmentType === "LCL";
-                                    const isAir = job.transportMode?.toUpperCase() === "AIR" || job.job_no?.toUpperCase().includes("/AIR/");
-                                    const showRailRoad = !isLcl && !isAir;
-                                    const outLbl = opDetails.railRoad === "road" ? "Road Out" : "Rail Out";
-                                    const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
-
-                                    return (
-                                      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                                        <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                          <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>LEO</span>
-                                          <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.leoDate, "dd-MM-yy")}</span>
-                                        </div>
-                                        {job.vgm_date && (
-                                          <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                            <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>VGM</span>
-                                            <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(job.vgm_date, "dd-MM-yy")}</span>
-                                          </div>
-                                        )}
-                                        {job.form13_date && (
-                                          <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                            <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>F-13</span>
-                                            <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(job.form13_date, "dd-MM-yy")}</span>
-                                          </div>
-                                        )}
-                                        {job.shipping_bill_done_date && (
-                                          <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                            <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>ESB</span>
-                                            <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(job.shipping_bill_done_date, "dd-MM-yy")}</span>
-                                          </div>
-                                        )}
-                                        {opDetails.stuffingDate && (
-                                          <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                            <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>STUFFING</span>
-                                            <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.stuffingDate, "dd-MM-yy")}</span>
-                                          </div>
-                                        )}
-                                        <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                          <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>DHO</span>
-                                          <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}</span>
-                                        </div>
-                                        {showRailRoad && (
-                                          <>
-                                            <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                              <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{outLbl.toUpperCase()}</span>
-                                              <span style={{ fontWeight: "600", color: "#1e293b" }}>
-                                                {formatDate(
-                                                  opDetails.handoverConcorTharSanganaRailRoadDate,
-                                                  "dd-MM-yy"
-                                                )}
-                                              </span>
-                                            </div>
-                                            <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                              <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{reachedLbl.toUpperCase()}</span>
-                                              <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}</span>
-                                            </div>
-                                          </>
-                                        )}
-                                        {opDetails.billing_details?.agency_bill_date ? (
-                                          <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                            <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL (A)</span>
-                                            <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billing_details.agency_bill_date, "dd-MM-yy")}</span>
-                                          </div>
-                                        ) : null}
-                                        {opDetails.billing_details?.reimbursement_bill_date ? (
-                                          <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                                            <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL (R)</span>
-                                            <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billing_details.reimbursement_bill_date, "dd-MM-yy")}</span>
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                    );
-                                  })()}
-                                </>
-                              )}
-                              {(job.isGeneralJob || job.exporter === "GENERAL JOB") && <div style={{ color: "#94a3b8", fontSize: "10px" }}>-</div>}
-                            </td>
-
-                            <td style={s.td}>
-                              <Button
-                                size="small"
-                                onClick={(e) => handleDocsClick(e, job)}
-                                endIcon={<ArrowDropDownIcon style={{ fontSize: '14px' }} />}
-                                style={{
-                                  fontSize: "10px",
-                                  padding: "1px 6px",
-                                  textTransform: "none",
-                                  backgroundColor: "#f8fafc",
-                                  border: "1px solid #cbd5e1",
-                                  color: "#475569",
-                                  borderRadius: "4px",
-                                  fontWeight: "600",
-                                  minWidth: '70px'
-                                }}
-                              >
-                                Files
-                              </Button>
-                            </td>
-
-                            <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#ecfdf5" : "inherit", minWidth: '130px' }}>
-                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                {/* Row 1: Copy and Sign side by side */}
-                                <div style={{ display: "flex", gap: "3px", width: "100%" }}>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleCopyRow(e, job)}
-                                    style={{
-                                      padding: "4px 6px",
-                                      backgroundColor: "#059669",
-                                      color: "white",
-                                      border: "none",
-                                      borderRadius: "3px",
-                                      fontSize: "10px",
-                                      fontWeight: "600",
-                                      cursor: "pointer",
-                                      flex: 1,
-                                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      gap: "2px",
-                                      whiteSpace: "nowrap",
-                                      transition: "background-color 0.2s ease"
-                                    }}
-                                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#047857")}
-                                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#059669")}
-                                  >
-                                    <ContentCopyIcon style={{ fontSize: 10, color: "white" }} />
-                                    Copy
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleSignDSC(job, e)}
-                                    disabled={(signingLoading || checkingDsc) && selectedSignJob?._id === job._id}
-                                    style={{
-                                      padding: "4px 6px",
-                                      backgroundColor: ((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? "#cbd5e1" : "#9333ea",
-                                      color: "white",
-                                      border: "none",
-                                      borderRadius: "3px",
-                                      fontSize: "10px",
-                                      fontWeight: "600",
-                                      cursor: ((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? "not-allowed" : "pointer",
-                                      flex: 1,
-                                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      gap: "2px",
-                                      whiteSpace: "nowrap",
-                                      transition: "background-color 0.2s ease"
-                                    }}
-                                    onMouseOver={(e) => {
-                                      if (!((signingLoading || checkingDsc) && selectedSignJob?._id === job._id)) {
-                                        e.currentTarget.style.backgroundColor = "#7e22ce";
-                                      }
-                                    }}
-                                    onMouseOut={(e) => {
-                                      if (!((signingLoading || checkingDsc) && selectedSignJob?._id === job._id)) {
-                                        e.currentTarget.style.backgroundColor = "#9333ea";
-                                      }
-                                    }}
-                                    title="Sign with DSC"
-                                  >
-                                    {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (
-                                      <CircularProgress size={10} color="inherit" />
-                                    ) : (
-                                      <GavelIcon style={{ fontSize: 10 }} />
-                                    )}
-                                    {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (checkingDsc ? "..." : "Signing...") : "Sign"}
-                                  </button>
-                                </div>
-
-                                {/* Row 2: VGM, F-13, and ESB side by side in one row */}
-                                <div style={{ display: "flex", gap: "2px", width: "100%" }}>
-                                  <button
-                                    type="button"
+                              {/* Compact Checkboxes */}
+                              <div style={{ display: "flex", gap: "5px", alignItems: "center", justifyContent: "space-between", marginTop: "4px", padding: "2px 4px", backgroundColor: "#eff6ff", borderRadius: "3px", border: "1px solid #bfdbfe", flexWrap: "wrap" }}>
+                                <label style={{ display: "flex", alignItems: "center", gap: "1px", fontSize: "9px", fontWeight: "700", color: "#1976d2", cursor: "pointer", userSelect: "none" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!job.vgm_done}
+                                    onChange={(e) => handleCheckboxChange(job, "vgm_done", e.target.checked)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
+                                  />
+                                  <span
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      e.preventDefault();
                                       if (job.job_no) {
                                         const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/vgm/${encodeURIComponent(job.job_no)}`;
                                         window.open(url, "_blank");
                                       }
                                     }}
-                                    style={{
-                                      padding: "3px 2px",
-                                      backgroundColor: "#2563eb",
-                                      color: "white",
-                                      border: "none",
-                                      borderRadius: "3px",
-                                      fontSize: "9px",
-                                      fontWeight: "600",
-                                      cursor: "pointer",
-                                      flex: 1,
-                                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      gap: "1px",
-                                      whiteSpace: "nowrap",
-                                      transition: "background-color 0.2s ease"
-                                    }}
-                                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#1d4ed8")}
-                                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
+                                    style={{ textDecoration: "underline", color: "#1976d2" }}
                                     title="Open ODEX VGM Tracker"
                                   >
-                                    <LaunchIcon style={{ fontSize: 8, color: "white" }} />
                                     VGM
-                                  </button>
-                                  <button
-                                    type="button"
+                                  </span>
+                                </label>
+
+                                <label style={{ display: "flex", alignItems: "center", gap: "1px", fontSize: "9px", fontWeight: "700", color: "#1976d2", cursor: "pointer", userSelect: "none" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!job.form13_done}
+                                    onChange={(e) => handleCheckboxChange(job, "form13_done", e.target.checked)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
+                                  />
+                                  <span
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      e.preventDefault();
                                       if (job.job_no) {
                                         const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/form13/${encodeURIComponent(job.job_no)}`;
                                         window.open(url, "_blank");
                                       }
                                     }}
-                                    style={{
-                                      padding: "3px 2px",
-                                      backgroundColor: "#0284c7",
-                                      color: "white",
-                                      border: "none",
-                                      borderRadius: "3px",
-                                      fontSize: "9px",
-                                      fontWeight: "600",
-                                      cursor: "pointer",
-                                      flex: 1,
-                                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      gap: "1px",
-                                      whiteSpace: "nowrap",
-                                      transition: "background-color 0.2s ease"
-                                    }}
+                                    style={{ textDecoration: "underline", color: "#1976d2" }}
                                     title="Open Form 13 ODEX Tracker"
-                                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#0369a1")}
-                                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#0284c7")}
                                   >
-                                    <LaunchIcon style={{ fontSize: 8, color: "white" }} />
                                     F-13
-                                  </button>
-                                  <button
-                                    type="button"
+                                  </span>
+                                </label>
+
+                                <label style={{ display: "flex", alignItems: "center", gap: "1px", fontSize: "9px", fontWeight: "700", color: "#1976d2", cursor: "pointer", userSelect: "none" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!job.shipping_bill_done}
+                                    onChange={(e) => handleCheckboxChange(job, "shipping_bill_done", e.target.checked)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
+                                  />
+                                  <span
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      e.preventDefault();
                                       if (job.job_no) {
                                         const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/esb/${encodeURIComponent(job.job_no)}`;
                                         window.open(url, "_blank");
                                       }
                                     }}
-                                    style={{
-                                      padding: "3px 2px",
-                                      backgroundColor: "#0d9488",
-                                      color: "white",
-                                      border: "none",
-                                      borderRadius: "3px",
-                                      fontSize: "9px",
-                                      fontWeight: "600",
-                                      cursor: "pointer",
-                                      flex: 1,
-                                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      gap: "1px",
-                                      whiteSpace: "nowrap",
-                                      transition: "background-color 0.2s ease"
-                                    }}
+                                    style={{ textDecoration: "underline", color: "#1976d2" }}
                                     title="Open ESB ODEX Tracker"
-                                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#0f766e")}
-                                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#0d9488")}
                                   >
-                                    <LaunchIcon style={{ fontSize: 8, color: "white" }} />
-                                    ESB
-                                  </button>
-                                </div>
-                                <Button
-                                  size="small"
-                                  onClick={(e) => handleGenDocsClick(e, job)}
-                                  endIcon={<ArrowDropDownIcon style={{ fontSize: '14px' }} />}
-                                  style={{
-                                    fontSize: "10px",
-                                    padding: "1px 6px",
-                                    textTransform: "none",
-                                    backgroundColor: "#eff6ff",
-                                    border: "1px solid #3b82f6",
-                                    color: "#2563eb",
-                                    borderRadius: "4px",
-                                    fontWeight: "700",
-                                    width: "100%",
-                                    minHeight: '24px'
+                                    E-SB
+                                  </span>
+                                </label>
+
+                                <label style={{ display: "flex", alignItems: "center", gap: "1px", fontSize: "9px", fontWeight: "700", color: "#2563eb", cursor: "pointer", userSelect: "none" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!job.freight_done}
+                                    onChange={(e) => handleFreightCheckboxChange(job, e.target.checked)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ cursor: "pointer", width: 11, height: 11, margin: 0 }}
+                                  />
+                                  FRT
+                                </label>
+                              </div>
+                            </>
+                          )}
+                        </td>
+
+                        {/* Column 8: Handover DATE */}
+                        <td style={s.td}>
+                          {!(job.isGeneralJob || job.exporter === "GENERAL JOB") && (
+                            <>
+                              {(() => {
+                                const opDetails = job.operations?.[0]?.statusDetails?.[0] || {};
+                                const isLcl = job.consignmentType === "LCL";
+                                const isAir = job.transportMode?.toUpperCase() === "AIR" || job.job_no?.toUpperCase().includes("/AIR/");
+                                const showRailRoad = !isLcl && !isAir;
+                                const outLbl = opDetails.railRoad === "road" ? "Road Out" : "Rail Out";
+                                const reachedLbl = opDetails.railRoad === "road" ? "Road Rch" : "Rail Rch";
+
+                                return (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>LEO</span>
+                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.leoDate, "dd-MM-yy")}</span>
+                                    </div>
+                                    {job.vgm_date && (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>VGM</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(job.vgm_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    )}
+                                    {job.form13_date && (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>F-13</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(job.form13_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    )}
+                                    {job.shipping_bill_done_date && (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>ESB</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(job.shipping_bill_done_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    )}
+                                    {opDetails.stuffingDate && (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>STUFFING</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.stuffingDate, "dd-MM-yy")}</span>
+                                      </div>
+                                    )}
+                                    <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                      <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>DHO</span>
+                                      <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.handoverForwardingNoteDate, "dd-MM-yy")}</span>
+                                    </div>
+                                    {showRailRoad && (
+                                      <>
+                                        <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                          <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{outLbl.toUpperCase()}</span>
+                                          <span style={{ fontWeight: "600", color: "#1e293b" }}>
+                                            {formatDate(
+                                              opDetails.handoverConcorTharSanganaRailRoadDate,
+                                              "dd-MM-yy"
+                                            )}
+                                          </span>
+                                        </div>
+                                        <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                          <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>{reachedLbl.toUpperCase()}</span>
+                                          <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.railOutReachedDate, "dd-MM-yy")}</span>
+                                        </div>
+                                      </>
+                                    )}
+                                    {opDetails.billing_details?.agency_bill_date ? (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL (A)</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billing_details.agency_bill_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    ) : null}
+                                    {opDetails.billing_details?.reimbursement_bill_date ? (
+                                      <div style={{ fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#64748b", fontWeight: "700", fontSize: "9px" }}>BILL (R)</span>
+                                        <span style={{ fontWeight: "600", color: "#1e293b" }}>{formatDate(opDetails.billing_details.reimbursement_bill_date, "dd-MM-yy")}</span>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                );
+                              })()}
+                            </>
+                          )}
+                          {(job.isGeneralJob || job.exporter === "GENERAL JOB") && <div style={{ color: "#94a3b8", fontSize: "10px" }}>-</div>}
+                        </td>
+
+                        <td style={s.td}>
+                          <Button
+                            size="small"
+                            onClick={(e) => handleDocsClick(e, job)}
+                            endIcon={<ArrowDropDownIcon style={{ fontSize: '14px' }} />}
+                            style={{
+                              fontSize: "10px",
+                              padding: "1px 6px",
+                              textTransform: "none",
+                              backgroundColor: "#f8fafc",
+                              border: "1px solid #cbd5e1",
+                              color: "#475569",
+                              borderRadius: "4px",
+                              fontWeight: "600",
+                              minWidth: '70px'
+                            }}
+                          >
+                            Files
+                          </Button>
+                        </td>
+
+                        <td style={{ ...s.td, backgroundColor: job.financial_lock ? "#ecfdf5" : "inherit", minWidth: '130px' }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            {/* Row 1: Copy and Sign side by side */}
+                            <div style={{ display: "flex", gap: "3px", width: "100%" }}>
+                              <button
+                                type="button"
+                                onClick={(e) => handleCopyRow(e, job)}
+                                style={{
+                                  padding: "4px 6px",
+                                  backgroundColor: "#059669",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "3px",
+                                  fontSize: "10px",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                  flex: 1,
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "2px",
+                                  whiteSpace: "nowrap",
+                                  transition: "background-color 0.2s ease"
+                                }}
+                                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#047857")}
+                                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#059669")}
+                              >
+                                <ContentCopyIcon style={{ fontSize: 10, color: "white" }} />
+                                Copy
+                              </button>
+                              <button
+                                onClick={(e) => handleSignDSC(job, e)}
+                                disabled={(signingLoading || checkingDsc) && selectedSignJob?._id === job._id}
+                                style={{
+                                  padding: "4px 6px",
+                                  backgroundColor: ((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? "#cbd5e1" : "#9333ea",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "3px",
+                                  fontSize: "10px",
+                                  fontWeight: "600",
+                                  cursor: ((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? "not-allowed" : "pointer",
+                                  flex: 1,
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "2px",
+                                  whiteSpace: "nowrap",
+                                  transition: "background-color 0.2s ease"
+                                }}
+                                onMouseOver={(e) => {
+                                  if (!((signingLoading || checkingDsc) && selectedSignJob?._id === job._id)) {
+                                    e.currentTarget.style.backgroundColor = "#7e22ce";
+                                  }
+                                }}
+                                onMouseOut={(e) => {
+                                  if (!((signingLoading || checkingDsc) && selectedSignJob?._id === job._id)) {
+                                    e.currentTarget.style.backgroundColor = "#9333ea";
+                                  }
+                                }}
+                                title="Sign with DSC"
+                              >
+                                {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (
+                                  <CircularProgress size={10} color="inherit" />
+                                ) : (
+                                  <GavelIcon style={{ fontSize: 10 }} />
+                                )}
+                                {((signingLoading || checkingDsc) && selectedSignJob?._id === job._id) ? (checkingDsc ? "..." : "Signing...") : "Sign"}
+                              </button>
+                            </div>
+
+                            {/* Row 2: VGM, F-13, and ESB side by side in one row */}
+                            <div style={{ display: "flex", gap: "2px", width: "100%" }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (job.job_no) {
+                                    const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/vgm/${encodeURIComponent(job.job_no)}`;
+                                    window.open(url, "_blank");
+                                  }
+                                }}
+                                style={{
+                                  padding: "3px 2px",
+                                  backgroundColor: "#2563eb",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "3px",
+                                  fontSize: "9px",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                  flex: 1,
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "1px",
+                                  whiteSpace: "nowrap",
+                                  transition: "background-color 0.2s ease"
+                                }}
+                                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#1d4ed8")}
+                                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}
+                                title="Open ODEX VGM Tracker"
+                              >
+                                <LaunchIcon style={{ fontSize: 8, color: "white" }} />
+                                VGM
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (job.job_no) {
+                                    const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/form13/${encodeURIComponent(job.job_no)}`;
+                                    window.open(url, "_blank");
+                                  }
+                                }}
+                                style={{
+                                  padding: "3px 2px",
+                                  backgroundColor: "#0284c7",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "3px",
+                                  fontSize: "9px",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                  flex: 1,
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "1px",
+                                  whiteSpace: "nowrap",
+                                  transition: "background-color 0.2s ease"
+                                }}
+                                title="Open Form 13 ODEX Tracker"
+                                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#0369a1")}
+                                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#0284c7")}
+                              >
+                                <LaunchIcon style={{ fontSize: 8, color: "white" }} />
+                                F-13
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (job.job_no) {
+                                    const url = `http://handover-odex.s3-website.ap-south-1.amazonaws.com/esb/${encodeURIComponent(job.job_no)}`;
+                                    window.open(url, "_blank");
+                                  }
+                                }}
+                                style={{
+                                  padding: "3px 2px",
+                                  backgroundColor: "#0d9488",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "3px",
+                                  fontSize: "9px",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                  flex: 1,
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "1px",
+                                  whiteSpace: "nowrap",
+                                  transition: "background-color 0.2s ease"
+                                }}
+                                title="Open ESB ODEX Tracker"
+                                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#0f766e")}
+                                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#0d9488")}
+                              >
+                                <LaunchIcon style={{ fontSize: 8, color: "white" }} />
+                                ESB
+                              </button>
+                            </div>
+                            <Button
+                              size="small"
+                              onClick={(e) => handleGenDocsClick(e, job)}
+                              endIcon={<ArrowDropDownIcon style={{ fontSize: '14px' }} />}
+                              style={{
+                                fontSize: "10px",
+                                padding: "1px 6px",
+                                textTransform: "none",
+                                backgroundColor: "#eff6ff",
+                                border: "1px solid #3b82f6",
+                                color: "#2563eb",
+                                borderRadius: "4px",
+                                fontWeight: "700",
+                                width: "100%",
+                                minHeight: '24px'
+                              }}
+                            >
+                              Docs
+                            </Button>
+                            {/* Query Traffic Light: Red=Raise, Yellow=View, Green=Resolved */}
+                            <div style={{ display: "flex", gap: "6px", justifyContent: "center", width: "100%", flexWrap: "wrap", margin: "4px 0" }}>
+                              {/* RED - Raise Query */}
+                              <Tooltip title="Raise a query" arrow>
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setQueryDialogJob(job);
+                                    setQueryDialogOpen(true);
                                   }}
-                                >
-                                  Docs
-                                </Button>
-                                {/* Query Traffic Light: Red=Raise, Yellow=View, Green=Resolved */}
-                                <div style={{ display: "flex", gap: "6px", justifyContent: "center", width: "100%", flexWrap: "wrap", margin: "4px 0" }}>
-                                  {/* RED - Raise Query */}
-                                  <Tooltip title="Raise a query" arrow>
+                                  style={{
+                                    width: 18, height: 18, borderRadius: "50%",
+                                    backgroundColor: "#ef4444", cursor: "pointer",
+                                    border: "2px solid #dc2626",
+                                    opacity: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? 0.5 : 1,
+                                    filter: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? "grayscale(0.6)" : "none",
+                                    flexShrink: 0,
+                                    transition: "transform 0.15s",
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.transform = "scale(1.25)"}
+                                  onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                                />
+                              </Tooltip>
+                              {/* YELLOW - View Queries/Replies */}
+                              {jobQueriesStatus[job.job_no]?.hasQueries && (
+                                <>
+                                  <Tooltip title="View queries & replies" arrow>
                                     <div
-                                      onClick={(e) => {
+                                      onClick={async (e) => {
                                         e.stopPropagation();
-                                        setQueryDialogJob(job);
-                                        setQueryDialogOpen(true);
+                                        setQueryChatJob(job);
+                                        setQueryChatOpen(true);
+                                        setQueryChatLoading(true);
+                                        try {
+                                          const [resp, clientResp] = await Promise.all([
+                                            axios.get(
+                                              `${import.meta.env.VITE_API_STRING}/queries`,
+                                              { params: { job_no: job.job_no } }
+                                            ),
+                                            axios.get(
+                                              `${import.meta.env.VITE_API_STRING}/client-queries`,
+                                              { params: { job_no: job.job_no } }
+                                            ).catch(() => ({ data: { queries: [] } }))
+                                          ]);
+
+                                          const queriesFetched = resp.data?.data?.queries || resp.data?.data || [];
+                                          const clientQueriesFetched = clientResp.data?.queries || [];
+                                          setQueryChatData(queriesFetched);
+                                          setClientQueryChatData(clientQueriesFetched);
+                                          setActiveQueryIndex(0);
+                                          if (clientQueriesFetched.length > 0) {
+                                            setActiveChatTab("client");
+                                          } else if (queriesFetched.length > 0) {
+                                            setActiveChatTab("internal");
+                                          } else {
+                                            setActiveChatTab("client");
+                                          }
+
+                                          if (queriesFetched.length > 0) {
+                                            axios.put(`${import.meta.env.VITE_API_STRING}/queries/mark-seen`, {
+                                              queryIds: queriesFetched.map(q => q._id)
+                                            }).catch(console.error);
+                                          }
+
+                                          if (clientQueriesFetched.length > 0) {
+                                            axios.put(`${import.meta.env.VITE_API_STRING}/client-queries/mark-seen`, {
+                                              queryIds: clientQueriesFetched.map(q => q._id),
+                                              isClient: false
+                                            }).catch(console.error);
+                                          }
+
+                                          setJobQueriesStatus(prev => ({
+                                            ...prev,
+                                            [job.job_no]: { ...prev[job.job_no], hasUnseen: false }
+                                          }));
+                                        } catch (err) {
+                                          console.error(err);
+                                          setQueryChatData([]);
+                                          setClientQueryChatData([]);
+                                        } finally {
+                                          setQueryChatLoading(false);
+                                        }
                                       }}
                                       style={{
                                         width: 18, height: 18, borderRadius: "50%",
-                                        backgroundColor: "#ef4444", cursor: "pointer",
-                                        border: "2px solid #dc2626",
+                                        backgroundColor: "#f59e0b", cursor: "pointer",
+                                        border: "2px solid #d97706",
+                                        opacity: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? 0.5 : 1,
+                                        filter: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? "grayscale(0.6)" : "none",
+                                        flexShrink: 0,
+                                        position: "relative",
+                                        transition: "transform 0.15s",
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.transform = "scale(1.25)"}
+                                      onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                                    >
+                                      {jobQueriesStatus[job.job_no]?.hasUnseen && (
+                                        <div style={{
+                                          position: "absolute", top: -4, right: -4,
+                                          width: 8, height: 8, borderRadius: "50%",
+                                          backgroundColor: "#dc2626", border: "1px solid #fff"
+                                        }} />
+                                      )}
+                                    </div>
+                                  </Tooltip>
+                                  {/* GREEN - Resolve */}
+                                  <Tooltip title="Mark queries resolved" arrow>
+                                    <div
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!window.confirm(`Mark all open queries for ${job.job_no} as resolved?`)) return;
+                                        try {
+                                          const resp = await axios.get(
+                                            `${import.meta.env.VITE_API_STRING}/queries`,
+                                            { params: { job_no: job.job_no, status: "open" } }
+                                          );
+                                          const openQueries = resp.data?.data?.queries || resp.data?.data || [];
+                                          if (openQueries.length === 0) {
+                                            alert("No open queries for this job.");
+                                            return;
+                                          }
+                                          await Promise.all(
+                                            openQueries.map(q =>
+                                              axios.put(`${import.meta.env.VITE_API_STRING}/queries/${q._id}/resolve`, {
+                                                resolvedBy: user?.username || "unknown",
+                                                resolvedByName: user?.fullName || user?.username || "Unknown",
+                                                resolutionNote: "Resolved from job table",
+                                              })
+                                            )
+                                          );
+                                          alert(`${openQueries.length} query(ies) resolved.`);
+
+                                          // Optionally update local stats manually or just trigger a refresh
+                                          setJobQueriesStatus(prev => ({
+                                            ...prev,
+                                            [job.job_no]: { ...prev[job.job_no], hasUnseen: false }
+                                          }));
+                                        } catch (err) {
+                                          console.error(err);
+                                          alert("Failed to resolve queries.");
+                                        }
+                                      }}
+                                      style={{
+                                        width: 18, height: 18, borderRadius: "50%",
+                                        backgroundColor: "#22c55e", cursor: "pointer",
+                                        border: "2px solid #16a34a",
                                         opacity: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? 0.5 : 1,
                                         filter: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? "grayscale(0.6)" : "none",
                                         flexShrink: 0,
@@ -4853,200 +4994,68 @@ const ExportJobsTable = () => {
                                       onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
                                     />
                                   </Tooltip>
-                                  {/* YELLOW - View Queries/Replies */}
-                                  {jobQueriesStatus[job.job_no]?.hasQueries && (
-                                    <>
-                                      <Tooltip title="View queries & replies" arrow>
-                                        <div
-                                          onClick={async (e) => {
-                                            e.stopPropagation();
-                                            setQueryChatJob(job);
-                                            setQueryChatOpen(true);
-                                            setQueryChatLoading(true);
-                                            try {
-                                              const [resp, clientResp] = await Promise.all([
-                                                axios.get(
-                                                  `${import.meta.env.VITE_API_STRING}/queries`,
-                                                  { params: { job_no: job.job_no } }
-                                                ),
-                                                axios.get(
-                                                  `${import.meta.env.VITE_API_STRING}/client-queries`,
-                                                  { params: { job_no: job.job_no } }
-                                                ).catch(() => ({ data: { queries: [] } }))
-                                              ]);
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              textAlign: "center",
+                              marginTop: "8px",
+                              fontSize: "10px",
+                              fontWeight: "800",
+                              color: theme.text,
+                              backgroundColor: theme.bg,
+                              border: `1px solid ${theme.border}`,
+                              padding: "4px 2px",
+                              borderRadius: "6px",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.4px",
+                              boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                            }}
+                          >
+                            {(isChargesModule && activeTab === "Completed")
+                              ? (
+                                (() => {
+                                  const bd = job.operations?.[0]?.statusDetails?.[0]?.billing_details;
+                                  const docsDt = job.operations?.[0]?.statusDetails?.[0]?.billingDocsSentDt;
+                                  if (bd?.agency_bill_date && bd?.reimbursement_bill_date) {
+                                    return `${formatDate(bd.agency_bill_date)} & ${formatDate(bd.reimbursement_bill_date)}`;
+                                  }
+                                  return formatDate(bd?.agency_bill_date || bd?.reimbursement_bill_date) || job.status;
+                                })()
+                              )
+                              : (hasClubBillingDate(job) || job.detailedStatus === "Billing Done"
+                                ? "Billing Done"
+                                : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
+                                  ? job.detailedStatus[job.detailedStatus.length - 1]
+                                  : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status || "-"))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
-                                              const queriesFetched = resp.data?.data?.queries || resp.data?.data || [];
-                                              const clientQueriesFetched = clientResp.data?.queries || [];
-                                              setQueryChatData(queriesFetched);
-                                              setClientQueryChatData(clientQueriesFetched);
-                                              setActiveQueryIndex(0);
-                                              if (clientQueriesFetched.length > 0) {
-                                                setActiveChatTab("client");
-                                              } else if (queriesFetched.length > 0) {
-                                                setActiveChatTab("internal");
-                                              } else {
-                                                setActiveChatTab("client");
-                                              }
-
-                                              if (queriesFetched.length > 0) {
-                                                axios.put(`${import.meta.env.VITE_API_STRING}/queries/mark-seen`, {
-                                                  queryIds: queriesFetched.map(q => q._id)
-                                                }).catch(console.error);
-                                              }
-
-                                              if (clientQueriesFetched.length > 0) {
-                                                axios.put(`${import.meta.env.VITE_API_STRING}/client-queries/mark-seen`, {
-                                                  queryIds: clientQueriesFetched.map(q => q._id),
-                                                  isClient: false
-                                                }).catch(console.error);
-                                              }
-
-                                              setJobQueriesStatus(prev => ({
-                                                ...prev,
-                                                [job.job_no]: { ...prev[job.job_no], hasUnseen: false }
-                                              }));
-                                            } catch (err) {
-                                              console.error(err);
-                                              setQueryChatData([]);
-                                              setClientQueryChatData([]);
-                                            } finally {
-                                              setQueryChatLoading(false);
-                                            }
-                                          }}
-                                          style={{
-                                            width: 18, height: 18, borderRadius: "50%",
-                                            backgroundColor: "#f59e0b", cursor: "pointer",
-                                            border: "2px solid #d97706",
-                                            opacity: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? 0.5 : 1,
-                                            filter: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? "grayscale(0.6)" : "none",
-                                            flexShrink: 0,
-                                            position: "relative",
-                                            transition: "transform 0.15s",
-                                          }}
-                                          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.25)"}
-                                          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-                                        >
-                                          {jobQueriesStatus[job.job_no]?.hasUnseen && (
-                                            <div style={{
-                                              position: "absolute", top: -4, right: -4,
-                                              width: 8, height: 8, borderRadius: "50%",
-                                              backgroundColor: "#dc2626", border: "1px solid #fff"
-                                            }} />
-                                          )}
-                                        </div>
-                                      </Tooltip>
-                                      {/* GREEN - Resolve */}
-                                      <Tooltip title="Mark queries resolved" arrow>
-                                        <div
-                                          onClick={async (e) => {
-                                            e.stopPropagation();
-                                            if (!window.confirm(`Mark all open queries for ${job.job_no} as resolved?`)) return;
-                                            try {
-                                              const resp = await axios.get(
-                                                `${import.meta.env.VITE_API_STRING}/queries`,
-                                                { params: { job_no: job.job_no, status: "open" } }
-                                              );
-                                              const openQueries = resp.data?.data?.queries || resp.data?.data || [];
-                                              if (openQueries.length === 0) {
-                                                alert("No open queries for this job.");
-                                                return;
-                                              }
-                                              await Promise.all(
-                                                openQueries.map(q =>
-                                                  axios.put(`${import.meta.env.VITE_API_STRING}/queries/${q._id}/resolve`, {
-                                                    resolvedBy: user?.username || "unknown",
-                                                    resolvedByName: user?.fullName || user?.username || "Unknown",
-                                                    resolutionNote: "Resolved from job table",
-                                                  })
-                                                )
-                                              );
-                                              alert(`${openQueries.length} query(ies) resolved.`);
-
-                                              // Optionally update local stats manually or just trigger a refresh
-                                              setJobQueriesStatus(prev => ({
-                                                ...prev,
-                                                [job.job_no]: { ...prev[job.job_no], hasUnseen: false }
-                                              }));
-                                            } catch (err) {
-                                              console.error(err);
-                                              alert("Failed to resolve queries.");
-                                            }
-                                          }}
-                                          style={{
-                                            width: 18, height: 18, borderRadius: "50%",
-                                            backgroundColor: "#22c55e", cursor: "pointer",
-                                            border: "2px solid #16a34a",
-                                            opacity: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? 0.5 : 1,
-                                            filter: (jobQueriesStatus[job.job_no]?.hasQueries && !jobQueriesStatus[job.job_no]?.hasOpenQueries) ? "grayscale(0.6)" : "none",
-                                            flexShrink: 0,
-                                            transition: "transform 0.15s",
-                                          }}
-                                          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.25)"}
-                                          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-                                        />
-                                      </Tooltip>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              <div
-                                style={{
-                                  textAlign: "center",
-                                  marginTop: "8px",
-                                  fontSize: "10px",
-                                  fontWeight: "800",
-                                  color: theme.text,
-                                  backgroundColor: theme.bg,
-                                  border: `1px solid ${theme.border}`,
-                                  padding: "4px 2px",
-                                  borderRadius: "6px",
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.4px",
-                                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
-                                }}
-                              >
-                                {(isChargesModule && activeTab === "Completed")
-                                  ? (
-                                    (() => {
-                                      const bd = job.operations?.[0]?.statusDetails?.[0]?.billing_details;
-                                      const docsDt = job.operations?.[0]?.statusDetails?.[0]?.billingDocsSentDt;
-                                      if (bd?.agency_bill_date && bd?.reimbursement_bill_date) {
-                                        return `${formatDate(bd.agency_bill_date)} & ${formatDate(bd.reimbursement_bill_date)}`;
-                                      }
-                                      return formatDate(bd?.agency_bill_date || bd?.reimbursement_bill_date) || job.status;
-                                    })()
-                                  )
-                                  : (hasClubBillingDate(job) || job.detailedStatus === "Billing Done"
-                                    ? "Billing Done"
-                                    : (Array.isArray(job.detailedStatus) && job.detailedStatus.length > 0
-                                      ? job.detailedStatus[job.detailedStatus.length - 1]
-                                      : (typeof job.detailedStatus === 'string' && job.detailedStatus) ? job.detailedStatus : job.status || "-"))}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Footer */}
-              <div style={s.footer}>
-                <div>
-                  Showing {sortedJobs.length} of {totalRecords} Records
-                </div>
-                <Pagination
-                  count={totalPages}
-                  page={page}
-                  onChange={(e, value) => setPage(value)}
-                  shape="rounded"
-                  color="primary"
-                  showFirstButton
-                  showLastButton
-                  size="small"
-                />
-              </div>
+          {/* Pagination Footer */}
+          <div style={s.footer}>
+            <div>
+              Showing {sortedJobs.length} of {totalRecords} Records
+            </div>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(e, value) => setPage(value)}
+              shape="rounded"
+              color="primary"
+              showFirstButton
+              showLastButton
+              size="small"
+            />
+          </div>
         </div>
       </div >
 
@@ -5801,6 +5810,171 @@ const ExportJobsTable = () => {
         selectedGenDocJob={selectedGenDocJob}
         handleTrackDocClick={handleTrackDocClick}
       />
+      {/* 2. GENERATED DOCUMENTS MENU */}
+      <Menu
+        anchorEl={genDocsAnchorEl}
+        open={Boolean(genDocsAnchorEl)}
+        onClose={handleGenDocsClose}
+        PaperProps={{
+          style: {
+            maxHeight: 350,
+            width: '280px',
+            overflowY: 'auto',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            padding: '4px 0'
+          },
+        }}
+      >
+        {selectedGenDocJob && (() => {
+          const isGandhidham =
+            String(selectedGenDocJob?.branch_code || "").toUpperCase().trim() === "GIM" ||
+            String(selectedGenDocJob?.job_no || "").toUpperCase().startsWith("GIM");
+          return (
+            <Suspense fallback={
+              <MenuItem style={{ fontSize: '12px', minHeight: '30px', padding: '4px 12px', color: '#64748b' }}>
+                <CircularProgress size={16} sx={{ mr: 1 }} /> Loading generators...
+              </MenuItem>
+            }>
+              <ListSubheader style={{
+                lineHeight: '22px',
+                backgroundColor: '#f1f5f9',
+                color: '#1e293b',
+                fontWeight: '800',
+                fontSize: '10px',
+                textTransform: 'uppercase',
+                borderBottom: '1px solid #e2e8f0',
+                letterSpacing: '0.05em'
+              }}>
+              </ListSubheader>
+
+              <ExportChecklistGenerator jobNo={selectedGenDocJob?.job_no} renderAsIcon={false} onTrackSuccess={(clicks) => handleTrackDocClick(selectedGenDocJob.job_no, "checklist", clicks)}>
+                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CHECKLIST</MenuItem>
+              </ExportChecklistGenerator>
+
+              <FileCoverGenerator jobNo={selectedGenDocJob?.job_no} onTrackSuccess={(clicks) => handleTrackDocClick(selectedGenDocJob.job_no, "file_cover", clicks)}>
+                <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FILE COVER</MenuItem>
+              </FileCoverGenerator>
+
+              {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SACHANA")) && (
+                <ConsignmentNoteGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (SACHANA)</MenuItem>
+                </ConsignmentNoteGenerator>
+              )}
+
+              {(selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR")) && (
+                <ForwardingNoteTharGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (THAR)</MenuItem>
+                </ForwardingNoteTharGenerator>
+              )}
+
+              {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI") || selectedGenDocJob?.custom_house?.toUpperCase().includes("CONCOR")) && (
+                <ConcorForwardingNoteGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FORWARDING NOTE (CONCOR)</MenuItem>
+                </ConcorForwardingNoteGenerator>
+              )}
+
+              {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SABARMATI")) && (
+                <ConcorPltLetterGenerator jobNo={selectedGenDocJob?.job_no}>
+                  <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CONCOR PLT LETTER</MenuItem>
+                </ConcorPltLetterGenerator>
+              )}
+
+              {(selectedGenDocJob?.custom_house?.toUpperCase().includes("SANAND") ||
+                selectedGenDocJob?.custom_house?.toUpperCase().includes("THAR") ||
+                selectedGenDocJob?.custom_house?.toUpperCase().includes("ICD")) && (
+                  <AnnexureDGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>ANNEXURE D</MenuItem>
+                  </AnnexureDGenerator>
+                )}
+
+              {(!selectedGenDocJob?.custom_house?.toUpperCase().includes("ACC") &&
+                !selectedGenDocJob?.custom_house?.toUpperCase().includes("AIRPORT") &&
+                !selectedGenDocJob?.custom_house?.toUpperCase().includes("AIR CARGO") &&
+                selectedGenDocJob?.transportMode !== "AIR") && (
+                  <>
+                    <AnnexureCGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>ANNEXURE C</MenuItem>
+                    </AnnexureCGenerator>
+                    <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>VGM AUTHORIZATION</MenuItem>
+                    </VGMAuthorizationGenerator>
+                    <FreightCertificateGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FREIGHT CERTIFICATE</MenuItem>
+                    </FreightCertificateGenerator>
+                    <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>BILL OF LADING</MenuItem>
+                    </BillOfLadingGenerator>
+                    <CertificateOfOriginGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>CERTIFICATE OF ORIGIN</MenuItem>
+                    </CertificateOfOriginGenerator>
+                  </>
+                )}
+
+              <MenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!selectedGenDocJob) return;
+                  const downloadUrl = `${import.meta.env.VITE_API_STRING}/generate-sb-file/${selectedGenDocJob._id}`;
+                  window.open(downloadUrl, "_blank");
+                }}
+                style={{
+                  fontSize: '12px',
+                  minHeight: '34px',
+                  padding: '4px 12px',
+                  color: '#166534',
+                  fontWeight: 'bold',
+                  backgroundColor: '#f0fdf4',
+                  borderBottom: '2px solid #bbf7d0'
+                }}
+              >
+                EXPORT SB FLAT FILE (.SB)
+              </MenuItem>
+
+              {isGandhidham && (
+                <>
+                  <StuffingJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      STUFFING JOB REQUEST
+                    </MenuItem>
+                  </StuffingJobRequestGenerator>
+
+                  <ImportContainerDeliveryOrderGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      IMPORT CONTAINER DELIVERY ORDER
+                    </MenuItem>
+                  </ImportContainerDeliveryOrderGenerator>
+
+                  <BufferContainerGateInToCfsGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      BUFFER CONTAINER GATE IN TO CFS
+                    </MenuItem>
+                  </BufferContainerGateInToCfsGenerator>
+
+                  <CartingJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      CARTING JOB REQUEST
+                    </MenuItem>
+                  </CartingJobRequestGenerator>
+
+                  <MovementJobRequestGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      MOVEMENT JOB REQUEST
+                    </MenuItem>
+                  </MovementJobRequestGenerator>
+
+                  <StorageApplicationGenerator jobNo={selectedGenDocJob?.job_no}>
+                    <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>
+                      STORAGE YARD APPLICATION
+                    </MenuItem>
+                  </StorageApplicationGenerator>
+                </>
+              )}
+            </Suspense>
+          );
+        })()}
+      </Menu>
 
       {/* CREATE GENERAL JOB DIALOG */}
       <CreateGeneralJobDialog

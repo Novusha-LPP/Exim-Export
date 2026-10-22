@@ -1216,6 +1216,14 @@ const AddExJobs = ({ onJobCreated }) => {
   };
 
   const handleDirectorySelect = (org) => {
+    if (org.approvalStatus !== "Approved") {
+      showToast(
+        `Cannot select "${org.organization}": Organization status is '${org.approvalStatus || "Pending"}'. Approval from HOD or Admin is required before creating jobs.`,
+        "error"
+      );
+      return;
+    }
+
     const ieCode = org.registrationDetails?.ieCode || "";
     const panNo = org.registrationDetails?.panNo || "";
     let gstin = "";
@@ -1237,7 +1245,7 @@ const AddExJobs = ({ onJobCreated }) => {
     setShowDropdown(false);
     showToast(
       ieCode
-        ? "Exporter details populated!"
+        ? "Approved exporter details populated!"
         : "PAN auto-filled in IE Code field",
     );
   };
@@ -1298,6 +1306,18 @@ const AddExJobs = ({ onJobCreated }) => {
       return;
     }
 
+    // Front-end check: Organization must be approved
+    const matchedOrg = organizations.find(
+      (o) => (o.organization || "").trim().toUpperCase() === (formData.exporter || "").trim().toUpperCase()
+    );
+    if (matchedOrg && matchedOrg.approvalStatus !== "Approved") {
+      showToast(
+        `Cannot create job: Organization "${formData.exporter}" is ${matchedOrg.approvalStatus}. Approval from HOD or Admin is required.`,
+        "error"
+      );
+      return;
+    }
+
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_API_STRING}/jobs/add-job-exp-man`,
@@ -1310,7 +1330,7 @@ const AddExJobs = ({ onJobCreated }) => {
         navigate(`/export-dsr/job/${encodeURIComponent(response.data.job.job_no)}`);
       }
     } catch (e) {
-      showToast("Failed to create job", "error");
+      showToast(e.response?.data?.message || "Failed to create job", "error");
     }
   };
 
@@ -1403,32 +1423,69 @@ const AddExJobs = ({ onJobCreated }) => {
                             Loading...
                           </div>
                         ) : organizations.length > 0 ? (
-                          organizations.map((org, i) => (
-                            <div
-                              key={i}
-                              style={s.dropdownItem}
-                              onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor =
-                                "#f9fafb")
-                              }
-                              onMouseLeave={(e) =>
-                                (e.currentTarget.style.backgroundColor = "#fff")
-                              }
-                              onMouseDown={() => handleDirectorySelect(org)}
-                            >
+                          organizations.map((org, i) => {
+                            const isApproved = org.approvalStatus === "Approved";
+                            return (
                               <div
-                                style={{ fontWeight: "500", color: "#1f2937", fontSize: "11px" }}
+                                key={i}
+                                style={{
+                                  ...s.dropdownItem,
+                                  opacity: isApproved ? 1 : 0.75,
+                                  borderLeft: isApproved ? "3px solid #10b981" : "3px solid #f59e0b",
+                                  backgroundColor: "#fff",
+                                }}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.backgroundColor = isApproved ? "#f9fafb" : "#fffbeb")
+                                }
+                                onMouseLeave={(e) =>
+                                  (e.currentTarget.style.backgroundColor = "#fff")
+                                }
+                                onMouseDown={() => handleDirectorySelect(org)}
                               >
-                                {org.organization}
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <div
+                                    style={{ fontWeight: "600", color: "#1f2937", fontSize: "11px" }}
+                                  >
+                                    {org.organization}
+                                  </div>
+                                  <span
+                                    style={{
+                                      fontSize: "8.5px",
+                                      fontWeight: "700",
+                                      padding: "1px 5px",
+                                      borderRadius: "3px",
+                                      backgroundColor: isApproved ? "#d1fae5" : "#fef3c7",
+                                      color: isApproved ? "#065f46" : "#92400e",
+                                    }}
+                                  >
+                                    {isApproved ? "Approved" : (org.approvalStatus || "Pending")}
+                                  </span>
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: "9px",
+                                    color: "#6b7280",
+                                    marginTop: "2px",
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  <span>IE Code: {org.registrationDetails?.ieCode || "N/A"}</span>
+                                  {!isApproved && (
+                                    <span style={{ color: "#d97706", fontStyle: "italic", fontSize: "8.5px" }}>
+                                      Requires HOD/Admin approval
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <div
-                                style={{ fontSize: "9px", color: "#6b7280" }}
-                              >
-                                IE Code:{" "}
-                                {org.registrationDetails?.ieCode || "N/A"}
-                              </div>
-                            </div>
-                          ))
+                            );
+                          })
                         ) : (
                           <div style={{ padding: "8px", color: "#9ca3af" }}>
                             No exporters found

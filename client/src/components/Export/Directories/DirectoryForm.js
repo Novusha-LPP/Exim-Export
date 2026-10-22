@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Formik, Form, FieldArray } from "formik";
 import * as Yup from "yup";
 import {
@@ -30,6 +30,8 @@ import {
 import FileUpload from "./FileUpload";
 import Snackbar from "@mui/material/Snackbar";
 import CustomHouseDropdown from "../../common/CustomHouseDropdown";
+import { UserContext } from "../../../contexts/UserContext";
+import { isHodOrAdmin } from "../../../utils/roleUtils";
 
 const validationSchema = Yup.object({
   organization: Yup.string()
@@ -136,7 +138,10 @@ const validationSchema = Yup.object({
   notes: Yup.string().max(1000),
 });
 
-const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
+const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false, canApprove: canApproveProp }) => {
+  const { user } = useContext(UserContext);
+  const canApprove = canApproveProp !== undefined ? canApproveProp : isHodOrAdmin(user?.role);
+
   const initialValues = {
     organization: directory?.organization || "",
     approvalStatus: directory?.approvalStatus || "Pending",
@@ -217,6 +222,11 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
+      if (!canApprove && values.approvalStatus === "Approved" && directory?.approvalStatus !== "Approved") {
+        setSubmitError("Permission Denied: Only HOD or Admin can approve organizations.");
+        setSubmitting(false);
+        return;
+      }
       await onSave(values);
       setSubmitError("");
     } catch (error) {
@@ -479,12 +489,22 @@ const DirectoryForm = ({ directory, onSave, onCancel, readOnly = false }) => {
                         MenuProps={{ PaperProps: { style: { maxHeight: 200 } } }}
                       >
                         <MenuItem value="Pending" sx={{ fontSize: "0.75rem", py: 0.5 }}>Pending</MenuItem>
-                        <MenuItem value="Approved" sx={{ fontSize: "0.75rem", py: 0.5 }}>Approved</MenuItem>
+                        <MenuItem
+                          value="Approved"
+                          disabled={!canApprove}
+                          sx={{ fontSize: "0.75rem", py: 0.5 }}
+                        >
+                          Approved {!canApprove ? "(HOD / Admin only)" : ""}
+                        </MenuItem>
                         <MenuItem value="Rejected" sx={{ fontSize: "0.75rem", py: 0.5 }}>Rejected</MenuItem>
                       </Select>
-                      {touched.approvalStatus && errors.approvalStatus && (
+                      {touched.approvalStatus && errors.approvalStatus ? (
                         <FormHelperText>{errors.approvalStatus}</FormHelperText>
-                      )}
+                      ) : !canApprove ? (
+                        <FormHelperText sx={{ fontSize: "0.65rem", color: "text.secondary" }}>
+                          Approval requires HOD or Admin
+                        </FormHelperText>
+                      ) : null}
                     </FormControl>
                   </Grid>
                 </Grid>

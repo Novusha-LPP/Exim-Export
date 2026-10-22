@@ -387,9 +387,9 @@ const LogisysEditableHeader = ({
     (async () => {
       setSearchJobLoading(true);
       try {
-        const isGeneral = formik.values.isGeneralJob === true || 
-                          formik.values.exporter === "GENERAL JOB" || 
-                          formik.values.job_no?.startsWith("GEN/");
+        const isGeneral = formik.values.isGeneralJob === true ||
+          formik.values.exporter === "GENERAL JOB" ||
+          formik.values.job_no?.startsWith("GEN/");
         const completedParam = isGeneral ? "&completed=true" : "";
         const response = await axios.get(`${import.meta.env.VITE_API_STRING}/job-numbers-search?q=${searchJobInputValue}${completedParam}`);
         if (active) {
@@ -410,11 +410,11 @@ const LogisysEditableHeader = ({
   const handleCopyFromJob = async (selectedJobNo) => {
     if (!selectedJobNo) return;
 
-    const isGeneral = formik.values.isGeneralJob === true || 
-                      formik.values.exporter === "GENERAL JOB" || 
-                      formik.values.job_no?.startsWith("GEN/");
+    const isGeneral = formik.values.isGeneralJob === true ||
+      formik.values.exporter === "GENERAL JOB" ||
+      formik.values.job_no?.startsWith("GEN/");
 
-    const confirmMsg = isGeneral 
+    const confirmMsg = isGeneral
       ? `⚠️ DO YOU WANT TO COPY COMPLETED JOB DATA (${selectedJobNo}) INTO THIS GENERAL JOB? \n\nThis will copy only the billing and shipping variables.`
       : `⚠️ DO YOU WANT TO COPY THIS JOB DATA (${selectedJobNo}) IN THIS JOB? \n\nThis will overwrite all fields except the Job Number and identifiers.`;
 
@@ -634,7 +634,7 @@ const LogisysEditableHeader = ({
             "03": "03 - ADVANCE LICENCE",
             "19": "19 - DRAWBACK (DBK)",
             "21": "21 (EOU/EPZ/SEZ/EHTP/STP)",
-            "43": "43 - DRAWBACK AND ZERO DUTY PECG",
+            "43": "43 - DRAWBACK AND ZERO DUTY EPCG",
             "50": "50 - EPCG AND ADVANCE LICENSE",
             "60": "60 - DRAWBACK AND ROSCTL",
             "61": "61 - EPCG, DRAWBACK AND ROSCTL",
@@ -1783,187 +1783,187 @@ const LogisysEditableHeader = ({
               </MenuItem>
             }>
               <ExportChecklistGenerator
-              jobNo={formik.values.job_no}
-              renderAsIcon={false}
-            >
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 12, minWidth: 140 }}
+                jobNo={formik.values.job_no}
+                renderAsIcon={false}
               >
-                CHECKLIST
-              </MenuItem>
-            </ExportChecklistGenerator>
-
-            <FileCoverGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 12, minWidth: 140 }}
-              >
-                FILE COVER
-              </MenuItem>
-            </FileCoverGenerator>
-
-            <ConsignmentNoteGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 12, minWidth: 140 }}
-              >
-                CONSIGNMENT NOTE
-              </MenuItem>
-            </ConsignmentNoteGenerator>
-
-            <ForwardingNoteTharGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 12, minWidth: 140 }}
-              >
-                FORWARDING NOTE (THAR)
-              </MenuItem>
-            </ForwardingNoteTharGenerator>
-
-            <AnnexureCGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 12, minWidth: 140 }}
-              >
-                ANNEXURE C
-              </MenuItem>
-            </AnnexureCGenerator>
-
-            <ConcorForwardingNoteGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 12, minWidth: 140 }}
-              >
-                FORWARDING NOTE (CONCOR)
-              </MenuItem>
-            </ConcorForwardingNoteGenerator>
-
-            {(formik.values.custom_house?.toUpperCase().includes("SABARMATI")) && (
-              <ConcorPltLetterGenerator jobNo={formik.values.job_no}>
                 <MenuItem
                   disableRipple
                   onClick={() => setAnchorEl(null)}
                   sx={{ fontSize: 12, minWidth: 140 }}
                 >
-                  CONCOR PLT LETTER
+                  CHECKLIST
                 </MenuItem>
-              </ConcorPltLetterGenerator>
-            )}
+              </ExportChecklistGenerator>
 
-            {(formik.values.custom_house?.toUpperCase().includes("SANAND") ||
-              formik.values.custom_house?.toUpperCase().includes("THAR") ||
-              formik.values.custom_house?.toUpperCase().includes("ICD")) && (
-              <AnnexureDGenerator jobNo={formik.values.job_no}>
+              <FileCoverGenerator jobNo={formik.values.job_no}>
                 <MenuItem
                   disableRipple
                   onClick={() => setAnchorEl(null)}
                   sx={{ fontSize: 12, minWidth: 140 }}
                 >
-                  ANNEXURE D
+                  FILE COVER
                 </MenuItem>
-              </AnnexureDGenerator>
-            )}
+              </FileCoverGenerator>
 
-            <VGMAuthorizationGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 12, minWidth: 140 }}
-              >
-                VGM AUTHORIZATION
-              </MenuItem>
-            </VGMAuthorizationGenerator>
+              <ConsignmentNoteGenerator jobNo={formik.values.job_no}>
+                <MenuItem
+                  disableRipple
+                  onClick={() => setAnchorEl(null)}
+                  sx={{ fontSize: 12, minWidth: 140 }}
+                >
+                  CONSIGNMENT NOTE
+                </MenuItem>
+              </ConsignmentNoteGenerator>
 
-            <FreightCertificateGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 12, minWidth: 140 }}
-              >
-                FREIGHT CERTIFICATE
-              </MenuItem>
-            </FreightCertificateGenerator>
+              <ForwardingNoteTharGenerator jobNo={formik.values.job_no}>
+                <MenuItem
+                  disableRipple
+                  onClick={() => setAnchorEl(null)}
+                  sx={{ fontSize: 12, minWidth: 140 }}
+                >
+                  FORWARDING NOTE (THAR)
+                </MenuItem>
+              </ForwardingNoteTharGenerator>
 
-            <BillOfLadingGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 12, minWidth: 140 }}
-              >
-                DRAFT BILL OF LADING
-              </MenuItem>
-            </BillOfLadingGenerator>
+              <AnnexureCGenerator jobNo={formik.values.job_no}>
+                <MenuItem
+                  disableRipple
+                  onClick={() => setAnchorEl(null)}
+                  sx={{ fontSize: 12, minWidth: 140 }}
+                >
+                  ANNEXURE C
+                </MenuItem>
+              </AnnexureCGenerator>
 
-            <CertificateOfOriginGenerator jobNo={formik.values.job_no}>
-              <MenuItem
-                disableRipple
-                onClick={() => setAnchorEl(null)}
-                sx={{ fontSize: 12, minWidth: 140 }}
-              >
-                CERTIFICATE OF ORIGIN
-              </MenuItem>
-            </CertificateOfOriginGenerator>
+              <ConcorForwardingNoteGenerator jobNo={formik.values.job_no}>
+                <MenuItem
+                  disableRipple
+                  onClick={() => setAnchorEl(null)}
+                  sx={{ fontSize: 12, minWidth: 140 }}
+                >
+                  FORWARDING NOTE (CONCOR)
+                </MenuItem>
+              </ConcorForwardingNoteGenerator>
 
-            {isGandhidham && (
-              <>
-                <StuffingJobRequestGenerator jobNo={formik.values.job_no}>
+              {(formik.values.custom_house?.toUpperCase().includes("SABARMATI")) && (
+                <ConcorPltLetterGenerator jobNo={formik.values.job_no}>
                   <MenuItem
                     disableRipple
                     onClick={() => setAnchorEl(null)}
                     sx={{ fontSize: 12, minWidth: 140 }}
                   >
-                    STUFFING JOB REQUEST
+                    CONCOR PLT LETTER
                   </MenuItem>
-                </StuffingJobRequestGenerator>
+                </ConcorPltLetterGenerator>
+              )}
 
-                <ImportContainerDeliveryOrderGenerator jobNo={formik.values.job_no}>
-                  <MenuItem
-                    disableRipple
-                    onClick={() => setAnchorEl(null)}
-                    sx={{ fontSize: 12, minWidth: 140 }}
-                  >
-                    IMPORT CONTAINER DELIVERY ORDER
-                  </MenuItem>
-                </ImportContainerDeliveryOrderGenerator>
+              {(formik.values.custom_house?.toUpperCase().includes("SANAND") ||
+                formik.values.custom_house?.toUpperCase().includes("THAR") ||
+                formik.values.custom_house?.toUpperCase().includes("ICD")) && (
+                  <AnnexureDGenerator jobNo={formik.values.job_no}>
+                    <MenuItem
+                      disableRipple
+                      onClick={() => setAnchorEl(null)}
+                      sx={{ fontSize: 12, minWidth: 140 }}
+                    >
+                      ANNEXURE D
+                    </MenuItem>
+                  </AnnexureDGenerator>
+                )}
 
-                <CartingJobRequestGenerator jobNo={formik.values.job_no}>
-                  <MenuItem
-                    disableRipple
-                    onClick={() => setAnchorEl(null)}
-                    sx={{ fontSize: 12, minWidth: 140 }}
-                  >
-                    CARTING JOB REQUEST
-                  </MenuItem>
-                </CartingJobRequestGenerator>
+              <VGMAuthorizationGenerator jobNo={formik.values.job_no}>
+                <MenuItem
+                  disableRipple
+                  onClick={() => setAnchorEl(null)}
+                  sx={{ fontSize: 12, minWidth: 140 }}
+                >
+                  VGM AUTHORIZATION
+                </MenuItem>
+              </VGMAuthorizationGenerator>
 
-                <MovementJobRequestGenerator jobNo={formik.values.job_no}>
-                  <MenuItem
-                    disableRipple
-                    onClick={() => setAnchorEl(null)}
-                    sx={{ fontSize: 12, minWidth: 140 }}
-                  >
-                    MOVEMENT JOB REQUEST
-                  </MenuItem>
-                </MovementJobRequestGenerator>
+              <FreightCertificateGenerator jobNo={formik.values.job_no}>
+                <MenuItem
+                  disableRipple
+                  onClick={() => setAnchorEl(null)}
+                  sx={{ fontSize: 12, minWidth: 140 }}
+                >
+                  FREIGHT CERTIFICATE
+                </MenuItem>
+              </FreightCertificateGenerator>
 
-                <StorageApplicationGenerator jobNo={formik.values.job_no}>
-                  <MenuItem
-                    disableRipple
-                    onClick={() => setAnchorEl(null)}
-                    sx={{ fontSize: 12, minWidth: 140 }}
-                  >
-                    STORAGE YARD APPLICATION
-                  </MenuItem>
-                </StorageApplicationGenerator>
-              </>
-            )}
+              <BillOfLadingGenerator jobNo={formik.values.job_no}>
+                <MenuItem
+                  disableRipple
+                  onClick={() => setAnchorEl(null)}
+                  sx={{ fontSize: 12, minWidth: 140 }}
+                >
+                  DRAFT BILL OF LADING
+                </MenuItem>
+              </BillOfLadingGenerator>
+
+              <CertificateOfOriginGenerator jobNo={formik.values.job_no}>
+                <MenuItem
+                  disableRipple
+                  onClick={() => setAnchorEl(null)}
+                  sx={{ fontSize: 12, minWidth: 140 }}
+                >
+                  CERTIFICATE OF ORIGIN
+                </MenuItem>
+              </CertificateOfOriginGenerator>
+
+              {isGandhidham && (
+                <>
+                  <StuffingJobRequestGenerator jobNo={formik.values.job_no}>
+                    <MenuItem
+                      disableRipple
+                      onClick={() => setAnchorEl(null)}
+                      sx={{ fontSize: 12, minWidth: 140 }}
+                    >
+                      STUFFING JOB REQUEST
+                    </MenuItem>
+                  </StuffingJobRequestGenerator>
+
+                  <ImportContainerDeliveryOrderGenerator jobNo={formik.values.job_no}>
+                    <MenuItem
+                      disableRipple
+                      onClick={() => setAnchorEl(null)}
+                      sx={{ fontSize: 12, minWidth: 140 }}
+                    >
+                      IMPORT CONTAINER DELIVERY ORDER
+                    </MenuItem>
+                  </ImportContainerDeliveryOrderGenerator>
+
+                  <CartingJobRequestGenerator jobNo={formik.values.job_no}>
+                    <MenuItem
+                      disableRipple
+                      onClick={() => setAnchorEl(null)}
+                      sx={{ fontSize: 12, minWidth: 140 }}
+                    >
+                      CARTING JOB REQUEST
+                    </MenuItem>
+                  </CartingJobRequestGenerator>
+
+                  <MovementJobRequestGenerator jobNo={formik.values.job_no}>
+                    <MenuItem
+                      disableRipple
+                      onClick={() => setAnchorEl(null)}
+                      sx={{ fontSize: 12, minWidth: 140 }}
+                    >
+                      MOVEMENT JOB REQUEST
+                    </MenuItem>
+                  </MovementJobRequestGenerator>
+
+                  <StorageApplicationGenerator jobNo={formik.values.job_no}>
+                    <MenuItem
+                      disableRipple
+                      onClick={() => setAnchorEl(null)}
+                      sx={{ fontSize: 12, minWidth: 140 }}
+                    >
+                      STORAGE YARD APPLICATION
+                    </MenuItem>
+                  </StorageApplicationGenerator>
+                </>
+              )}
             </Suspense>
           </Menu>
         </div>

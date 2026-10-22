@@ -1,5 +1,6 @@
 import express from "express";
 import Directory from "../../model/Directorties/Directory.js";
+import { verifyIsHodOrAdmin } from "../../utils/roleUtils.mjs";
 
 const router = express.Router();
 
@@ -89,7 +90,12 @@ router.get("/api/directory/stats", async (req, res) => {
 // GET /api/directory/names - Get list of organization names for dropdowns
 router.get("/api/directory/names", async (req, res) => {
   try {
-    const names = await Directory.find({}, "organization").sort({ organization: 1 }).lean();
+    const { status = "Approved" } = req.query;
+    const query = {};
+    if (status && status !== "all") {
+      query.approvalStatus = status;
+    }
+    const names = await Directory.find(query, "organization").sort({ organization: 1 }).lean();
     res.json({
       success: true,
       data: names.map(d => d.organization),
@@ -214,11 +220,20 @@ router.post("/api/directory/", async (req, res) => {
     }
 
     const orgName = (req.body.organization || "").trim();
+    const isHodAdmin = await verifyIsHodOrAdmin(req);
+
     if (orgName) {
       const existing = await Directory.findOne({
         organization: { $regex: new RegExp(`^${orgName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") }
       });
       if (existing) {
+        // If attempting to approve an unapproved existing org, verify HOD/Admin permission
+        if (req.body.approvalStatus === "Approved" && existing.approvalStatus !== "Approved" && !isHodAdmin) {
+          return res.status(403).json({
+            success: false,
+            message: "Permission denied: Only HOD or Admin can approve organizations.",
+          });
+        }
         existing.set(req.body);
         const savedDirectory = await existing.save();
         return res.status(200).json({
@@ -227,6 +242,11 @@ router.post("/api/directory/", async (req, res) => {
           data: savedDirectory,
         });
       }
+    }
+
+    // New directory: if user is not HOD/Admin, force status to Pending
+    if (req.body.approvalStatus === "Approved" && !isHodAdmin) {
+      req.body.approvalStatus = "Pending";
     }
 
     const directory = new Directory(req.body);
@@ -262,6 +282,20 @@ router.put("/api/directory/:id", async (req, res) => {
           success: false,
           message: "Email ID is compulsory when updating an organization directory",
         });
+      }
+    }
+
+    // Check if status is being updated to Approved
+    if (req.body.approvalStatus === "Approved") {
+      const isHodAdmin = await verifyIsHodOrAdmin(req);
+      if (!isHodAdmin) {
+        const existing = await Directory.findById(req.params.id).select("approvalStatus").lean();
+        if (existing && existing.approvalStatus !== "Approved") {
+          return res.status(403).json({
+            success: false,
+            message: "Permission denied: Only HOD or Admin can approve organizations.",
+          });
+        }
       }
     }
 
@@ -307,9 +341,17 @@ router.delete("/api/directory/:id", async (req, res) => {
   }
 });
 
-// PUT /api/directory/:id/approve - Approve directory
+// PUT /api/directory/:id/approve - Approve directory (HOD or Admin only)
 router.put("/api/directory/:id/approve", async (req, res) => {
   try {
+    const isHodAdmin = await verifyIsHodOrAdmin(req);
+    if (!isHodAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Permission denied: Only HOD or Admin can approve organizations.",
+      });
+    }
+
     const directory = await Directory.findByIdAndUpdate(
       req.params.id,
       { approvalStatus: "Approved" },
@@ -317,7 +359,7 @@ router.put("/api/directory/:id/approve", async (req, res) => {
     );
 
     if (!directory) {
-      return res.status(404).json({ message: "Directory not found" });
+      return res.status(404).json({ success: false, message: "Directory not found" });
     }
 
     res.json({
@@ -326,13 +368,21 @@ router.put("/api/directory/:id/approve", async (req, res) => {
       data: directory,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// PUT /api/directory/:id/reject - Reject directory
+// PUT /api/directory/:id/reject - Reject directory (HOD or Admin only)
 router.put("/api/directory/:id/reject", async (req, res) => {
   try {
+    const isHodAdmin = await verifyIsHodOrAdmin(req);
+    if (!isHodAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Permission denied: Only HOD or Admin can reject organizations.",
+      });
+    }
+
     const directory = await Directory.findByIdAndUpdate(
       req.params.id,
       { approvalStatus: "Rejected" },
@@ -340,7 +390,7 @@ router.put("/api/directory/:id/reject", async (req, res) => {
     );
 
     if (!directory) {
-      return res.status(404).json({ message: "Directory not found" });
+      return res.status(404).json({ success: false, message: "Directory not found" });
     }
 
     res.json({
@@ -349,7 +399,7 @@ router.put("/api/directory/:id/reject", async (req, res) => {
       data: directory,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
