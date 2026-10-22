@@ -84,6 +84,7 @@ const ForwardingNoteTharGenerator = lazy(() => import("./StandardDocuments/Forwa
 const AnnexureCGenerator = lazy(() => import("./StandardDocuments/AnnexureCGenerator"));
 const ConcorForwardingNoteGenerator = lazy(() => import("./StandardDocuments/ConcorForwardingNoteGenerator.js"));
 const VGMAuthorizationGenerator = lazy(() => import("./StandardDocuments/VGMAuthorizationGenerator"));
+const FreightCertificateGenerator = lazy(() => import("./StandardDocuments/FreightCertificateGenerator"));
 
 const BillOfLadingGenerator = lazy(() => import("./StandardDocuments/BillOfLadingGenerator"));
 const ConcorPltLetterGenerator = lazy(() => import("./StandardDocuments/ConcorPltLetterGenerator"));
@@ -7201,6 +7202,9 @@ const ExportJobsTable = () => {
                     <VGMAuthorizationGenerator jobNo={selectedGenDocJob?.job_no}>
                       <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>VGM AUTHORIZATION</MenuItem>
                     </VGMAuthorizationGenerator>
+                    <FreightCertificateGenerator jobNo={selectedGenDocJob?.job_no}>
+                      <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>FREIGHT CERTIFICATE</MenuItem>
+                    </FreightCertificateGenerator>
                     <BillOfLadingGenerator jobNo={selectedGenDocJob?.job_no}>
                       <MenuItem style={{ fontSize: '12px', minHeight: '30px', borderBottom: '1px solid #f1f5f9', padding: '4px 12px', fontWeight: '600' }}>BILL OF LADING</MenuItem>
                     </BillOfLadingGenerator>
