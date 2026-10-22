@@ -1,6 +1,4 @@
 import express from "express";
-import axios from "axios";
-import ExportJobModel from "../../model/export/ExJobModel.mjs";
 import ExJobModel from "../../model/export/ExJobModel.mjs";
 import FreightEnquiryModel from "../../model/export/FreightEnquiryModel.mjs";
 import auditMiddleware from "../../middleware/auditTrail.mjs";
@@ -35,10 +33,10 @@ router.use(jobLockRoutes);
 
 router.post("/exports", auditMiddleware("Job"), async (req, res) => {
   try {
-    const jobData = ExportJobModel.isImpexCubeExportPayload(req.body)
-      ? ExportJobModel.fromImpexCubeExportPayload(req.body)
+    const jobData = ExJobModel.isImpexCubeExportPayload(req.body)
+      ? ExJobModel.fromImpexCubeExportPayload(req.body)
       : req.body;
-    const newJob = new ExportJobModel(jobData);
+    const newJob = new ExJobModel(jobData);
     const savedJob = await newJob.save();
     res.status(201).json({ success: true, data: savedJob });
   } catch (error) {
@@ -59,7 +57,7 @@ router.post("/create-general-job", auditMiddleware("Job"), async (req, res) => {
 
     // Generate next job number using max sequence finding
     // Sequence: GEN/EXP/XXXX/YY-YY
-    const jobs = await ExportJobModel.find({
+    const jobs = await ExJobModel.find({
       job_no: new RegExp(`^GEN/EXP/\\d+/${year}$`, 'i')
     }).select('job_no').lean();
 
@@ -103,7 +101,7 @@ router.post("/create-general-job", auditMiddleware("Job"), async (req, res) => {
       createdBy: req.headers["username"] || "System",
     };
 
-    const newJob = new ExportJobModel(newJobData);
+    const newJob = new ExJobModel(newJobData);
     const savedJob = await newJob.save();
     res.status(201).json({ success: true, data: savedJob });
   } catch (error) {
