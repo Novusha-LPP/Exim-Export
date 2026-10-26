@@ -379,7 +379,7 @@ const s = {
     borderRadius: "5px",
     maxHeight: "700px",
     overflowY: "auto",
-
+    WebkitOverflowScrolling: "touch",
   },
   table: {
     width: "100%",
@@ -387,7 +387,6 @@ const s = {
     borderSpacing: 0,
     fontSize: "11px",
     tableLayout: "auto",
-
   },
   th: {
     background: "linear-gradient(135deg, #2c5aa0 0%, #1e3a6f 100%)",
@@ -414,7 +413,7 @@ const s = {
     whiteSpace: "normal",
     wordBreak: "break-word",
     verticalAlign: "top",
-    transition: "all 0.2s ease",
+    transition: "background-color 0.15s ease",
   },
   rowHover: {
     transition: "transform 0.2s, box-shadow 0.2s",
@@ -788,8 +787,6 @@ const ExportJobsTable = () => {
 
     return topLevelJobs;
   }, [sortedJobs]);
-
-
 
   useEffect(() => {
     const jobNos = jobs.map(j => j.job_no).filter(Boolean);
@@ -3306,15 +3303,15 @@ const ExportJobsTable = () => {
           <div style={s.tableContainer} className="table-container-responsive">
             <table style={s.table}>
               <colgroup>
-                <col style={{ minWidth: "175px" }} />
-                <col style={{ minWidth: "180px" }} />
-                <col style={{ minWidth: "110px" }} />
-                <col style={{ minWidth: "100px" }} />
-                <col style={{ minWidth: "130px" }} />
-                <col style={{ minWidth: "130px" }} />
-                <col style={{ minWidth: "160px" }} />
-                <col style={{ minWidth: "80px" }} />
-                <col style={{ minWidth: "85px" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "11%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "13%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "7%" }} />
+                <col style={{ width: "11%" }} />
               </colgroup>
               <thead>
                 <tr
@@ -3382,7 +3379,6 @@ const ExportJobsTable = () => {
                           backgroundColor: theme.bg,
                           borderLeft: `4px solid ${job.isSubRow ? "#94a3b8" : theme.border}`,
                           cursor: "default",
-                          transition: "all 0.2s ease",
                         }}
                         className="table-row-hover job-row-glow"
                       >

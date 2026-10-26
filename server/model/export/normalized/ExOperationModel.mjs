@@ -25,8 +25,6 @@ const exOperationSchema = new Schema(
   }
 );
 
-exOperationSchema.index({ job_no: 1 });
-
 export const ExOperation =
   mongoose.models.ExOperation || model("ExOperation", exOperationSchema);
 

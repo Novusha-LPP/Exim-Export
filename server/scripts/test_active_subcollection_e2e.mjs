@@ -64,6 +64,11 @@ async function runE2ETest() {
     console.error("\n>>> E2E VALIDATION FAILED: Data in ex_containers does not match update.");
   }
 
+  // 5. Restore original container data so test is idempotent and non-destructive
+  console.log("\n5. Restoring original container data...");
+  await syncJobSubcollections(testJobNo, { containers: enrichedJob.containers }, rawJob._id);
+  console.log(" - Original container details restored successfully.");
+
   await mongoose.disconnect();
 }
 

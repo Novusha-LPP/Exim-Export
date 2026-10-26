@@ -34,7 +34,14 @@ router.post("/init-dsc", async (req, res) => {
     if (!pin) {
       return res.status(400).json({ error: "PIN is required" });
     }
-    const response = await axios.post(`${process.env.SIGNING_SERVER_URL}/login`, { pin });
+    const response = await axios.post(
+      `${process.env.SIGNING_SERVER_URL}/login`,
+      { pin },
+      {
+        headers: SigningUtility.getTunnelHeaders(),
+        timeout: 10000,
+      }
+    );
     res.json(response.data);
   } catch (err) {
     console.error("DSC Init Error:", err.message);

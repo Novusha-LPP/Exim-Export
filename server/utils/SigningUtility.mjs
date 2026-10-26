@@ -13,11 +13,29 @@ class SigningUtility {
   }
 
   /**
+   * Get tunnel and authentication headers (e.g. Cloudflare Access Service Tokens or Bearer Auth).
+   */
+  getTunnelHeaders() {
+    const headers = {};
+    if (process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET) {
+      headers['CF-Access-Client-Id'] = process.env.CF_ACCESS_CLIENT_ID.trim();
+      headers['CF-Access-Client-Secret'] = process.env.CF_ACCESS_CLIENT_SECRET.trim();
+    }
+    if (process.env.SIGNING_SERVER_AUTH_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.SIGNING_SERVER_AUTH_TOKEN.trim()}`;
+    }
+    return headers;
+  }
+
+  /**
    * Check if the signing server is reachable and DSC is connected.
    */
   async checkStatus() {
     try {
-      const response = await axios.get(`${this.baseUrl}/status`, { timeout: 3000 });
+      const response = await axios.get(`${this.baseUrl}/status`, {
+        headers: this.getTunnelHeaders(),
+        timeout: 5000,
+      });
       return response.data;
     } catch (error) {
       console.error('❌ Signing Server Unreachable:', error.message);
@@ -62,6 +80,7 @@ class SigningUtility {
       const response = await axios.post(`${this.baseUrl}${endpoint}`, form, {
         headers: {
           ...form.getHeaders(),
+          ...this.getTunnelHeaders(),
         },
         responseType: 'arraybuffer',
         timeout: 30000, // Signing can take a few seconds

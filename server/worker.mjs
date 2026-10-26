@@ -26,8 +26,6 @@ mongoose.set("strictQuery", true);
 mongoose
   .connect(MONGODB_URI, {
     appName: "EximExportWorker",
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
     minPoolSize: 2,
     maxPoolSize: 15,
     maxIdleTimeMS: 30000,
