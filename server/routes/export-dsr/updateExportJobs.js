@@ -1061,6 +1061,36 @@ router.get("/global-search-jobs", async (req, res) => {
             { "operations.statusDetails": { $size: 0 } }
           ]
         });
+      } else if (statusLower === "rail out pending") {
+        filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
+          $and: [
+            {
+              $or: [
+                { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: false } }
+              ]
+            },
+            {
+              $or: [
+                { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                { "operations.statusDetails.railOutReachedDate": { $exists: false } }
+              ]
+            }
+          ]
+        });
       }
     }
 
@@ -1555,6 +1585,36 @@ router.get("/exports/:status?", async (req, res) => {
           $or: [
             { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
             { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "rail out pending") {
+        filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
+          $and: [
+            {
+              $or: [
+                { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: false } }
+              ]
+            },
+            {
+              $or: [
+                { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                { "operations.statusDetails.railOutReachedDate": { $exists: false } }
+              ]
+            }
           ]
         });
       } else if (statusLower === "prepare for billing") {
@@ -2145,7 +2205,7 @@ router.get("/exports/:status?", async (req, res) => {
         } else {
           const newJobs = [];
           const processedParents = new Set();
-          const isPendingOrSentTab = ["pending", "sent for billing", "prepare for billing", "booking pending", "handover pending", "club-jobs"].includes(String(status || "").toLowerCase());
+          const isPendingOrSentTab = ["pending", "sent for billing", "prepare for billing", "booking pending", "handover pending", "rail out pending", "club-jobs"].includes(String(status || "").toLowerCase());
           finalJobs.forEach(job => {
             const pid = job.is_club_job_parent ? job.job_no : job.parent_club_job;
             if (pid) {
@@ -2363,6 +2423,36 @@ router.get("/filtered-exporters", async (req, res) => {
             { "operations.statusDetails.handoverForwardingNoteDate": null },
             { "operations.statusDetails.handoverForwardingNoteDate": "" },
             { "operations.statusDetails": { $size: 0 } }
+          ]
+        });
+      } else if (statusLower === "rail out pending") {
+        filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
+        filter.$and.push({
+          $and: [
+            {
+              $or: [
+                { status: { $regex: "^pending$", $options: "i" } },
+                { status: { $exists: false } },
+                { status: null },
+                { status: "" },
+              ],
+            },
+            { detailedStatus: { $ne: "Billing Done" } },
+          ],
+          "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
+          $and: [
+            {
+              $or: [
+                { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: false } }
+              ]
+            },
+            {
+              $or: [
+                { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                { "operations.statusDetails.railOutReachedDate": { $exists: false } }
+              ]
+            }
           ]
         });
       } else if (statusLower === "billing pending") {

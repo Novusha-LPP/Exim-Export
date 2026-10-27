@@ -17,6 +17,14 @@ const getCurrentFinancialYear = () => {
     return `${String(startYear).slice(-2)}-${String(startYear + 1).slice(-2)}`;
 };
 
+const CLUB_JOB_BILLING_COMPLETE_FILTER = {
+  $or: [
+    { detailedStatus: "Billing Done" },
+    { "operations.statusDetails.billing_details.agency_bill_date": { $exists: true, $nin: [null, ""] } },
+    { "operations.statusDetails.billing_details.reimbursement_bill_date": { $exists: true, $nin: [null, ""] } },
+  ],
+};
+
 router.get("/api/export-analytics/overview", async (req, res) => {
     try {
         const { exporter, startDate, endDate, year } = req.query;
@@ -86,6 +94,15 @@ router.get("/api/export-analytics/overview", async (req, res) => {
         const baseFilter = { ...filter, isGeneralJob: { $ne: true } };
         if (baseFilter.$and && baseFilter.$and.length === 0) delete baseFilter.$and;
 
+        const pendingStatusFilter = [
+            { job_no: { $not: /^GEN/i } },
+            { job_no: { $not: /^FF/i } },
+            { status: { $regex: "^pending$", $options: "i" } },
+            { detailedStatus: { $ne: "Billing Done" } },
+            { isJobCanceled: { $ne: true } },
+            { $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] },
+        ];
+
         // Date range for Flow metrics
         const start = startDate ? new Date(startDate) : null;
         const end = endDate ? new Date(endDate) : new Date();
@@ -110,24 +127,19 @@ router.get("/api/export-analytics/overview", async (req, res) => {
             // 1. Total Pending
             ExJobModel.find({
                 ...baseFilter,
-                job_no: { $not: /^FF/i },
                 $and: [
                     ...(baseFilter.$and || []),
-                    { status: { $regex: "^pending$", $options: "i" } },
-                    { detailedStatus: { $ne: "Billing Done" } },
-                    { isJobCanceled: { $ne: true } },
+                    ...pendingStatusFilter,
                 ],
             }).select("job_no exporter createdAt").lean(),
 
             // 2. Pending Operations
             ExJobModel.find({
                 ...baseFilter,
-                job_no: { $not: /^FF/i },
                 sb_no: { $exists: true, $nin: [null, ""] },
                 $and: [
                     ...(baseFilter.$and || []),
-                    { status: { $regex: "^pending$", $options: "i" } },
-                    { detailedStatus: { $ne: "Billing Done" } }
+                    ...pendingStatusFilter,
                 ],
                  $or: [
                     // For FCL: Pending if any of the 4 milestones is missing
@@ -211,17 +223,13 @@ router.get("/api/export-analytics/overview", async (req, res) => {
             // 5. LEO Pending (Backlog)
             ExJobModel.find({
                 ...baseFilter,
-                job_no: { $not: /^FF/i },
                 $and: [
                     ...(baseFilter.$and || []),
-                    { status: { $regex: "^pending$", $options: "i" } },
-                    { detailedStatus: { $ne: "Billing Done" } },
+                    ...pendingStatusFilter,
                 ],
                 "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
                 $or: [
-                    { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
-                    { "operations.statusDetails.handoverForwardingNoteDate": null },
-                    { "operations.statusDetails.handoverForwardingNoteDate": "" },
+                    { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                     { "operations.statusDetails": { $size: 0 } }
                 ]
             }).select("job_no exporter createdAt").lean(),
@@ -361,32 +369,49 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
         const baseFilter = { ...filter, isGeneralJob: { $ne: true } };
         if (baseFilter.$and && baseFilter.$and.length === 0) delete baseFilter.$and;
 
-        // 1. Total Pending Jobs (Matches 'Pending' tab in Jobs module)
-        const totalPendingJobs = await ExJobModel.countDocuments({
+        const pendingStatusFilter = [
+            { job_no: { $not: /^GEN/i } },
+            { job_no: { $not: /^FF/i } },
+            { status: { $regex: "^pending$", $options: "i" } },
+            { detailedStatus: { $ne: "Billing Done" } },
+            { isJobCanceled: { $ne: true } },
+            { $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] },
+        ];
+
+        // 1. Pending Stage Jobs (Matches 'Pending' tab badge count in Jobs module: detailedStatus is empty or Pending)
+        const pendingJobsCount = await ExJobModel.countDocuments({
             ...baseFilter,
-            job_no: { $not: /^FF/i },
             $and: [
                 ...(baseFilter.$and || []),
-                { status: { $regex: "^pending$", $options: "i" } },
-                { detailedStatus: { $ne: "Billing Done" } },
-                { isJobCanceled: { $ne: true } },
+                ...pendingStatusFilter,
+                {
+                    $or: [
+                        { detailedStatus: { $in: [null, "", "Pending"] } },
+                        { detailedStatus: { $exists: false } }
+                    ]
+                }
+            ],
+        });
+
+        // Total Pending Jobs across all stages (191)
+        const totalPendingJobs = await ExJobModel.countDocuments({
+            ...baseFilter,
+            $and: [
+                ...(baseFilter.$and || []),
+                ...pendingStatusFilter,
             ],
         });
 
         // 2. Handover Pending (Matches 'Handover Pending' tab in Jobs)
         const handoverPendingCount = await ExJobModel.countDocuments({
             ...baseFilter,
-            job_no: { $not: /^FF/i },
             $and: [
                 ...(baseFilter.$and || []),
-                { status: { $regex: "^pending$", $options: "i" } },
-                { detailedStatus: { $ne: "Billing Done" } },
+                ...pendingStatusFilter,
             ],
             "operations.statusDetails.leoDate": { $type: "string", $ne: "" },
             $or: [
-                { "operations.statusDetails.handoverForwardingNoteDate": { $exists: false } },
-                { "operations.statusDetails.handoverForwardingNoteDate": null },
-                { "operations.statusDetails.handoverForwardingNoteDate": "" },
+                { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                 { "operations.statusDetails": { $size: 0 } }
             ]
         });
@@ -425,12 +450,10 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
         // 4. Ops Pending (Matches 'Pending' tab in Ops module)
         const opsPendingCount = await ExJobModel.countDocuments({
             ...baseFilter,
-            job_no: { $not: /^FF/i },
             sb_no: { $exists: true, $nin: [null, ""] },
             $and: [
                 ...(baseFilter.$and || []),
-                { status: { $regex: "^pending$", $options: "i" } },
-                { detailedStatus: { $ne: "Billing Done" } }
+                ...pendingStatusFilter,
             ],
              $or: [
                 // For FCL: Pending if any of the 4 milestones is missing
@@ -477,11 +500,18 @@ router.get("/api/export-analytics/pulse", async (req, res) => {
         endOfDay.setHours(23, 59, 59, 999);
         const createdTodayCount = await ExJobModel.countDocuments({
             ...baseFilter,
+            $and: [
+                ...(baseFilter.$and || []),
+                { job_no: { $not: /^GEN/i } },
+                { job_no: { $not: /^FF/i } },
+            ],
             createdAt: { $gte: startOfDay, $lte: endOfDay }
         });
 
         const summary = {
-            totalPending: totalPendingJobs,
+            totalPending: pendingJobsCount,
+            pending: pendingJobsCount,
+            allPending: totalPendingJobs,
             handover: handoverPendingCount,
             billing: billingPendingCount,
             ops: opsPendingCount,

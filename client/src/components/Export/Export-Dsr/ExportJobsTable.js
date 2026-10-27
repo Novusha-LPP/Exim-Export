@@ -959,7 +959,7 @@ const PulseOverviewHover = ({ exporter, year }) => {
     };
     fetchPulse();
     return () => { active = false; };
-  }, [exporter]);
+  }, [exporter, year]);
 
   if (loading || !summary) {
     return (
@@ -1002,7 +1002,7 @@ const PulseOverviewHover = ({ exporter, year }) => {
   };
 
   const metrics = [
-    { title: "TOTAL PENDING JOBS", value: summary.totalPending },
+    { title: "PENDING JOBS", value: summary.pending ?? summary.totalPending },
     { title: "HANDOVER PENDING", value: summary.handover },
     { title: "BILLING PENDING", value: summary.billing },
     { title: "OPERATIONS PENDING", value: summary.ops },
@@ -1158,7 +1158,7 @@ const ExportJobsTable = () => {
       return "Pending";
     }
     // Default module (Jobs, Documentation, ESanchit)
-    const allowedDefaultTabs = ["Pending", "Booking Pending", "Handover Pending", "Prepare for Billing", "Sent for Billing", "club-jobs", "Completed", "Cancelled"];
+    const allowedDefaultTabs = ["Pending", "Booking Pending", "Handover Pending", "Rail Out Pending", "Prepare for Billing", "Sent for Billing", "club-jobs", "Completed", "Cancelled"];
     if (allowedDefaultTabs.includes(saved)) return saved;
     if (saved === "Op Completed" || saved === "Billing Ready") return "Completed";
     return "Pending";
@@ -1299,7 +1299,7 @@ const ExportJobsTable = () => {
     if (!isChargesModule && activeTab !== "General Jobs" && activeTab !== "general-jobs") {
       baseJobs = baseJobs.filter(job => !job.isGeneralJob && !String(job.job_no || "").toUpperCase().startsWith("GEN/"));
     }
-    const isPendingOrSentTab = ["Pending", "Booking Pending", "Handover Pending", "Prepare for Billing", "Sent for Billing", "club-jobs"].includes(activeTab);
+    const isPendingOrSentTab = ["Pending", "Booking Pending", "Handover Pending", "Rail Out Pending", "Prepare for Billing", "Sent for Billing", "club-jobs"].includes(activeTab);
     if (isPendingOrSentTab) {
       baseJobs = baseJobs.filter(job => {
         const isCompleted = job.detailedStatus === "Billing Done" || 
@@ -1457,7 +1457,13 @@ const ExportJobsTable = () => {
   const [selectedBranch, setSelectedBranch] = useState(initialBranch);
   const [selectedMonth, setSelectedMonth] = useState(savedFilters.selectedMonth || "");
   const [selectedExporterFilter, setSelectedExporterFilter] = useState(savedFilters.selectedExporterFilter || "");
-  const [selectedDetailedStatus, setSelectedDetailedStatus] = useState(Array.isArray(savedFilters.selectedDetailedStatus) ? savedFilters.selectedDetailedStatus : savedFilters.selectedDetailedStatus ? [savedFilters.selectedDetailedStatus] : []);
+  const [selectedDetailedStatus, setSelectedDetailedStatus] = useState(
+    Array.isArray(savedFilters.selectedDetailedStatus)
+      ? savedFilters.selectedDetailedStatus.filter(s => s !== "Departure" && s !== "File Handover to IATA")
+      : savedFilters.selectedDetailedStatus && savedFilters.selectedDetailedStatus !== "Departure" && savedFilters.selectedDetailedStatus !== "File Handover to IATA"
+      ? [savedFilters.selectedDetailedStatus]
+      : []
+  );
   const [selectedCustomHouse, setSelectedCustomHouse] = useState(savedFilters.selectedCustomHouse || "");
   const [selectedJobOwner, setSelectedJobOwner] = useState(savedFilters.selectedJobOwner || "");
   const [selectedGoodsStuffedAt, setSelectedGoodsStuffedAt] = useState(savedFilters.selectedGoodsStuffedAt || "");
@@ -3235,6 +3241,25 @@ const ExportJobsTable = () => {
                 </span>
               </button>
             )}
+            {!isChargesModule && (
+              <button
+                style={
+                  activeTab === "Rail Out Pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                }
+                onClick={() => setActiveTab("Rail Out Pending")}
+              >
+                Rail Out Pending{" "}
+                <span
+                  style={
+                    activeTab === "Rail Out Pending"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                >
+                  {tabCounts["Rail Out Pending"] ?? 0}
+                </span>
+              </button>
+            )}
             {!isOperationModule && !isChargesModule && (
               <button
                 style={
@@ -3682,7 +3707,7 @@ const ExportJobsTable = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedDetailedStatus([
-                          "Pending", "SB Filed", "L.E.O", "Container HO", "File Handover to IATA", "Rail Out", "Departure", "Send for Billing", "Billing Pending", "Billing Done"
+                          "Pending", "SB Filed", "L.E.O", "Container HO", "Rail Out", "Send for Billing", "Billing Pending", "Billing Done"
                         ]);
                         setPage(1);
                       }}
@@ -3706,9 +3731,7 @@ const ExportJobsTable = () => {
                     "SB Filed",
                     "L.E.O",
                     "Container HO",
-                    "File Handover to IATA",
                     "Rail Out",
-                    "Departure",
                     "Send for Billing",
                     "Billing Pending",
                     "Billing Done",
@@ -6040,6 +6063,7 @@ const ExportJobsTable = () => {
               <option value="Pending">Pending</option>
               <option value="Booking Pending">Booking Pending</option>
               <option value="Handover Pending">Handover Pending</option>
+              <option value="Rail Out Pending">Rail Out Pending</option>
               <option value="Prepare for Billing">Prepare for Billing</option>
               <option value="Sent for Billing">Sent for Billing</option>
               <option value="Op Completed">Op Completed</option>

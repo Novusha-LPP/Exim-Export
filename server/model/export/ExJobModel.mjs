@@ -490,11 +490,11 @@ function buildImpexCubeExportPayload(jobOrDoc, options = {}) {
     const exporterAddressLines = splitFixed(exporterAddressInfo.address, 35, 2);
     const consigneeAddressLines = splitFixed(consignee.consignee_address, 35, 4);
     const gstin = firstUpperText(job.gstin, job.gstn, job.panNo, job.pan_no, job.ieCode);
-    
+
     const loadingPort = customHouseCode(firstValue(job.port_of_loading, job.custom_house)) || "INSBI6";
     const destinationPort = portCode(firstValue(job.destination_port, job.final_destination, job.port_of_discharge, job.discharge_port)) || loadingPort || "AEDXB";
     const dischargePort = portCode(firstValue(job.port_of_discharge, job.discharge_port, job.destination_port, job.final_destination)) || destinationPort;
-    
+
     const destCountry = firstText(countryCode(job.destination_country), consigneeCountryRaw, destinationPort.length >= 2 ? destinationPort.slice(0, 2) : "IN");
     const dischCountry = firstText(countryCode(job.discharge_country), dischargePort.length >= 2 ? dischargePort.slice(0, 2) : destCountry);
     const finalConsigneeCountry = firstText(consigneeCountryRaw, destCountry, "IN");

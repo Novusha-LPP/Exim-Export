@@ -683,7 +683,7 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
     // For jobs, operation, charges, we build MongoDB filter queries for each tab
     let tabsList = [];
     if (module === "jobs") {
-      tabsList = ["Pending", "Booking Pending", "Handover Pending", "Prepare for Billing", "Sent for Billing", "club-jobs", "Completed", "Cancelled"];
+      tabsList = ["Pending", "Booking Pending", "Handover Pending", "Rail Out Pending", "Prepare for Billing", "Sent for Billing", "club-jobs", "Completed", "Cancelled"];
     } else if (module === "operation") {
       tabsList = ["Pending", "Handover Pending", "Op Completed", "Completed"];
     } else if (module === "charges") {
@@ -718,6 +718,13 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
               isJobCanceled: { $ne: true },
             });
             filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
+            // Only count jobs whose stage is truly "Pending" (i.e. detailedStatus is pending/empty)
+            filter.$and.push({
+              $or: [
+                { detailedStatus: { $in: [null, "", "Pending"] } },
+                { detailedStatus: { $exists: false } }
+              ]
+            });
           } else if (tabKeyLower === "booking pending") {
             filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
             filter.$and.push({
@@ -746,6 +753,29 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
               $or: [
                 { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
                 { "operations.statusDetails": { $size: 0 } }
+              ]
+            });
+          } else if (tabKeyLower === "rail out pending") {
+            filter.$and.push({ $nor: [CLUB_JOB_BILLING_COMPLETE_FILTER] });
+            filter.$and.push({
+              $and: [
+                { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
+                { detailedStatus: { $ne: "Billing Done" } }
+              ],
+              "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
+              $and: [
+                {
+                  $or: [
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+                    { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: false } }
+                  ]
+                },
+                {
+                  $or: [
+                    { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+                    { "operations.statusDetails.railOutReachedDate": { $exists: false } }
+                  ]
+                }
               ]
             });
           } else if (tabKeyLower === "prepare for billing") {

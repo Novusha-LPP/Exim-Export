@@ -3,6 +3,37 @@ import ExJobModel from "../../model/export/ExJobModel.mjs";
 
 const router = express.Router();
 
+function parseDateHelper(dateStr) {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  const trimmed = dateStr.trim();
+  if (!trimmed) return null;
+  const dmyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (dmyMatch) {
+    const d = parseInt(dmyMatch[1], 10);
+    const m = parseInt(dmyMatch[2], 10) - 1;
+    const y = parseInt(dmyMatch[3], 10);
+    return new Date(Date.UTC(y, m, d));
+  }
+  const ymdMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (ymdMatch) {
+    const y = parseInt(ymdMatch[1], 10);
+    const m = parseInt(ymdMatch[2], 10) - 1;
+    const d = parseInt(ymdMatch[3], 10);
+    return new Date(Date.UTC(y, m, d));
+  }
+  const parsed = new Date(trimmed);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function calculateTatDays(sbDateStr, billingDateStr) {
+  if (!sbDateStr || !billingDateStr) return "";
+  const d1 = parseDateHelper(sbDateStr);
+  const d2 = parseDateHelper(billingDateStr);
+  if (!d1 || !d2) return "";
+  const diffMs = d2.getTime() - d1.getTime();
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+}
+
 const BRANCH_CUSTOM_HOUSE_MAP = {
   AMD: ["AHMEDABAD AIR CARGO", "ICD SABARMATI", "ICD SACHANA", "ICD VIROCHAN NAGAR", "THAR DRY PORT"],
   BRD: ["ANKLESHWAR ICD", "ICD VARNAMA"],
@@ -121,10 +152,40 @@ router.get("/api/report/admin-freight/:year/:month", async (req, res) => {
       }
     ];
 
-    if (month !== "all") {
+    const monthsQuery = req.query.months;
+    let targetMonths = null;
+
+    if (monthsQuery) {
+      targetMonths = monthsQuery.split(',').map(m => parseInt(m.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= 12);
+    } else if (req.query.start_month && req.query.end_month) {
+      const s = parseInt(req.query.start_month, 10);
+      const e = parseInt(req.query.end_month, 10);
+      if (!isNaN(s) && !isNaN(e)) {
+        if (s <= e) {
+          targetMonths = Array.from({ length: e - s + 1 }, (_, i) => s + i);
+        } else {
+          targetMonths = [];
+          for (let m = s; m <= 12; m++) targetMonths.push(m);
+          for (let m = 1; m <= e; m++) targetMonths.push(m);
+        }
+      }
+    } else if (month !== "all") {
+      if (typeof month === 'string' && month.includes(',')) {
+        targetMonths = month.split(',').map(m => parseInt(m.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= 12);
+      } else if (typeof month === 'string' && month.includes('-')) {
+        const [s, e] = month.split('-').map(m => parseInt(m.trim(), 10));
+        if (!isNaN(s) && !isNaN(e) && s <= e) {
+          targetMonths = Array.from({ length: e - s + 1 }, (_, i) => s + i);
+        }
+      } else if (!isNaN(monthInt)) {
+        targetMonths = [monthInt];
+      }
+    }
+
+    if (targetMonths && targetMonths.length > 0) {
       pipeline.push({
         $match: {
-          leoMonth: monthInt,
+          leoMonth: { $in: targetMonths },
         },
       });
     }
@@ -271,6 +332,13 @@ router.get("/api/report/admin-freight/:year/:month", async (req, res) => {
               format: "%Y-%m-%d"
             }
           },
+          leo_date: {
+            $dateToString: {
+              date: "$leoDateObj",
+              format: "%Y-%m-%d"
+            }
+          },
+          leo_month: "$leoMonth",
           containerNumbers: 1,
           totalContainers: {
             $cond: [
@@ -297,25 +365,74 @@ router.get("/api/report/admin-freight/:year/:month", async (req, res) => {
               in: {
                 $let: {
                   vars: {
-                    status: { $arrayElemAt: [{ $ifNull: ["$$op.statusDetails", []] }, 0] }
+                    status: { $arrayElemAt: [{ $ifNull: ["$op.statusDetails", []] }, 0] }
                   },
                   in: {
                     $cond: [
-                      { $and: [{ $ne: ["$$status.forwarderName", null] }, { $ne: ["$$status.forwarderName", ""] }] },
-                      "$$status.forwarderName",
+                      { $and: [{ $ne: ["$status.forwarderName", null] }, { $ne: ["$status.forwarderName", ""] }] },
+                      "$status.forwarderName",
                       "$forwarder"
                     ]
                   }
                 }
               }
             }
-          }
+          },
+          billing_date: {
+            $let: {
+              vars: {
+                bDate: {
+                  $ifNull: [
+                    "$firstStatus.billing_details.agency_bill_date",
+                    {
+                      $ifNull: [
+                        "$firstStatus.billing_details.reimbursement_bill_date",
+                        {
+                          $ifNull: [
+                            "$billing_details.agency_bill_date",
+                            {
+                              $ifNull: [
+                                "$agency_bill_date",
+                                {
+                                  $ifNull: [
+                                    "$billing_date",
+                                    "$send_for_billing_date"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              in: { $ifNull: ["$bDate", ""] }
+            }
+          },
+          agency_bill_date: {
+            $ifNull: [
+              "$firstStatus.billing_details.agency_bill_date",
+              { $ifNull: ["$billing_details.agency_bill_date", { $ifNull: ["$agency_bill_date", ""] }] }
+            ]
+          },
+          send_for_billing_date: { $ifNull: ["$send_for_billing_date", ""] },
         },
       },
     ]);
 
     const result = await ExJobModel.aggregate(pipeline);
-    res.status(200).json(result);
+    const formattedResult = result.map(row => {
+      const rawBillingDate = row.billing_date || row.agency_bill_date || row.send_for_billing_date || "";
+      const tatVal = calculateTatDays(row.sb_date, rawBillingDate);
+      return {
+        ...row,
+        billing_date: rawBillingDate,
+        tat: tatVal !== "" ? tatVal : ""
+      };
+    });
+    res.status(200).json(formattedResult);
   } catch (error) {
     console.error("❌ Error in admin freight report route:", error);
     res.status(500).json({ message: "Failed to generate admin freight report." });
