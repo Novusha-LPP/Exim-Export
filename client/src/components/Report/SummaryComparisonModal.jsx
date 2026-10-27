@@ -88,9 +88,11 @@ export default function SummaryComparisonModal({
   isSrManager = false,
   gradeFilter = "",
   reportType = "clearance",
+  shipmentType = "all",
   initialData = EMPTY_ARRAY,
   initialDetailedRows = EMPTY_ARRAY,
 }) {
+  const isFreightForwarding = reportType === "freightForwarding";
 
   const effectiveBranchOptions = useMemo(() => {
     const base =
@@ -107,6 +109,8 @@ export default function SummaryComparisonModal({
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [singleMonth, setSingleMonth] = useState(String(currentMonth));
   const [currBranch, setCurrBranch] = useState(selectedBranch || "AMD");
+  const [currShipmentType, setCurrShipmentType] = useState(shipmentType || "all");
+  const [locationBreakdownType, setLocationBreakdownType] = useState("port"); // "port" | "shipment_type"
   
   // Range selection (From - To in FY order)
   const [rangeFrom, setRangeFrom] = useState("4"); // default April
@@ -124,14 +128,14 @@ export default function SummaryComparisonModal({
   const [viewSection, setViewSection] = useState("all"); // "all" | "exporter" | "location"
   const [locationCollapsed, setLocationCollapsed] = useState(false);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(100); // Default to 100 so all 63 are immediately visible!
+  const [rowsPerPage, setRowsPerPage] = useState(100); // Default to 100 so all are immediately visible!
 
   // Data fetching states
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  // Sync selectedYear, singleMonth & currBranch when dialog opens or props change
+  // Sync selectedYear, singleMonth, currBranch & currShipmentType when dialog opens or props change
   useEffect(() => {
     if (open) {
       setSelectedYear(currentYear);
@@ -139,11 +143,13 @@ export default function SummaryComparisonModal({
         setSingleMonth(String(currentMonth));
       }
       setCurrBranch(selectedBranch || "AMD");
+      setCurrShipmentType(shipmentType || "all");
     }
-  }, [open, currentYear, currentMonth, selectedBranch]);
+  }, [open, currentYear, currentMonth, selectedBranch, shipmentType]);
 
   // Dynamic custom house filtering based on currBranch (null when "ALL")
   const modalAllowedCustomHouses = useMemo(() => {
+    if (isFreightForwarding) return null;
     if (!currBranch || currBranch === "ALL") return null;
     const houses = new Set();
     try {
@@ -159,13 +165,14 @@ export default function SummaryComparisonModal({
       console.error("Error computing allowed custom houses:", err);
     }
     return houses.size > 0 ? houses : null;
-  }, [currBranch]);
+  }, [currBranch, isFreightForwarding]);
 
   const branchDisplayName = useMemo(() => {
+    if (isFreightForwarding) return "All Job Types";
     if (!currBranch || currBranch === "ALL") return "All Branches";
     const found = effectiveBranchOptions.find((b) => b.value === currBranch);
     return found?.label || currBranch;
-  }, [currBranch, effectiveBranchOptions]);
+  }, [currBranch, effectiveBranchOptions, isFreightForwarding]);
 
   // Determine active months in FY chronological order
   const activeMonths = useMemo(() => {
@@ -203,7 +210,7 @@ export default function SummaryComparisonModal({
     return activeMonths.map((m) => m.num).join(",");
   }, [activeMonths]);
 
-  // Fetch summary data whenever dialog is open and month selection, year, or branch changes
+  // Fetch summary data whenever dialog is open and month selection, year, branch, or shipmentType changes
   useEffect(() => {
     if (!open) return;
 
@@ -220,8 +227,8 @@ export default function SummaryComparisonModal({
       selectedYear === currentYear &&
       currBranch === selectedBranch;
 
-    // If current main report already has the exact data, reuse it
-    if ((isSingleMonthSameAsCurrent || isFullYearSame) && initialData && initialData.length > 0) {
+    // For regular clearance reports, reuse initialData if matching
+    if (!isFreightForwarding && (isSingleMonthSameAsCurrent || isFullYearSame) && initialData && initialData.length > 0) {
       setRawData(initialData);
       return;
     }
@@ -232,16 +239,24 @@ export default function SummaryComparisonModal({
       try {
         const apiBase = import.meta.env.VITE_API_STRING || "";
         const endpoint =
-          reportType === "adminFreight"
+          reportType === "freightForwarding"
+            ? `/report/freight-forwarding-summary/${selectedYear}/all`
+            : reportType === "adminFreight"
             ? `/report/admin-freight/${selectedYear}/all`
             : `/report/export-clearance/${selectedYear}/all`;
         const url = new URL(`${apiBase}${endpoint}`, window.location.origin);
         url.searchParams.append("months", activeMonthsKey);
-        if (currBranch && currBranch !== "ALL") {
-          url.searchParams.append("branch_code", currBranch);
-        }
-        if (isSrManager && gradeFilter) {
-          url.searchParams.append("grade", gradeFilter);
+        if (reportType === "freightForwarding") {
+          if (currShipmentType && currShipmentType !== "all") {
+            url.searchParams.append("shipment_type", currShipmentType);
+          }
+        } else {
+          if (currBranch && currBranch !== "ALL") {
+            url.searchParams.append("branch_code", currBranch);
+          }
+          if (isSrManager && gradeFilter) {
+            url.searchParams.append("grade", gradeFilter);
+          }
         }
 
         const res = await fetch(url.toString());
@@ -268,13 +283,24 @@ export default function SummaryComparisonModal({
     activeMonthsKey,
     selectedYear,
     currBranch,
+    currShipmentType,
     reportType,
     gradeFilter,
+    isFreightForwarding,
   ]);
 
-  // Filter raw data according to branch allowed houses and exclude AIR jobs
+  // Filter raw data according to branch allowed houses and exclude AIR jobs for clearance
   const processedRows = useMemo(() => {
     let rows = [...rawData];
+    if (isFreightForwarding) {
+      // In Freight Forwarding, keep all records (Sea and Air)
+      if (currShipmentType && currShipmentType !== "all") {
+        rows = rows.filter((row) =>
+          String(row.shipment_type || "").toLowerCase() === currShipmentType.toLowerCase()
+        );
+      }
+      return rows;
+    }
     if (modalAllowedCustomHouses) {
       rows = rows.filter((row) =>
         modalAllowedCustomHouses.has(String(row.location || "").toUpperCase())
@@ -287,13 +313,69 @@ export default function SummaryComparisonModal({
       return !isAir;
     });
     return rows;
-  }, [rawData, modalAllowedCustomHouses]);
+  }, [rawData, modalAllowedCustomHouses, isFreightForwarding, currShipmentType]);
 
   // Summary By Location Table Calculation
   const locationRows = useMemo(() => {
     const summaryData = {};
-    let lclCount = 0;
+    let total20 = 0;
+    let total40 = 0;
+    let totalAir = 0;
+    let totalLcl = 0;
+    let totalTeus = 0;
 
+    if (isFreightForwarding) {
+      processedRows.forEach((row) => {
+        const itemKey =
+          locationBreakdownType === "shipment_type"
+            ? (row.shipment_type || "Export-Sea")
+            : (row.location || "DIRECT / OTHER");
+
+        if (!summaryData[itemKey]) {
+          summaryData[itemKey] = { count20: 0, count40: 0, air: 0, lcl: 0, teus: 0 };
+        }
+        const c20 = Number(row.count20) || 0;
+        const c40 = Number(row.count40) || 0;
+        const air = row.isAir ? 1 : 0;
+        const lcl = row.isLCL ? 1 : 0;
+        const t = Number(row.teus) || 0;
+
+        summaryData[itemKey].count20 += c20;
+        summaryData[itemKey].count40 += c40;
+        summaryData[itemKey].air += air;
+        summaryData[itemKey].lcl += lcl;
+        summaryData[itemKey].teus += t;
+
+        total20 += c20;
+        total40 += c40;
+        totalAir += air;
+        totalLcl += lcl;
+        totalTeus += t;
+      });
+
+      const rows = Object.entries(summaryData)
+        .sort((a, b) => b[1].teus - a[1].teus)
+        .map(([location, details]) => ({
+          location,
+          count20: details.count20,
+          count40: details.count40,
+          air: details.air,
+          lcl: details.lcl,
+          teus: details.teus,
+        }));
+
+      rows.push({
+        location: "TOTAL",
+        count20: total20,
+        count40: total40,
+        air: totalAir,
+        lcl: totalLcl,
+        teus: totalTeus,
+      });
+      return rows;
+    }
+
+    let lclCount = 0;
     processedRows.forEach((row) => {
       const location = row.location || "Unknown";
       const consignmentType = (row.consignment_type || "").toUpperCase();
@@ -320,19 +402,19 @@ export default function SummaryComparisonModal({
       count40: details.count40,
       teus: details.teus,
     }));
-    const totalTeus = rows.reduce((sum, r) => sum + (parseInt(r.teus) || 0), 0);
-    const total20 = rows.reduce((sum, r) => sum + (parseInt(r.count20) || 0), 0);
-    const total40 = rows.reduce((sum, r) => sum + (parseInt(r.count40) || 0), 0);
+    const totalTeusClearance = rows.reduce((sum, r) => sum + (parseInt(r.teus) || 0), 0);
+    const total20Clearance = rows.reduce((sum, r) => sum + (parseInt(r.count20) || 0), 0);
+    const total40Clearance = rows.reduce((sum, r) => sum + (parseInt(r.count40) || 0), 0);
 
     rows.push({ location: "LCL JOBS", count20: "", count40: "", teus: lclCount });
     rows.push({
       location: "TOTAL",
-      count20: total20,
-      count40: total40,
-      teus: totalTeus + lclCount,
+      count20: total20Clearance,
+      count40: total40Clearance,
+      teus: totalTeusClearance + lclCount,
     });
     return rows;
-  }, [processedRows]);
+  }, [processedRows, isFreightForwarding, locationBreakdownType]);
 
   // Exporter Monthly Comparison Calculation
   const exporterComparisonRows = useMemo(() => {
@@ -342,21 +424,28 @@ export default function SummaryComparisonModal({
       const exporter = (row.exporter || "UNKNOWN EXPORTER").trim().toUpperCase();
       const consignmentType = (row.consignment_type || "").toUpperCase();
       const sizeInfo = row.noOfContrSize || "";
-      const count20 = parseInt((sizeInfo.match(/(\d+)\s*x\s*20/i) || [0, 0])[1]) || 0;
-      const count40 = parseInt((sizeInfo.match(/(\d+)\s*x\s*40/i) || [0, 0])[1]) || 0;
-      let teus = parseInt(row.teus) || 0;
-      if (consignmentType === "LCL") {
+      const count20 =
+        row.count20 !== undefined
+          ? Number(row.count20)
+          : parseInt((sizeInfo.match(/(\d+)\s*x\s*20/i) || [0, 0])[1]) || 0;
+      const count40 =
+        row.count40 !== undefined
+          ? Number(row.count40)
+          : parseInt((sizeInfo.match(/(\d+)\s*x\s*40/i) || [0, 0])[1]) || 0;
+      let teus = Number(row.teus) || 0;
+      if (teus === 0 && (consignmentType === "LCL" || row.isLCL || row.isAir)) {
         teus = 1;
       }
 
       const rowMonth =
+        row.month ||
         row.leo_month ||
         (row.leo_date ? parseInt(row.leo_date.split("-")[1], 10) : null);
 
       if (!map.has(exporter)) {
         const monthMap = {};
         activeMonths.forEach((m) => {
-          monthMap[m.num] = { teus: 0, count20: 0, count40: 0, jobs: 0 };
+          monthMap[m.num] = { teus: 0, count20: 0, count40: 0, air: 0, lcl: 0, jobs: 0 };
         });
         map.set(exporter, {
           exporter,
@@ -364,6 +453,8 @@ export default function SummaryComparisonModal({
           totalTeus: 0,
           total20: 0,
           total40: 0,
+          totalAir: 0,
+          totalLcl: 0,
           totalJobs: 0,
         });
       }
@@ -373,11 +464,15 @@ export default function SummaryComparisonModal({
         expObj.months[rowMonth].teus += teus;
         expObj.months[rowMonth].count20 += count20;
         expObj.months[rowMonth].count40 += count40;
+        if (row.isAir) expObj.months[rowMonth].air += 1;
+        if (row.isLCL) expObj.months[rowMonth].lcl += 1;
         expObj.months[rowMonth].jobs += 1;
       }
       expObj.totalTeus += teus;
       expObj.total20 += count20;
       expObj.total40 += count40;
+      if (row.isAir) expObj.totalAir += 1;
+      if (row.isLCL) expObj.totalLcl += 1;
       expObj.totalJobs += 1;
     });
 
@@ -606,12 +701,14 @@ export default function SummaryComparisonModal({
         isMulti ? String.fromCharCode(66 + activeMonths.length + 3) + "1" : "E1"
       );
       const titleCell = exporterSheet.getCell("A1");
-      titleCell.value = `EXPORTER SHIPMENTS SUMMARY & MONTHLY COMPARISON`;
+      titleCell.value = isFreightForwarding
+        ? `FREIGHT FORWARDING SHIPMENTS SUMMARY & MONTHLY COMPARISON`
+        : `EXPORTER SHIPMENTS SUMMARY & MONTHLY COMPARISON`;
       titleCell.font = { bold: true, size: 13, color: { argb: "FF0F172A" } };
       titleCell.alignment = { vertical: "middle", horizontal: "left" };
       exporterSheet.getRow(1).height = 26;
 
-      exporterSheet.getCell("A2").value = `Period: ${rangeDescription} | Branch: ${branchName} | Generated: ${new Date().toLocaleDateString()}`;
+      exporterSheet.getCell("A2").value = `Period: ${rangeDescription} | ${isFreightForwarding ? `Category: ${currShipmentType}` : `Branch: ${branchName}`} | Generated: ${new Date().toLocaleDateString()}`;
       exporterSheet.getCell("A2").font = { italic: true, size: 9, color: { argb: "FF64748B" } };
       exporterSheet.getRow(2).height = 18;
 
@@ -621,7 +718,7 @@ export default function SummaryComparisonModal({
         // Multi-Month Columns:
         const headers = [
           "Sr.",
-          "Exporter Name",
+          isFreightForwarding ? "Client / Exporter Name" : "Exporter Name",
           ...activeMonths.map((m) => `${m.short} (${selectedYear})`),
           "Total TEUs",
           "Net Change",
@@ -735,7 +832,7 @@ export default function SummaryComparisonModal({
         };
       } else {
         // Single Month Columns
-        const headers = ["Sr.", "Exporter Name", "20", "40", "TEUS"];
+        const headers = ["Sr.", isFreightForwarding ? "Client / Exporter Name" : "Exporter Name", "20", "40", "TEUS"];
         const hRow = exporterSheet.addRow(headers);
         hRow.height = 24;
         hRow.eachCell((c) => {
@@ -776,13 +873,23 @@ export default function SummaryComparisonModal({
       });
 
       // 2. Location Summary Sheet
-      const locationSheet = workbook.addWorksheet("Summary by Location");
-      locationSheet.addRow(["SUMMARY BY LOCATION", "", "", ""]);
+      const locationSheet = workbook.addWorksheet(
+        isFreightForwarding ? "Port & Category Summary" : "Summary by Location"
+      );
+      locationSheet.addRow([
+        isFreightForwarding ? "FREIGHT FORWARDING SUMMARY BY PORT & CATEGORY" : "SUMMARY BY LOCATION",
+        "", "", ""
+      ]);
       locationSheet.getCell("A1").font = { bold: true, size: 12 };
-      locationSheet.addRow([`Period: ${rangeDescription} | Branch: ${branchName}`]);
+      locationSheet.addRow([
+        `Period: ${rangeDescription} | ${isFreightForwarding ? `Category: ${currShipmentType}` : `Branch: ${branchName}`}`
+      ]);
       locationSheet.addRow([]);
 
-      const locHRow = locationSheet.addRow(["Particulars", "20", "40", "TEUS"]);
+      const locHeaders = isFreightForwarding
+        ? ["Particulars", "20 (FCL)", "40 (FCL)", "Air", "LCL", "TEUS"]
+        : ["Particulars", "20", "40", "TEUS"];
+      const locHRow = locationSheet.addRow(locHeaders);
       locHRow.height = 22;
       locHRow.eachCell((c) => {
         c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF59E0B" } };
@@ -795,12 +902,10 @@ export default function SummaryComparisonModal({
       };
 
       locationRows.forEach((row) => {
-        const lRow = locationSheet.addRow([
-          row.location,
-          row.count20,
-          row.count40,
-          row.teus,
-        ]);
+        const rowData = isFreightForwarding
+          ? [row.location, row.count20, row.count40, row.air, row.lcl, row.teus]
+          : [row.location, row.count20, row.count40, row.teus];
+        const lRow = locationSheet.addRow(rowData);
         if (row.location === "TOTAL" || row.location === "LCL JOBS") {
           lRow.eachCell((c) => {
             c.font = { bold: true };
@@ -824,7 +929,8 @@ export default function SummaryComparisonModal({
       // Save file
       const dateStr = new Date().toISOString().slice(0, 10);
       const cleanRange = rangeDescription.replace(/[^a-zA-Z0-9_-]/g, "_");
-      const filename = `Exporter_Summary_Comparison_${selectedYear}_${cleanRange}_${dateStr}.xlsx`;
+      const filePrefix = isFreightForwarding ? "Freight_Forwarding_Summary_Comparison" : "Exporter_Summary_Comparison";
+      const filename = `${filePrefix}_${selectedYear}_${cleanRange}_${dateStr}.xlsx`;
       const buffer = await workbook.xlsx.writeBuffer();
       saveAs(new Blob([buffer]), filename);
     } catch (err) {
@@ -867,12 +973,17 @@ export default function SummaryComparisonModal({
           <DateRangeIcon sx={{ color: "#0284c7" }} />
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#0f172a" }}>
+              {isFreightForwarding ? "Freight Forwarding " : ""}
               {isMultiMonth
                 ? `Monthly Comparison: ${rangeDescription}`
                 : `Summary - ${rangeDescription}`}
             </Typography>
             <Typography variant="caption" sx={{ color: "#64748b", display: "block" }}>
-              Branch: <strong style={{ color: "#0284c7" }}>{branchDisplayName}</strong> • Compare monthly exporter performance • Track increase or decrease in TEUs
+              {isFreightForwarding ? (
+                <>Freight Forwarding • Track monthly client performance across Sea & Air shipments</>
+              ) : (
+                <>Branch: <strong style={{ color: "#0284c7" }}>{branchDisplayName}</strong> • Compare monthly exporter performance • Track increase or decrease in TEUs</>
+              )}
             </Typography>
           </Box>
         </Box>
@@ -981,33 +1092,51 @@ export default function SummaryComparisonModal({
                 </Select>
               </FormControl>
 
-              <FormControl size="small" sx={{ minWidth: 155 }}>
-                <InputLabel sx={{ fontSize: "0.8rem" }}>Branch</InputLabel>
-                <Select
-                  value={currBranch}
-                  onChange={(e) => setCurrBranch(e.target.value)}
-                  label="Branch"
-                  sx={{
-                    fontSize: "0.8rem",
-                    height: 32,
-                    fontWeight: currBranch === "ALL" ? 700 : 500,
-                  }}
-                >
-                  {effectiveBranchOptions.map((b) => (
-                    <MenuItem
-                      key={b.value}
-                      value={b.value}
-                      sx={{
-                        fontSize: "0.8rem",
-                        fontWeight: b.value === "ALL" ? 700 : 500,
-                        color: b.value === "ALL" ? "#0284c7" : "inherit",
-                      }}
-                    >
-                      {b.value === "ALL" ? "🌐 All Branches" : b.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {isFreightForwarding ? (
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel sx={{ fontSize: "0.8rem" }}>Category</InputLabel>
+                  <Select
+                    value={currShipmentType}
+                    onChange={(e) => setCurrShipmentType(e.target.value)}
+                    label="Category"
+                    sx={{ fontSize: "0.8rem", height: 32, fontWeight: 600 }}
+                  >
+                    <MenuItem value="all" sx={{ fontSize: "0.8rem" }}>🌐 All Job Types</MenuItem>
+                    <MenuItem value="Export-Sea" sx={{ fontSize: "0.8rem" }}>Export Sea</MenuItem>
+                    <MenuItem value="Export-Air" sx={{ fontSize: "0.8rem" }}>Export Air</MenuItem>
+                    <MenuItem value="Import-Sea" sx={{ fontSize: "0.8rem" }}>Import Sea</MenuItem>
+                    <MenuItem value="Import-Air" sx={{ fontSize: "0.8rem" }}>Import Air</MenuItem>
+                  </Select>
+                </FormControl>
+              ) : (
+                <FormControl size="small" sx={{ minWidth: 155 }}>
+                  <InputLabel sx={{ fontSize: "0.8rem" }}>Branch</InputLabel>
+                  <Select
+                    value={currBranch}
+                    onChange={(e) => setCurrBranch(e.target.value)}
+                    label="Branch"
+                    sx={{
+                      fontSize: "0.8rem",
+                      height: 32,
+                      fontWeight: currBranch === "ALL" ? 700 : 500,
+                    }}
+                  >
+                    {effectiveBranchOptions.map((b) => (
+                      <MenuItem
+                        key={b.value}
+                        value={b.value}
+                        sx={{
+                          fontSize: "0.8rem",
+                          fontWeight: b.value === "ALL" ? 700 : 500,
+                          color: b.value === "ALL" ? "#0284c7" : "inherit",
+                        }}
+                      >
+                        {b.value === "ALL" ? "🌐 All Branches" : b.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
             </Box>
           </Box>
 
@@ -1191,7 +1320,7 @@ export default function SummaryComparisonModal({
           >
             <TextField
               size="small"
-              placeholder="Search exporter name..."
+              placeholder={isFreightForwarding ? "Search client or exporter name..." : "Search exporter name..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{
@@ -1309,7 +1438,7 @@ export default function SummaryComparisonModal({
                 <Grid item xs={6} sm={3}>
                   <Card sx={{ p: 1.5, background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)", border: "1px solid #cbd5e1" }}>
                     <Typography variant="caption" sx={{ fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
-                      Active Exporters
+                      Active {isFreightForwarding ? "Clients" : "Exporters"}
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: "#1e293b", mt: 0.5 }}>
                       {stats.totalExporters}
@@ -1327,7 +1456,7 @@ export default function SummaryComparisonModal({
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: "#166534", mt: 0.5 }}>
                       {stats.increasedCount}{" "}
-                      <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Exporters</span>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>{isFreightForwarding ? "Clients" : "Exporters"}</span>
                     </Typography>
                     <Typography variant="caption" sx={{ color: "#16a34a", fontWeight: 700 }}>
                       ▲ Growing month-over-month
@@ -1342,7 +1471,7 @@ export default function SummaryComparisonModal({
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: "#991b1b", mt: 0.5 }}>
                       {stats.decreasedCount}{" "}
-                      <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>Exporters</span>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>{isFreightForwarding ? "Clients" : "Exporters"}</span>
                     </Typography>
                     <Typography variant="caption" sx={{ color: "#dc2626", fontWeight: 700 }}>
                       ▼ Declining month-over-month
@@ -1383,10 +1512,10 @@ export default function SummaryComparisonModal({
               >
                 <ToggleButton value="all">Show Both Sections</ToggleButton>
                 <ToggleButton value="exporter">
-                  By Exporter Only ({filteredComparisonRows.length})
+                  By {isFreightForwarding ? "Client" : "Exporter"} Only ({filteredComparisonRows.length})
                 </ToggleButton>
                 <ToggleButton value="location">
-                  By Location Only ({locationRows.length - 2})
+                  By {isFreightForwarding ? (locationBreakdownType === "shipment_type" ? "Category" : "Port") : "Location"} Only ({Math.max(0, locationRows.length - (isFreightForwarding ? 1 : 2))})
                 </ToggleButton>
               </ToggleButtonGroup>
 
@@ -1416,24 +1545,74 @@ export default function SummaryComparisonModal({
                     maxHeight: "350px",
                   }}
                 >
-                  <Box sx={{ px: 2, py: 1, bgcolor: "#fff7ed", borderBottom: "1px solid #fed7aa", display: "flex", alignItems: "center", gap: 1 }}>
-                    <LocationOnIcon fontSize="small" sx={{ color: "#f57c00" }} />
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "#ea580c" }}>
-                      By Location ({locationRows.length - 2} Ports/Locations)
-                    </Typography>
+                  <Box sx={{ px: 2, py: 1, bgcolor: "#fff7ed", borderBottom: "1px solid #fed7aa", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <LocationOnIcon fontSize="small" sx={{ color: "#f57c00" }} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "#ea580c" }}>
+                        {isFreightForwarding
+                          ? locationBreakdownType === "shipment_type"
+                            ? `By Shipment Type (${Math.max(0, locationRows.length - 1)} Categories)`
+                            : `By Port / Location (${Math.max(0, locationRows.length - 1)} Ports)`
+                          : `By Location (${Math.max(0, locationRows.length - 2)} Ports/Locations)`}
+                      </Typography>
+                    </Box>
+
+                    {isFreightForwarding && (
+                      <ToggleButtonGroup
+                        value={locationBreakdownType}
+                        exclusive
+                        onChange={(e, val) => val && setLocationBreakdownType(val)}
+                        size="small"
+                        sx={{
+                          bgcolor: "#fff",
+                          border: "1px solid #fed7aa",
+                          p: "1px",
+                          borderRadius: 1,
+                          "& .MuiToggleButton-root": {
+                            px: 1,
+                            py: 0.2,
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            textTransform: "none",
+                            border: "none",
+                            color: "#ea580c",
+                            "&.Mui-selected": {
+                              bgcolor: "#f97316",
+                              color: "#fff",
+                              "&:hover": { bgcolor: "#ea580c" },
+                            },
+                          },
+                        }}
+                      >
+                        <ToggleButton value="port">By Port</ToggleButton>
+                        <ToggleButton value="shipment_type">By Category</ToggleButton>
+                      </ToggleButtonGroup>
+                    )}
                   </Box>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
                         <TableCell align="left" sx={{ fontWeight: 800, background: "#ffe0b2", color: "#333", pl: 3 }}>
-                          Particulars
+                          {isFreightForwarding
+                            ? (locationBreakdownType === "shipment_type" ? "Shipment Type / Category" : "Port / Location")
+                            : "Particulars"}
                         </TableCell>
                         <TableCell align="center" sx={{ fontWeight: 800, background: "#ffe0b2", color: "#333" }}>
-                          20
+                          {isFreightForwarding ? "20 (FCL)" : "20"}
                         </TableCell>
                         <TableCell align="center" sx={{ fontWeight: 800, background: "#ffe0b2", color: "#333" }}>
-                          40
+                          {isFreightForwarding ? "40 (FCL)" : "40"}
                         </TableCell>
+                        {isFreightForwarding && (
+                          <>
+                            <TableCell align="center" sx={{ fontWeight: 800, background: "#ffe0b2", color: "#333" }}>
+                              Air
+                            </TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 800, background: "#ffe0b2", color: "#333" }}>
+                              LCL
+                            </TableCell>
+                          </>
+                        )}
                         <TableCell align="center" sx={{ fontWeight: 800, background: "#ffe0b2", color: "#333" }}>
                           TEUS
                         </TableCell>
@@ -1467,6 +1646,16 @@ export default function SummaryComparisonModal({
                             <TableCell align="center" sx={{ fontWeight: isTotal ? 800 : 500, fontSize: "0.8rem" }}>
                               {row.count40}
                             </TableCell>
+                            {isFreightForwarding && (
+                              <>
+                                <TableCell align="center" sx={{ fontWeight: isTotal ? 800 : 500, fontSize: "0.8rem" }}>
+                                  {row.air}
+                                </TableCell>
+                                <TableCell align="center" sx={{ fontWeight: isTotal ? 800 : 500, fontSize: "0.8rem" }}>
+                                  {row.lcl}
+                                </TableCell>
+                              </>
+                            )}
                             <TableCell
                               align="center"
                               sx={{
@@ -1517,11 +1706,11 @@ export default function SummaryComparisonModal({
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <BusinessIcon fontSize="small" sx={{ color: "#0284c7" }} />
                     <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "#0369a1" }}>
-                      By Exporter {isMultiMonth ? "— Monthly Shipment Trend Comparison" : ""}
+                      {isFreightForwarding ? "By Client / Exporter" : "By Exporter"} {isMultiMonth ? "— Monthly Shipment Trend Comparison" : ""}
                     </Typography>
                   </Box>
                   <Typography variant="caption" sx={{ fontWeight: 700, color: "#0369a1" }}>
-                    Showing {filteredComparisonRows.length === 0 ? 0 : (rowsPerPage === -1 ? 1 : page * rowsPerPage + 1)}–{rowsPerPage === -1 ? filteredComparisonRows.length : Math.min((page + 1) * rowsPerPage, filteredComparisonRows.length)} of {filteredComparisonRows.length} Exporters
+                    Showing {filteredComparisonRows.length === 0 ? 0 : (rowsPerPage === -1 ? 1 : page * rowsPerPage + 1)}–{rowsPerPage === -1 ? filteredComparisonRows.length : Math.min((page + 1) * rowsPerPage, filteredComparisonRows.length)} of {filteredComparisonRows.length} {isFreightForwarding ? "Clients" : "Exporters"}
                   </Typography>
                 </Box>
 
@@ -1538,7 +1727,7 @@ export default function SummaryComparisonModal({
                         align="left"
                         sx={{ fontWeight: 800, background: "#e1f5fe", color: "#333", minWidth: 200, fontSize: "0.75rem" }}
                       >
-                        Exporter Name
+                        {isFreightForwarding ? "Client / Exporter Name" : "Exporter Name"}
                       </TableCell>
 
                       {isMultiMonth ? (
@@ -1812,7 +2001,7 @@ export default function SummaryComparisonModal({
                           Σ
                         </TableCell>
                         <TableCell align="left" sx={{ fontWeight: 800, fontSize: "0.82rem", color: "#92400e" }}>
-                          TOTAL ({filteredComparisonRows.length} Exporters)
+                          TOTAL ({filteredComparisonRows.length} {isFreightForwarding ? "Clients" : "Exporters"})
                         </TableCell>
                         {activeMonths.map((m) => {
                           const mTotal = filteredComparisonRows.reduce(

@@ -900,8 +900,10 @@ const FreightForwardingMonthlyReport = () => {
         currentMonth={String(month)}
         years={years}
         selectedBranch="ALL"
-        reportType="adminFreight"
+        reportType="freightForwarding"
+        shipmentType={shipmentType}
       />
+
 
       {/* Popper containing Recharts Trend Analysis */}
       <Popper

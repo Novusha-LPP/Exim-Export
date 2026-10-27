@@ -842,4 +842,208 @@ router.get("/api/report/freight-forwarding-monthly/:year/:month", async (req, re
   }
 });
 
+// Helper to normalize Freight Forwarding port names
+function normalizeFfPort(pol, pod, shipmentType) {
+  const isImport = (shipmentType || "").toLowerCase().includes("import");
+  const rawPort = (isImport && pod ? pod : pol) || pol || pod || "DIRECT / OTHER";
+  const upper = String(rawPort).toUpperCase().trim();
+
+  if (upper.includes("AMD4") || upper.includes("AHMEDABAD AIR")) return "AHMEDABAD AIR";
+  if (upper.includes("MUNDRA")) return "MUNDRA";
+  if (upper.includes("NHAVA") || upper.includes("NSA1")) return "NHAVA SHEVA";
+  if (upper.includes("HAZIRA") || upper.includes("HZA1")) return "HAZIRA";
+  if (upper.includes("PIPAVAV") || upper.includes("PPV")) return "PORT PIPAVAV";
+  if (upper.includes("SHANGHAI PU DONG") || upper.includes("PVG")) return "SHANGHAI AIR";
+  if (upper.includes("SHANGHAI") || upper.includes("SHA")) return "SHANGHAI";
+  if (upper.includes("SHEKOU") || upper.includes("SHK")) return "SHEKOU";
+  if (upper.includes("NINGBO") || upper.includes("NGB")) return "NINGBO";
+  if (upper.includes("TIANJIN") || upper.includes("TXG")) return "TIANJIN";
+  if (upper.includes("QINGDAO") || upper.includes("TAO")) return "QINGDAO";
+  if (upper.includes("MILAN") || upper.includes("MXP")) return "MILAN AIR";
+  if (upper.includes("VENEZIA") || upper.includes("VENICE") || upper.includes("VCE")) return "VENICE";
+  if (upper.includes("KANDLA")) return "KANDLA";
+  if (upper.includes("COCHIN") || upper.includes("COK")) return "COCHIN";
+
+  const match = upper.match(/^[A-Z0-9]+\s*-\s*(.+)$/);
+  if (match) return match[1].trim();
+  const matchParen = upper.match(/^\([A-Z0-9]+\)\s*(.+)$/);
+  if (matchParen) return matchParen[1].trim();
+
+  return upper || "DIRECT / OTHER";
+}
+
+// Route: /api/report/freight-forwarding-summary/:year/:month
+// Detailed / job-level data for SummaryComparisonModal
+router.get("/api/report/freight-forwarding-summary/:year/:month", async (req, res) => {
+  const { year, month } = req.params;
+  const { shipment_type, months } = req.query;
+
+  try {
+    const baseMatch = {
+      organization_name: { $ne: null, $ne: "" }
+    };
+
+    if (shipment_type && shipment_type !== "all" && shipment_type !== "") {
+      baseMatch.shipment_type = { $regex: new RegExp(`^${shipment_type.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, "i") };
+    }
+
+    const pipeline = [
+      {
+        $addFields: {
+          dateObj: {
+            $switch: {
+              branches: [
+                {
+                  case: { $regexMatch: { input: { $toString: { $ifNull: ["$enquiry_date", ""] } }, regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
+                  then: { $toDate: "$enquiry_date" },
+                },
+                {
+                  case: { $regexMatch: { input: { $toString: { $ifNull: ["$enquiry_date", ""] } }, regex: "^\\d{2}-\\d{2}-\\d{4}$" } },
+                  then: { $dateFromString: { dateString: "$enquiry_date", format: "%d-%m-%Y", onError: null } }
+                },
+              ],
+              default: null,
+            },
+          }
+        }
+      },
+      {
+        $addFields: {
+          enquiryMonth: { $month: "$dateObj" },
+          enquiryYearStr: {
+            $let: {
+              vars: {
+                y: { $year: "$dateObj" },
+                m: { $month: "$dateObj" }
+              },
+              in: {
+                $cond: {
+                  if: { $gte: ["$$m", 4] },
+                  then: {
+                    $concat: [
+                      { $substr: [{ $toString: "$$y" }, 2, 2] },
+                      "-",
+                      { $substr: [{ $toString: { $add: ["$$y", 1] } }, 2, 2] }
+                    ]
+                  },
+                  else: {
+                    $concat: [
+                      { $substr: [{ $toString: { $subtract: ["$$y", 1] } }, 2, 2] },
+                      "-",
+                      { $substr: [{ $toString: "$$y" }, 2, 2] }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $match: {
+          ...baseMatch,
+          enquiryYearStr: year
+        }
+      }
+    ];
+
+    // Filter by months if provided (e.g. months="4,5,6,7" or month="6")
+    let targetMonths = null;
+    if (months) {
+      targetMonths = months.split(",").map(m => parseInt(m.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= 12);
+    } else if (month && month !== "all" && month !== "0" && month !== "whole_year") {
+      const parsed = parseInt(month, 10);
+      if (!isNaN(parsed)) {
+        targetMonths = [parsed];
+      }
+    }
+
+    if (targetMonths && targetMonths.length > 0) {
+      pipeline.push({
+        $match: {
+          enquiryMonth: { $in: targetMonths }
+        }
+      });
+    }
+
+    const docs = await FreightEnquiryModel.aggregate(pipeline);
+
+    // Map each doc to normalized job format for SummaryComparisonModal
+    const results = docs.map(d => {
+      const isAir = (d.shipment_type || "").toLowerCase().includes("air") || d.consignment_type === "AIR";
+      const isLCL = d.consignment_type === "LCL";
+      
+      let count20 = 0;
+      let count40 = 0;
+      if (!isAir) {
+        const sizeStr = (d.container_size || "").toLowerCase();
+        const numContainers = Array.isArray(d.containers) && d.containers.length > 0 ? d.containers.length : 1;
+        if (sizeStr.includes("20")) {
+          count20 = numContainers;
+        } else if (sizeStr.includes("40")) {
+          count40 = numContainers;
+        } else {
+          count20 = numContainers;
+        }
+      }
+
+      // Calculate TEUs: 20ft + 2 * 40ft; for Air and LCL, at least 1 unit / shipment
+      let teus = count20 + (2 * count40);
+      if (teus === 0 && (isAir || isLCL)) {
+        teus = 1;
+      }
+
+      let noOfContrSize = "";
+      if (count20 > 0 && count40 > 0) {
+        noOfContrSize = `${count20}x20 + ${count40}x40`;
+      } else if (count20 > 0) {
+        noOfContrSize = `${count20}x20`;
+      } else if (count40 > 0) {
+        noOfContrSize = `${count40}x40`;
+      } else if (isAir) {
+        noOfContrSize = "AIR";
+      } else if (isLCL) {
+        noOfContrSize = "LCL";
+      }
+
+      const normLocation = normalizeFfPort(d.port_of_loading, d.port_of_destination, d.shipment_type);
+
+      return {
+        job_no: d.enquiry_no || d.success_no || "",
+        exporter: (d.organization_name || "UNKNOWN").trim(),
+        location: normLocation,
+        port_of_loading: d.port_of_loading || "",
+        port_of_destination: d.port_of_destination || "",
+        shipment_type: d.shipment_type || "Export-Sea",
+        consignment_type: isAir ? "AIR" : (isLCL ? "LCL" : "FCL"),
+        enquiry_date: d.enquiry_date || "",
+        leo_date: d.enquiry_date || "",
+        leo_month: d.enquiryMonth,
+        month: d.enquiryMonth,
+        containerNumbers: Array.isArray(d.containers) ? d.containers.map(c => c.container_number).filter(Boolean) : [],
+        totalContainers: count20 + count40 || (isAir || isLCL ? 1 : 0),
+        noOfContrSize,
+        count20,
+        count40,
+        isAir,
+        isLCL,
+        teus,
+        transport_mode: isAir ? "AIR" : "SEA",
+        status: d.status || "",
+        has_leo: Boolean(d.documents && d.documents.leo_copy),
+        has_booking: Boolean(d.documents && (d.documents.booking_copy || d.documents.invoice))
+      };
+    });
+
+    res.status(200).json(results);
+  } catch (error) {
+    console.error("❌ Aggregation error for Freight Forwarding Summary:", error);
+    res.status(500).json({
+      message: "Server Error while aggregating Freight Forwarding summary data.",
+      details: error.message,
+    });
+  }
+});
+
 export default router;
+
