@@ -59,6 +59,38 @@ import { saveAs } from 'file-saver';
 import { UserContext } from "../../contexts/UserContext";
 import { getOptionsForBranch } from "../common/CustomHouseDropdown";
 import CustomizeReportModal from "./CustomizeReportModal.jsx";
+import SummaryComparisonModal from "./SummaryComparisonModal.jsx";
+
+const parseDateHelper = (dateStr) => {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  const trimmed = dateStr.trim();
+  if (!trimmed) return null;
+  const dmyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (dmyMatch) {
+    const d = parseInt(dmyMatch[1], 10);
+    const m = parseInt(dmyMatch[2], 10) - 1;
+    const y = parseInt(dmyMatch[3], 10);
+    return new Date(Date.UTC(y, m, d));
+  }
+  const ymdMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (ymdMatch) {
+    const y = parseInt(ymdMatch[1], 10);
+    const m = parseInt(ymdMatch[2], 10) - 1;
+    const d = parseInt(ymdMatch[3], 10);
+    return new Date(Date.UTC(y, m, d));
+  }
+  const parsed = new Date(trimmed);
+  return isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const calculateTat = (sbDate, billingDate) => {
+  if (!sbDate || !billingDate) return "";
+  const d1 = parseDateHelper(sbDate);
+  const d2 = parseDateHelper(billingDate);
+  if (!d1 || !d2) return "";
+  const diffTime = d2.getTime() - d1.getTime();
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+};
 
 export const STANDARD_CLEARANCE_COLUMNS = [
   { label: "Srl No.", key: "srlNo", minWidth: 50 },
@@ -69,6 +101,7 @@ export const STANDARD_CLEARANCE_COLUMNS = [
   { label: 'INV VALUE', key: 'invoice_value', minWidth: 170 }, // NEW PRICE COLUMN
   { label: "SB NO.", key: "sb_no", minWidth: 100 },
   { label: "SB DATE", key: "sb_date", minWidth: 80 },
+  { label: "TAT (DAYS)", key: "tat", minWidth: 80 },
   { label: "CONTAINER NO.", key: "containerNumbers", minWidth: 120 },
   { label: "NO. OF CNTR", key: "totalContainers", minWidth: 70 },
   { label: "SIZE", key: "size", minWidth: 60 },
@@ -87,6 +120,7 @@ export const DEFAULT_CLEARANCE_COLUMNS = [
   { label: "EXIM CODE", key: "exim_code", minWidth: 130, category: "Product & Customs", default: true },
   { label: "SB NO.", key: "sb_no", minWidth: 90, category: "Product & Customs", default: true },
   { label: "SB DATE", key: "sb_date", minWidth: 80, category: "Product & Customs", default: true },
+  { label: "TAT (DAYS)", key: "tat", minWidth: 80, category: "General", default: true },
   { label: "CONTAINER NO.", key: "containerNumbers", minWidth: 120, category: "Containers", default: true },
   { label: "NO. OF CNTR", key: "totalContainers", minWidth: 70, category: "Containers", default: true },
   { label: "SIZE", key: "size", minWidth: 60, category: "Containers", default: true },
@@ -114,6 +148,7 @@ export const ALL_CUSTOMIZABLE_COLUMNS = [
   { label: "DISTRICT OF ORIGIN", key: "origin_district", minWidth: 130, category: "General", default: false },
   // Logistics & Commercial
   { label: "CONTAINER DETAILS", key: "containerDetails", minWidth: 180, category: "Containers", default: false },
+  { label: "BILLING DATE", key: "billing_date", minWidth: 90, category: "Commercial", default: false },
   { label: "INV VALUE", key: "invoice_value", minWidth: 130, category: "Commercial", default: false },
   { label: "FOB VALUE", key: "fob_value", minWidth: 120, category: "Commercial", default: false },
   { label: "INVOICE NO.", key: "invoice_no", minWidth: 110, category: "Commercial", default: false },
@@ -165,7 +200,20 @@ const DetailedReport = () => {
         if (Array.isArray(parsed) && parsed.length > 0) {
           const colMap = new Map(ALL_CUSTOMIZABLE_COLUMNS.map((c) => [c.key, c]));
           const validCols = parsed.map((k) => colMap.get(k)).filter(Boolean);
-          if (validCols.length > 0) return validCols;
+          if (validCols.length > 0) {
+            if (!validCols.some((c) => c.key === "tat")) {
+              const tatCol = colMap.get("tat");
+              if (tatCol) {
+                const sbIdx = validCols.findIndex((c) => c.key === "sb_date");
+                if (sbIdx !== -1) {
+                  validCols.splice(sbIdx + 1, 0, tatCol);
+                } else {
+                  validCols.push(tatCol);
+                }
+              }
+            }
+            return validCols;
+          }
         }
       }
     } catch (e) {
@@ -180,7 +228,7 @@ const DetailedReport = () => {
 
   const [year, setYear] = useState("26-27");
   const [gradeFilter, setGradeFilter] = useState(""); // ✅ New Grade Filter
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [month, setMonth] = useState(String(new Date().getMonth() + 1));
 
   // Standard Export state (generates previous/standard fields, unaffected by customization)
   const [standardExportLoading, setStandardExportLoading] = useState(false);
@@ -217,6 +265,7 @@ const DetailedReport = () => {
   }, [activeColumns, isSrManager]);
 
   const BRANCH_OPTIONS = [
+    { value: "ALL", label: "All Branches" },
     { value: "AMD", label: "Ahmedabad" },
     { value: "BRD", label: "Baroda" },
     { value: "GIM", label: "Gandhidham" },
@@ -257,7 +306,7 @@ const DetailedReport = () => {
   ];
 
   const allowedCustomHouses = useMemo(() => {
-    if (!selectedBranch) return null;
+    if (!selectedBranch || selectedBranch === "ALL") return null;
     const houses = new Set();
     getOptionsForBranch(selectedBranch).forEach((group) => {
       (group.items || []).forEach((item) => houses.add(String(item.value || "").toUpperCase()));
@@ -476,7 +525,7 @@ const DetailedReport = () => {
       if (isSrManager && gradeFilter) {
         url.searchParams.append('grade', gradeFilter);
       }
-      if (selectedBranch) {
+      if (selectedBranch && selectedBranch !== "ALL") {
         url.searchParams.append('branch_code', selectedBranch);
       }
       const res = await fetch(url.toString());
@@ -708,6 +757,21 @@ const DetailedReport = () => {
         case 'sb_date':
           rowData[col.key] = row.sb_date ? new Date(row.sb_date).toLocaleDateString('en-GB') : '';
           break;
+        case 'tat': {
+          const tatVal = row.tat !== undefined && row.tat !== null && row.tat !== ""
+            ? row.tat
+            : calculateTat(row.sb_date, row.billing_date || row.agency_bill_date);
+          rowData[col.key] = (tatVal !== "" && tatVal !== null && tatVal !== undefined && !isNaN(Number(tatVal)))
+            ? Number(tatVal)
+            : '';
+          break;
+        }
+        case 'billing_date': {
+          const bVal = row.billing_date || row.agency_bill_date || '';
+          const d = parseDateHelper(bVal);
+          rowData[col.key] = d ? d.toLocaleDateString('en-GB') : (bVal || '');
+          break;
+        }
         case 'leo_date':
           rowData[col.key] = row.leo_date ? new Date(row.leo_date).toLocaleDateString('en-GB') : '';
           break;
@@ -804,6 +868,62 @@ const DetailedReport = () => {
             {val ? new Date(val).toLocaleDateString('en-GB') : '—'}
           </TableCell>
         );
+
+      case 'tat': {
+        const tatVal = row.tat !== undefined && row.tat !== null && row.tat !== ""
+          ? row.tat
+          : calculateTat(row.sb_date, row.billing_date || row.agency_bill_date);
+
+        if (tatVal === "" || tatVal === null || tatVal === undefined || isNaN(Number(tatVal))) {
+          return (
+            <TableCell key={col.key} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", color: '#94a3b8' }}>
+              —
+            </TableCell>
+          );
+        }
+
+        const numTat = Number(tatVal);
+        let chipBg = '#ecfdf5';
+        let chipColor = '#065f46';
+        let chipBorder = '#a7f3d0';
+
+        if (numTat > 10) {
+          chipBg = '#fef2f2';
+          chipColor = '#991b1b';
+          chipBorder = '#fecaca';
+        } else if (numTat > 5) {
+          chipBg = '#fffbeb';
+          chipColor = '#92400e';
+          chipBorder = '#fde68a';
+        }
+
+        return (
+          <TableCell key={col.key} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px" }}>
+            <Chip
+              label={`${numTat} ${Math.abs(numTat) === 1 ? 'day' : 'days'}`}
+              size="small"
+              sx={{
+                height: 20,
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                bgcolor: chipBg,
+                color: chipColor,
+                border: `1px solid ${chipBorder}`
+              }}
+            />
+          </TableCell>
+        );
+      }
+
+      case 'billing_date': {
+        const bVal = row.billing_date || row.agency_bill_date || '';
+        const d = parseDateHelper(bVal);
+        return (
+          <TableCell key={col.key} align="center" sx={{ fontSize: "0.75rem", padding: "6px 8px", whiteSpace: 'nowrap', color: '#475569' }}>
+            {d ? d.toLocaleDateString('en-GB') : (bVal || '—')}
+          </TableCell>
+        );
+      }
 
       case 'containerNumbers':
         return (
@@ -1196,6 +1316,21 @@ const DetailedReport = () => {
               : (row.containerNumbers || '');
             break;
           case 'sb_date': rowData[col.key] = row.sb_date ? new Date(row.sb_date).toLocaleDateString('en-GB') : ''; break;
+          case 'tat': {
+            const tatVal = row.tat !== undefined && row.tat !== null && row.tat !== ""
+              ? row.tat
+              : calculateTat(row.sb_date, row.billing_date || row.agency_bill_date);
+            rowData[col.key] = (tatVal !== "" && tatVal !== null && tatVal !== undefined && !isNaN(Number(tatVal)))
+              ? Number(tatVal)
+              : '';
+            break;
+          }
+          case 'billing_date': {
+            const bVal = row.billing_date || row.agency_bill_date || '';
+            const d = parseDateHelper(bVal);
+            rowData[col.key] = d ? d.toLocaleDateString('en-GB') : (bVal || '');
+            break;
+          }
           case 'leo_date': rowData[col.key] = row.leo_date ? new Date(row.leo_date).toLocaleDateString('en-GB') : ''; break;
           case 'teus': rowData[col.key] = isLclJob(row) ? 'LCL' : (row.teus || ''); break;
           case 'ports': {
@@ -1237,8 +1372,8 @@ const DetailedReport = () => {
       });
     });
 
-    // 3. Add Summaries Below Table (only for clearance report)
-    if (reportType === 'clearance') {
+    // 3. Add Summaries Below Table (clearance & adminFreight reports)
+    if (reportType === 'clearance' || reportType === 'adminFreight') {
       const summaryRows = generateSummaryRows();
       const exporterSummaryRows = generateExporterSummaryRows();
       let currentRow = worksheet.rowCount + 3;
@@ -1325,6 +1460,19 @@ const DetailedReport = () => {
             return row.sb_no || '';
           case 'sb_date':
             return sbDate;
+          case 'tat': {
+            const tatVal = row.tat !== undefined && row.tat !== null && row.tat !== ""
+              ? row.tat
+              : calculateTat(row.sb_date, row.billing_date || row.agency_bill_date);
+            return (tatVal !== "" && tatVal !== null && tatVal !== undefined && !isNaN(Number(tatVal)))
+              ? `${tatVal} days`
+              : '—';
+          }
+          case 'billing_date': {
+            const bVal = row.billing_date || row.agency_bill_date || '';
+            const d = parseDateHelper(bVal);
+            return d ? d.toLocaleDateString('en-GB') : (bVal || '—');
+          }
           case 'containerNumbers':
             return containerNos;
           case 'totalContainers':
@@ -1373,6 +1521,8 @@ const DetailedReport = () => {
       invoice_value: { cellWidth: 20, halign: 'center' },
       sb_no: { cellWidth: 15, halign: 'center' },
       sb_date: { cellWidth: 20, halign: 'center' },
+      tat: { cellWidth: 12, halign: 'center' },
+      billing_date: { cellWidth: 18, halign: 'center' },
       containerNumbers: { cellWidth: 25, halign: 'center' },
       totalContainers: { cellWidth: 8, halign: 'center' },
       size: { cellWidth: 15, halign: 'center' },
@@ -1445,7 +1595,7 @@ const DetailedReport = () => {
       tableLineWidth: 0.5
     });
 
-    if (reportType === 'clearance') {
+    if (reportType === 'clearance' || reportType === 'adminFreight') {
       doc.addPage();
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
@@ -1860,7 +2010,7 @@ const DetailedReport = () => {
         });
       });
 
-      if (reportType === 'clearance') {
+      if (reportType === 'clearance' || reportType === 'adminFreight') {
         const summaryRows = generateSummaryRows();
         const exporterSummaryRows = generateExporterSummaryRows();
         let currentRow = worksheet.rowCount + 3;
@@ -2185,7 +2335,7 @@ const DetailedReport = () => {
       tableLineWidth: 0.5
     });
 
-    if (reportType === 'clearance' && viewMode !== 'partyWise') {
+    if ((reportType === 'clearance' || reportType === 'adminFreight') && viewMode !== 'partyWise') {
       doc.addPage();
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
@@ -2381,7 +2531,7 @@ const DetailedReport = () => {
           )}
 
           {/* 3. Summary Button */}
-          {reportType === 'clearance' && (
+          {(reportType === 'clearance' || reportType === 'adminFreight') && (
             <Button
               variant="outlined"
               startIcon={<TableViewIcon fontSize="small" sx={{ color: '#1976d2' }} />}
@@ -2592,64 +2742,22 @@ const DetailedReport = () => {
             </MenuItem>
           </Menu>
         </Box>
-        {/* Summary Dialog */}
-        <Dialog open={summaryOpen} onClose={() => setSummaryOpen(false)} maxWidth="md" fullWidth>
-          <DialogTitle sx={{ fontWeight: 'bold', background: 'linear-gradient(90deg, #fdf6f0 0%, #e3f2fd 100%)' }}>
-            Summary - {months.find(m => m.value === month)?.label} {year}
-          </DialogTitle>
-          <DialogContent sx={{ background: '#fff' }}>
-            <TableContainer sx={{ mb: 4 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: '#f57c00' }}>By Location</Typography>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#ffe0b2', color: '#333' }}>Particulars</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#ffe0b2', color: '#333' }}>20</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#ffe0b2', color: '#333' }}>40</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#ffe0b2', color: '#333' }}>TEUS</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {generateSummaryRows().map((row, idx) => (
-                    <TableRow key={idx} sx={{ background: row.location === 'LCL JOBS' ? '#e3f2fd' : (row.location === 'TOTAL' ? '#fff3e0' : undefined) }}>
-                      <TableCell align="center" sx={{ fontWeight: (row.location === 'LCL JOBS' || row.location === 'TOTAL') ? 'bold' : 'normal' }}>{row.location}</TableCell>
-                      <TableCell align="center">{row.count20}</TableCell>
-                      <TableCell align="center">{row.count40}</TableCell>
-                      <TableCell align="center">{row.teus}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            <TableContainer>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: '#0288d1' }}>By Exporter</Typography>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#e1f5fe', color: '#333' }}>Exporter Name</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#e1f5fe', color: '#333' }}>20</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#e1f5fe', color: '#333' }}>40</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', background: '#e1f5fe', color: '#333' }}>TEUS</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {generateExporterSummaryRows().map((row, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell align="left" sx={{ fontSize: '0.75rem' }}>{row.exporter}</TableCell>
-                      <TableCell align="center">{row.count20}</TableCell>
-                      <TableCell align="center">{row.count40}</TableCell>
-                      <TableCell align="center">{row.teus}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setSummaryOpen(false)} color="primary" variant="contained">Close</Button>
-          </DialogActions>
-        </Dialog>
+        {/* Summary Comparison & Analytics Modal */}
+        <SummaryComparisonModal
+          open={summaryOpen}
+          onClose={() => setSummaryOpen(false)}
+          currentYear={year}
+          currentMonth={String(month)}
+          years={years}
+          selectedBranch={selectedBranch}
+          branchOptions={BRANCH_OPTIONS}
+          allowedCustomHouses={allowedCustomHouses}
+          isSrManager={isSrManager}
+          gradeFilter={gradeFilter}
+          reportType={reportType}
+          initialData={data}
+          initialDetailedRows={detailedRows}
+        />
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexDirection: isMobile ? 'column' : 'row' }}>
           <Typography

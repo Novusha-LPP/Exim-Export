@@ -508,6 +508,592 @@ const movementTypeOptions = [
   { value: "AIR", label: "AIR" },
 ];
 
+// --- UI UX Premium Themes ---
+const statusThemes = {
+  "Pending": { bg: "#f8fafc", border: "#94a3b8", text: "#475569", light: "#f1f5f9" },
+  "SB Filed": { bg: "#f0f9ff", border: "#0ea5e9", text: "#0369a1", light: "#e0f2fe" },
+  "L.E.O": { bg: "#fff1f2", border: "#f43f5e", text: "#be123c", light: "#ffe4e6" },
+  "Container HO": { bg: "#f0fdf4", border: "#22c55e", text: "#15803d", light: "#dcfce7" },
+  "File Handover to IATA": { bg: "#f0fdf4", border: "#22c55e", text: "#15803d", light: "#dcfce7" },
+  "Rail Out": { bg: "#f5f3ff", border: "#8b5cf6", text: "#6d28d9", light: "#ede9fe" },
+  "Departure": { bg: "#f5f3ff", border: "#8b5cf6", text: "#6d28d9", light: "#ede9fe" },
+  "Send for Billing": { bg: "#fdf2f8", border: "#ec4899", text: "#be185d", light: "#fce7f3" },
+  "Billing Pending": { bg: "#fff7ed", border: "#f59e0b", text: "#b45309", light: "#ffedd5" },
+  "Billing Done": { bg: "#f0fdfa", border: "#14b8a6", text: "#0f766e", light: "#ccfbf1" },
+  "Completed": { bg: "#f1f5f9", border: "#64748b", text: "#334155", light: "#e2e8f0" },
+  "default": { bg: "transparent", border: "#e5e7eb", text: "#374151", light: "#f9fafb" }
+};
+
+const getStatusTheme = (statusValue) => {
+  return statusThemes[statusValue] || statusThemes["default"];
+};
+
+const getStatusColor = (statusValue) => getStatusTheme(statusValue).bg;
+
+const buildShippingLineUrls = (num, containerFirst = "") => ({
+  MSC: "https://www.msc.com/en/track-a-shipment",
+  "M S C": "https://www.msc.com/en/track-a-shipment",
+  "MSC LINE": "https://www.msc.com/en/track-a-shipment",
+  "Maersk Line": `https://www.maersk.com/tracking/${num}`,
+  "CMA CGM AGENCIES INDIA PVT. LTD": "https://www.cma-cgm.com/ebusiness/tracking/search",
+  "Hapag-Lloyd": `https://www.hapag-lloyd.com/en/online-business/track/track-by-booking-solution.html?booking=${num}`,
+  "Trans Asia": `http://182.72.192.230/TASFREIGHT/AppTasnet/ContainerTracking.aspx?&containerno=${containerFirst}&booking=${num}`,
+  "ONE LINE": "https://ecomm.one-line.com/one-ecom/manage-shipment/cargo-tracking",
+  HMM: "https://www.hmm21.com/e-service/general/trackNTrace/TrackNTrace.do",
+  HYUNDI: "https://www.hmm21.com/e-service/general/trackNTrace/TrackNTrace.do",
+  "Cosco Container Lines": "https://elines.coscoshipping.com/ebusiness/cargotracking",
+  COSCO: "https://elines.coscoshipping.com/ebusiness/cargotracking",
+  "Unifeeder Agencies India Pvt Ltd": num
+    ? `https://www.unifeeder.cargoes.com/tracking?ID=${num.slice(0, 3)}%2F${num.slice(3, 6)}%2F${num.slice(6, 8)}%2F${num.slice(8)}`
+    : "#",
+  UNIFEEDER: num
+    ? `https://www.unifeeder.cargoes.com/tracking?ID=${num.slice(0, 3)}%2F${num.slice(3, 6)}%2F${num.slice(6, 8)}%2F${num.slice(8)}`
+    : "#",
+});
+
+const isoCodeToType = {
+  // 20ft
+  "2000": "20 DRY",
+  "2054": "20 ODC",
+  "2200": "20 GP",
+  "2210": "20 VENT",
+  "2220": "20 HC",
+  "2230": "20 RF",
+  "2250": "20 OT",
+  "2260": "20 OS",
+  "2270": "20 TANK",
+  "2276": "20 TANK",
+  "2263": "20 FLAT",
+  "2510": "20 HC",
+  "2530": "20 HCRF",
+  "2550": "20 OTHC",
+  // 40ft
+  "4210": "40 VENT",
+  "4230": "40 RF",
+  "4250": "40 OT",
+  "4260": "40 OS",
+  "4270": "40 TANK",
+  "4310": "40 GP",
+  "4351": "40 OT",
+  "4500": "40 HC",
+  "4510": "40 VENT HC",
+  "4530": "40 RF HC",
+  "4532": "40 RF",
+  "4550": "40 HC OT",
+  // 45ft
+  "9500": "45 HC",
+  "9510": "45 VENT HC",
+  "9530": "45 RF HC",
+};
+
+const getContainerSizeLabel = (value) => {
+  const raw = (value || "").toString().toUpperCase().trim();
+  if (!raw) return "";
+
+  if (isoCodeToType[raw]) {
+    return isoCodeToType[raw];
+  }
+
+  if (/^[2]\d{3}$/.test(raw)) return "20";
+  if (/^[4]\d{3}$/.test(raw)) return "40";
+  if (/^[9]\d{3}$/.test(raw)) return "45";
+
+  let label = raw;
+  label = label.replace(/STANDARD DRY/g, "STD");
+  label = label.replace(/STANDARD/g, "STD");
+  label = label.replace(/COLLAPSIBLE FLAT RACK/g, "CFR");
+  label = label.replace(/FLAT RACK/g, "FR");
+  label = label.replace(/HIGH CUBE/g, "HC");
+  label = label.replace(/OPEN TOP/g, "OT");
+  label = label.replace(/HARD TOP/g, "HT");
+  label = label.replace(/REEFER/g, "RF");
+  return label;
+};
+
+const getJobScrollAndEgmInfo = (job) => {
+  const dbkInfoList = [];
+  const rosctlInfoList = [];
+
+  if (Array.isArray(job.invoices)) {
+    job.invoices.forEach((inv) => {
+      if (Array.isArray(inv.products)) {
+        inv.products.forEach((prod) => {
+          if (Array.isArray(prod.drawbackDetails)) {
+            prod.drawbackDetails.forEach((dbk) => {
+              if (dbk.drawback_scroll_no) {
+                const exists = dbkInfoList.some(
+                  (item) => item.no === dbk.drawback_scroll_no
+                );
+                if (!exists) {
+                  dbkInfoList.push({
+                    no: dbk.drawback_scroll_no,
+                    date: dbk.drawback_scroll_date,
+                  });
+                }
+              }
+              if (dbk.rosctl_scroll_no) {
+                const exists = rosctlInfoList.some(
+                  (item) => item.no === dbk.rosctl_scroll_no
+                );
+                if (!exists) {
+                  rosctlInfoList.push({
+                    no: dbk.rosctl_scroll_no,
+                    date: dbk.rosctl_scroll_date,
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+
+  if (job.drawback_scroll_no && !dbkInfoList.some((item) => item.no === job.drawback_scroll_no)) {
+    dbkInfoList.push({
+      no: job.drawback_scroll_no,
+      date: job.drawback_scroll_date,
+    });
+  }
+
+  if (job.rosctl_scroll_no && !rosctlInfoList.some((item) => item.no === job.rosctl_scroll_no)) {
+    rosctlInfoList.push({
+      no: job.rosctl_scroll_no,
+      date: job.rosctl_scroll_date,
+    });
+  }
+
+  return {
+    dbkScrolls: dbkInfoList,
+    rosctlScrolls: rosctlInfoList,
+    egmNo: job.egm_no,
+    egmDate: job.egm_date,
+  };
+};
+
+const QuickUploadButton = ({ job, field, uploadType = "status", idx = 0, onSuccess }) => {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const result = await uploadFileToS3(file, "export_docs");
+      const url = result.Location;
+
+      let dotPath = "";
+      let currentFiles = [];
+
+      if (uploadType === "toplevel") {
+        dotPath = field;
+        currentFiles = Array.isArray(job[field]) ? [...job[field]] : [];
+      } else if (uploadType === "section") {
+        dotPath = `operations.0.${field}.${idx}.images`;
+        const ops = job.operations?.[0] || {};
+        const section = Array.isArray(ops[field]) ? ops[field] : [];
+        const item = section[idx] || {};
+        currentFiles = Array.isArray(item.images) ? [...item.images] : [];
+      } else if (uploadType === "container") {
+        dotPath = `containers.${idx}.${field}`;
+        const container = job.containers?.[idx] || {};
+        currentFiles = Array.isArray(container[field]) ? [...container[field]] : [];
+      } else {
+        dotPath = `operations.0.statusDetails.0.${field}`;
+        const ops = job.operations?.[0] || {};
+        const status = (ops.statusDetails && ops.statusDetails[0]) || {};
+        currentFiles = Array.isArray(status[field]) ? [...status[field]] : [];
+      }
+
+      const newValue = [...currentFiles, url];
+
+      await axios.patch(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}/fields`,
+        {
+          fieldUpdates: [{ field: dotPath, value: newValue }]
+        }
+      );
+
+      if (onSuccess) onSuccess(url);
+    } catch (err) {
+      console.error("Quick upload err:", err);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <>
+      <IconButton
+        size="small"
+        onClick={(e) => {
+          e.stopPropagation();
+          fileInputRef.current?.click();
+        }}
+        disabled={uploading}
+        style={{ padding: "1px", marginLeft: "2px" }}
+        title="Quick Upload Document"
+      >
+        {uploading ? (
+          <CircularProgress size={12} style={{ color: "#16408f" }} />
+        ) : (
+          <CloudUploadIcon style={{ fontSize: "14px", color: "#16408f" }} />
+        )}
+      </IconButton>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,.webm,.ogg,.mov,.avi,.mkv,.3gp,application/pdf,image/jpeg,image/png,video/*"
+        style={{ display: "none" }}
+      />
+    </>
+  );
+};
+
+const QuickDeleteButton = ({ job, field, url, uploadType = "status", idx = 0, onSuccess }) => {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async (e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this document?")) return;
+    setDeleting(true);
+    try {
+      let dotPath = "";
+      let currentFiles = [];
+
+      let newValue = [];
+
+      if (uploadType === "toplevel") {
+        dotPath = field;
+        currentFiles = Array.isArray(job[field]) ? [...job[field]] : [];
+        newValue = currentFiles.filter(f => f !== url);
+      } else if (uploadType === "section") {
+        dotPath = `operations.0.${field}.${idx}.images`;
+        const ops = job.operations?.[0] || {};
+        const section = Array.isArray(ops[field]) ? ops[field] : [];
+        const item = section[idx] || {};
+        currentFiles = Array.isArray(item.images) ? [...item.images] : [];
+        newValue = currentFiles.filter(f => f !== url);
+      } else if (uploadType === "container") {
+        dotPath = `containers.${idx}.${field}`;
+        const container = job.containers?.[idx] || {};
+        currentFiles = Array.isArray(container[field]) ? [...container[field]] : [];
+        newValue = currentFiles.filter(f => f !== url);
+      } else if (uploadType === "custom") {
+        dotPath = `operations.0.statusDetails.0.otherDocsCustom`;
+        const ops = job.operations?.[0] || {};
+        const status = (ops.statusDetails && ops.statusDetails[0]) || {};
+        currentFiles = Array.isArray(status.otherDocsCustom) ? [...status.otherDocsCustom] : [];
+        newValue = currentFiles.filter(f => f.url !== url);
+      } else {
+        dotPath = `operations.0.statusDetails.0.${field}`;
+        const ops = job.operations?.[0] || {};
+        const status = (ops.statusDetails && ops.statusDetails[0]) || {};
+        currentFiles = Array.isArray(status[field]) ? [...status[field]] : [];
+        newValue = currentFiles.filter(f => f !== url);
+      }
+
+      await axios.patch(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}/fields`,
+        {
+          fieldUpdates: [{ field: dotPath, value: newValue }]
+        }
+      );
+
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      console.error("Quick delete err:", err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <IconButton
+      size="small"
+      onClick={(e) => handleDelete(e)}
+      disabled={deleting}
+      style={{ padding: "1px", marginLeft: "2px" }}
+      title="Delete Document"
+    >
+      {deleting ? (
+        <CircularProgress size={12} style={{ color: "#dc2626" }} />
+      ) : (
+        <DeleteIcon style={{ fontSize: "14px", color: "#dc2626" }} />
+      )}
+    </IconButton>
+  );
+};
+
+const CustomDocCreatorItem = ({ job, onSuccess }) => {
+  const [customName, setCustomName] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleUploadClick = (e) => {
+    e.stopPropagation();
+    if (!customName.trim()) {
+      alert("Please enter a document name first.");
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const result = await uploadFileToS3(file, "export_docs");
+      const url = result.Location;
+
+      const ops = job.operations?.[0] || {};
+      const status = (ops.statusDetails && ops.statusDetails[0]) || {};
+      const currentItems = Array.isArray(status.otherDocsCustom) ? [...status.otherDocsCustom] : [];
+
+      const newItem = {
+        name: customName.trim(),
+        url: url,
+        uploadedAt: new Date()
+      };
+
+      const dotPath = "operations.0.statusDetails.0.otherDocsCustom";
+      const newValue = [...currentItems, newItem];
+
+      const res = await axios.patch(
+        `${import.meta.env.VITE_API_STRING}/${encodeURIComponent(job.job_no)}/fields`,
+        {
+          fieldUpdates: [{ field: dotPath, value: newValue }]
+        }
+      );
+
+      setCustomName("");
+      if (onSuccess) onSuccess(res.data.data);
+    } catch (err) {
+      console.error("Custom doc upload err:", err);
+      alert("Failed to upload custom document.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      style={{
+        padding: '6px 12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        borderTop: '1px solid #e2e8f0',
+        backgroundColor: '#f8fafc'
+      }}
+    >
+      <input
+        type="text"
+        placeholder="Custom doc name..."
+        value={customName}
+        onChange={(e) => setCustomName(e.target.value)}
+        style={{
+          flex: 1,
+          fontSize: '12px',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          border: '1px solid #cbd5e1',
+          outline: 'none',
+          minWidth: 0
+        }}
+      />
+      <IconButton
+        size="small"
+        onClick={handleUploadClick}
+        disabled={uploading}
+        style={{ padding: "4px" }}
+        title="Upload Custom Document"
+      >
+        {uploading ? (
+          <CircularProgress size={16} />
+        ) : (
+          <CloudUploadIcon style={{ fontSize: "16px", color: "#0284c7" }} />
+        )}
+      </IconButton>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.mp4,.webm,.ogg,.mov,.avi,.mkv,.3gp,application/pdf,image/jpeg,image/png,video/*"
+        style={{ display: "none" }}
+      />
+    </div>
+  );
+};
+
+// Helper to determine current Indian financial year (starts April)
+const getCurrentFinancialYear = () => {
+  const today = new Date();
+  const month = today.getMonth(); // 0-based: 0=Jan, 3=April
+  const year = today.getFullYear();
+  if (month < 3) {
+    return `${(year - 1).toString().slice(-2)}-${year.toString().slice(-2)}`;
+  }
+  return `${year.toString().slice(-2)}-${(year + 1).toString().slice(-2)}`;
+};
+
+const PulseOverviewHover = ({ exporter, year }) => {
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const fetchPulse = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_STRING}/export-analytics/pulse`, {
+          params: { exporter, year: year || undefined }
+        });
+        if (active && response.data.success) {
+          setSummary(response.data.summary);
+        }
+      } catch (error) {
+        console.error("Pulse fetch error in hover overview:", error);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchPulse();
+    return () => { active = false; };
+  }, [exporter, year]);
+
+  if (loading || !summary) {
+    return (
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '200px', bgcolor: '#0b0f19', color: '#94a3b8', borderRadius: '8px', border: '1px solid #1e293b' }}>
+        <CircularProgress size={16} sx={{ color: '#f87171', mr: 1.5 }} />
+        <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.5px' }}>FETCHING OVERVIEW...</span>
+      </Box>
+    );
+  }
+
+  const getSeverity = (title, value) => {
+    if (title === "CREATED TODAY") {
+      return value > 0 ? 'green' : 'amber';
+    }
+    return value === 0 ? 'green' : value <= 10 ? 'amber' : 'red';
+  };
+
+  const getSeverityColor = (severity) => {
+    if (severity === 'green') return '#10b981';
+    if (severity === 'amber') return '#f59e0b';
+    return '#ef4444';
+  };
+
+  const getSeverityBg = (severity) => {
+    if (severity === 'green') return 'rgba(16, 185, 129, 0.1)';
+    if (severity === 'amber') return 'rgba(245, 158, 11, 0.1)';
+    return 'rgba(239, 68, 68, 0.1)';
+  };
+
+  const getSeverityGlow = (severity) => {
+    if (severity === 'green') return '#34d399';
+    if (severity === 'amber') return '#fbbf24';
+    return '#f87171';
+  };
+
+  const getStatusLabel = (severity) => {
+    if (severity === 'green') return '🏆 ALL CLEAR';
+    if (severity === 'amber') return '⚡ PENDING';
+    return '🚨 ACTION REQUIRED';
+  };
+
+  const metrics = [
+    { title: "PENDING JOBS", value: summary.pending ?? summary.totalPending },
+    { title: "HANDOVER PENDING", value: summary.handover },
+    { title: "BILLING PENDING", value: summary.billing },
+    { title: "OPERATIONS PENDING", value: summary.ops },
+    { title: "CREATED TODAY", value: summary.createdToday },
+  ];
+
+  return (
+    <Box sx={{
+      p: 2.5,
+      bgcolor: '#0a0f1d',
+      borderRadius: '12px',
+      border: '1px solid #1e293b',
+      boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
+      width: '450px',
+      fontFamily: '"Outfit", "Roboto", sans-serif'
+    }}>
+      <Box sx={{ mb: 2, textAlign: 'center' }}>
+        <Typography sx={{ fontSize: '13px', fontWeight: 800, color: '#f3f4f6', letterSpacing: '1px', mb: 0.2 }}>
+          ALVISION — PULSE OVERVIEW
+        </Typography>
+        <Typography sx={{ fontSize: '10px', color: '#64748b', letterSpacing: '0.5px' }}>
+          Real-time monitoring across all modules
+        </Typography>
+      </Box>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
+        {metrics.map((m, idx) => {
+          const severity = getSeverity(m.title, m.value);
+          const color = getSeverityColor(severity);
+          const bg = getSeverityBg(severity);
+          const glow = getSeverityGlow(severity);
+
+          const gridColumn = idx === 4 ? 'span 2' : 'span 1';
+
+          return (
+            <Box key={m.title} sx={{
+              gridColumn,
+              p: 1.5,
+              bgcolor: 'rgba(17, 24, 39, 0.7)',
+              borderRadius: '8px',
+              border: `1.5px solid rgba(30, 41, 59, 0.5)`,
+              borderTop: `3px solid ${color}`,
+              boxShadow: `0 4px 15px rgba(0, 0, 0, 0.25)`,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <Typography sx={{ fontSize: '9px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.5px', mb: 0.8, textAlign: 'center' }}>
+                {m.title}
+              </Typography>
+              <Typography sx={{
+                fontSize: '28px',
+                fontWeight: 900,
+                color: glow,
+                textShadow: `0 0 10px ${color}40`,
+                lineHeight: 1,
+                mb: 1
+              }}>
+                {m.value}
+              </Typography>
+              <Box sx={{
+                px: 1,
+                py: 0.2,
+                bgcolor: bg,
+                borderRadius: '4px',
+                border: `1px solid ${color}30`
+              }}>
+                <Typography sx={{ fontSize: '7.5px', fontWeight: 700, color, letterSpacing: '0.3px' }}>
+                  {getStatusLabel(severity)}
+                </Typography>
+              </Box>
+            </Box>
+          );
+        })}
+      </Box>
+    </Box>
+  );
+};
+
 const ExportJobsTable = () => {
   const { user } = useContext(UserContext);
   const isAdmin = user?.role === "Admin";
@@ -581,7 +1167,7 @@ const ExportJobsTable = () => {
       return "Pending";
     }
     // Default module (Jobs, Documentation, ESanchit)
-    const allowedDefaultTabs = ["Pending", "Booking Pending", "Handover Pending", "Prepare for Billing", "Sent for Billing", "club-jobs", "Completed", "Cancelled"];
+    const allowedDefaultTabs = ["Pending", "Booking Pending", "Handover Pending", "Rail Out Pending", "Prepare for Billing", "Sent for Billing", "club-jobs", "Completed", "Cancelled"];
     if (allowedDefaultTabs.includes(saved)) return saved;
     if (saved === "Op Completed" || saved === "Billing Ready") return "Completed";
     return "Pending";
@@ -722,7 +1308,7 @@ const ExportJobsTable = () => {
     if (!isChargesModule && activeTab !== "General Jobs" && activeTab !== "general-jobs") {
       baseJobs = baseJobs.filter(job => !job.isGeneralJob && !String(job.job_no || "").toUpperCase().startsWith("GEN/"));
     }
-    const isPendingOrSentTab = ["Pending", "Booking Pending", "Handover Pending", "Prepare for Billing", "Sent for Billing", "club-jobs"].includes(activeTab);
+    const isPendingOrSentTab = ["Pending", "Booking Pending", "Handover Pending", "Rail Out Pending", "Prepare for Billing", "Sent for Billing", "club-jobs"].includes(activeTab);
     if (isPendingOrSentTab) {
       baseJobs = baseJobs.filter(job => {
         const isCompleted = job.detailedStatus === "Billing Done" ||
@@ -878,7 +1464,13 @@ const ExportJobsTable = () => {
   const [selectedBranch, setSelectedBranch] = useState(initialBranch);
   const [selectedMonth, setSelectedMonth] = useState(savedFilters.selectedMonth || "");
   const [selectedExporterFilter, setSelectedExporterFilter] = useState(savedFilters.selectedExporterFilter || "");
-  const [selectedDetailedStatus, setSelectedDetailedStatus] = useState(Array.isArray(savedFilters.selectedDetailedStatus) ? savedFilters.selectedDetailedStatus : savedFilters.selectedDetailedStatus ? [savedFilters.selectedDetailedStatus] : []);
+  const [selectedDetailedStatus, setSelectedDetailedStatus] = useState(
+    Array.isArray(savedFilters.selectedDetailedStatus)
+      ? savedFilters.selectedDetailedStatus.filter(s => s !== "Departure" && s !== "File Handover to IATA")
+      : savedFilters.selectedDetailedStatus && savedFilters.selectedDetailedStatus !== "Departure" && savedFilters.selectedDetailedStatus !== "File Handover to IATA"
+        ? [savedFilters.selectedDetailedStatus]
+        : []
+  );
   const [selectedCustomHouse, setSelectedCustomHouse] = useState(savedFilters.selectedCustomHouse || "");
   const [selectedJobOwner, setSelectedJobOwner] = useState(savedFilters.selectedJobOwner || "");
   const [selectedGoodsStuffedAt, setSelectedGoodsStuffedAt] = useState(savedFilters.selectedGoodsStuffedAt || "");
@@ -2656,6 +3248,25 @@ const ExportJobsTable = () => {
                 </span>
               </button>
             )}
+            {!isChargesModule && (
+              <button
+                style={
+                  activeTab === "Rail Out Pending" ? { ...s.tab, ...s.activeTab } : s.tab
+                }
+                onClick={() => setActiveTab("Rail Out Pending")}
+              >
+                Rail Out Pending{" "}
+                <span
+                  style={
+                    activeTab === "Rail Out Pending"
+                      ? { ...s.badge, ...s.activeBadge }
+                      : s.badge
+                  }
+                >
+                  {tabCounts["Rail Out Pending"] ?? 0}
+                </span>
+              </button>
+            )}
             {!isOperationModule && !isChargesModule && (
               <button
                 style={
@@ -3103,7 +3714,7 @@ const ExportJobsTable = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedDetailedStatus([
-                          "Pending", "SB Filed", "L.E.O", "Container HO", "File Handover to IATA", "Rail Out", "Departure", "Send for Billing", "Billing Pending", "Billing Done"
+                          "Pending", "SB Filed", "L.E.O", "Container HO", "Rail Out", "Send for Billing", "Billing Pending", "Billing Done"
                         ]);
                         setPage(1);
                       }}
@@ -3127,9 +3738,7 @@ const ExportJobsTable = () => {
                     "SB Filed",
                     "L.E.O",
                     "Container HO",
-                    "File Handover to IATA",
                     "Rail Out",
-                    "Departure",
                     "Send for Billing",
                     "Billing Pending",
                     "Billing Done",

@@ -43,6 +43,8 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import TableViewIcon from '@mui/icons-material/TableView';
+import SummaryComparisonModal from "./SummaryComparisonModal.jsx";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid, Legend, ResponsiveContainer
 } from 'recharts';
@@ -191,6 +193,37 @@ const TrendChart = ({ trendData }) => {
   );
 };
 
+const CATEGORIES = [
+  { value: "all", label: "All Job Types" },
+  { value: "Import-Sea", label: "Import Sea" },
+  { value: "Import-Air", label: "Import Air" },
+  { value: "Export-Sea", label: "Export Sea" },
+  { value: "Export-Air", label: "Export Air" },
+];
+
+const YEARS = [
+  { value: "26-27", label: "26-27" },
+  { value: "25-26", label: "25-26" },
+  { value: "24-25", label: "24-25" },
+  { value: "23-24", label: "23-24" },
+  { value: "22-23", label: "22-23" },
+];
+
+const MONTHS = [
+  { value: "1", label: "January" },
+  { value: "2", label: "February" },
+  { value: "3", label: "March" },
+  { value: "4", label: "April" },
+  { value: "5", label: "May" },
+  { value: "6", label: "June" },
+  { value: "7", label: "July" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+];
+
 const FreightForwardingMonthlyReport = () => {
   const theme = useTheme();
   const [year, setYear] = useState("26-27");
@@ -203,40 +236,14 @@ const FreightForwardingMonthlyReport = () => {
   const [sortDirection, setSortDirection] = useState('desc');
   const [shipmentType, setShipmentType] = useState("all");
   const [downloading, setDownloading] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [popperOpen, setPopperOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedRowData, setSelectedRowData] = useState(null);
 
-  const categories = [
-    { value: "all", label: "All Job Types" },
-    { value: "Import-Sea", label: "Import Sea" },
-    { value: "Import-Air", label: "Import Air" },
-    { value: "Export-Sea", label: "Export Sea" },
-    { value: "Export-Air", label: "Export Air" },
-  ];
-
-  const years = [
-    { value: "26-27", label: "26-27" },
-    { value: "25-26", label: "25-26" },
-    { value: "24-25", label: "24-25" },
-    { value: "23-24", label: "23-24" },
-    { value: "22-23", label: "22-23" },
-  ];
-
-  const months = [
-    { value: "1", label: "January" },
-    { value: "2", label: "February" },
-    { value: "3", label: "March" },
-    { value: "4", label: "April" },
-    { value: "5", label: "May" },
-    { value: "6", label: "June" },
-    { value: "7", label: "July" },
-    { value: "8", label: "August" },
-    { value: "9", label: "September" },
-    { value: "10", label: "October" },
-    { value: "11", label: "November" },
-    { value: "12", label: "December" },
-  ];
+  const categories = CATEGORIES;
+  const years = YEARS;
+  const months = MONTHS;
 
   const generateMockTrendData = (row) => {
     const currentValues = {
@@ -623,6 +630,28 @@ const FreightForwardingMonthlyReport = () => {
               </Button>
 
               <Button
+                variant="outlined"
+                startIcon={<TableViewIcon fontSize="small" sx={{ color: '#1976d2' }} />}
+                onClick={() => setSummaryOpen(true)}
+                size="small"
+                sx={{
+                  borderRadius: 1.5,
+                  height: 38,
+                  fontWeight: 'bold',
+                  borderColor: '#1976d2',
+                  color: '#1976d2',
+                  background: 'linear-gradient(135deg, #e3f2fd 0%, #fdf6f0 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #bbdefb 0%, #ffe0b2 100%)',
+                    borderColor: '#1976d2',
+                    color: '#1565c0'
+                  }
+                }}
+              >
+                Summary
+              </Button>
+
+              <Button
                 variant="contained"
                 color="success"
                 size="small"
@@ -862,6 +891,19 @@ const FreightForwardingMonthlyReport = () => {
           </Fade>
         </>
       )}
+
+      {/* Summary Comparison & Analytics Modal */}
+      <SummaryComparisonModal
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        currentYear={year}
+        currentMonth={String(month)}
+        years={years}
+        selectedBranch="ALL"
+        reportType="freightForwarding"
+        shipmentType={shipmentType}
+      />
+
 
       {/* Popper containing Recharts Trend Analysis */}
       <Popper

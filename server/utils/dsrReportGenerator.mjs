@@ -476,6 +476,35 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
           { "operations.statusDetails": { $size: 0 } }
         ]
       });
+    } else if (statusLower === "rail out pending") {
+      filter.$and.push({
+        $and: [
+          {
+            $or: [
+              { status: { $regex: "^pending$", $options: "i" } },
+              { status: { $exists: false } },
+              { status: null },
+              { status: "" },
+            ],
+          },
+          { detailedStatus: { $ne: "Billing Done" } },
+        ],
+        "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
+        $and: [
+          {
+            $or: [
+              { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+              { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: false } }
+            ]
+          },
+          {
+            $or: [
+              { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+              { "operations.statusDetails.railOutReachedDate": { $exists: false } }
+            ]
+          }
+        ]
+      });
     } else if (statusLower === "prepare for billing" || statusLower === "op completed" || statusLower === "op-completed") {
       filter.$and.push({
         $and: [
@@ -1103,6 +1132,35 @@ export const generateTableDSRBuffer = async (
         $or: [
           { "operations.statusDetails.handoverForwardingNoteDate": { $in: [null, ""] } },
           { "operations.statusDetails": { $size: 0 } }
+        ]
+      });
+    } else if (statusLower === "rail out pending") {
+      filter.$and.push({
+        $and: [
+          {
+            $or: [
+              { status: { $regex: "^pending$", $options: "i" } },
+              { status: { $exists: false } },
+              { status: null },
+              { status: "" },
+            ],
+          },
+          { detailedStatus: { $ne: "Billing Done" } },
+        ],
+        "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
+        $and: [
+          {
+            $or: [
+              { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $in: [null, ""] } },
+              { "operations.statusDetails.handoverConcorTharSanganaRailRoadDate": { $exists: false } }
+            ]
+          },
+          {
+            $or: [
+              { "operations.statusDetails.railOutReachedDate": { $in: [null, ""] } },
+              { "operations.statusDetails.railOutReachedDate": { $exists: false } }
+            ]
+          }
         ]
       });
     } else if (statusLower === "prepare for billing" || statusLower === "op completed" || statusLower === "op-completed") {

@@ -238,6 +238,37 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         ],
         job_no: { $ne: jobData.job_no }
       }).lean();
+
+      // Fallback shared shipping/vessel/booking details from child jobs when parent job has them empty
+      const sharedFields = [
+        "shipping_line_airline",
+        "vessel_name",
+        "booking_no",
+        "cut_off_date",
+        "booking_date",
+        "gateway_port",
+        "port_of_loading",
+        "port_of_discharge",
+        "destination_port",
+        "destination_country",
+        "discharge_country",
+        "voyage_no",
+        "sailing_date",
+        "forwarder",
+        "goods_stuffed_at",
+        "stuffing_seal_type",
+        "factory_address"
+      ];
+      for (const field of sharedFields) {
+        if (!jobData[field] || String(jobData[field]).trim() === "") {
+          for (const child of childJobs) {
+            if (child[field] && String(child[field]).trim() !== "") {
+              jobData[field] = child[field];
+              break;
+            }
+          }
+        }
+      }
       
       const mergedContainers = [];
 

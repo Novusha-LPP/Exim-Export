@@ -45,16 +45,6 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       .replace(/\//g, ".");
   };
 
-  const formatDateForApi = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "";
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
   // Convert logo on mount
   React.useEffect(() => {
     const loadLogo = async () => {
@@ -233,13 +223,34 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       ? `${user.first_name || user.user_first_name || ""} ${user.last_name || user.user_last_name || ""}`.trim()
       : user.username || "System User").toUpperCase();
 
-    const vesselName = primaryData.vesselName || primaryData.vessel_name || "";
-    const Bookingno = primaryData.Bookingno || primaryData.booking_no || "";
+    // Helper to resolve fields from primaryData or any clubbed job in the pool
+    const findClubField = (...fieldKeys) => {
+      for (const key of fieldKeys) {
+        if (primaryData?.[key] && String(primaryData[key]).trim()) {
+          return primaryData[key];
+        }
+      }
+      if (Array.isArray(clubbedJobsList)) {
+        for (const child of clubbedJobsList) {
+          if (!child) continue;
+          for (const key of fieldKeys) {
+            if (child[key] && String(child[key]).trim()) {
+              return child[key];
+            }
+          }
+        }
+      }
+      return "";
+    };
+
+    const vesselName = findClubField("vesselName", "vessel_name");
+    const Bookingno = findClubField("Bookingno", "booking_no");
     const agentCha = "SURAJ FORWARDERS & SHIPPING AGENCIES";
-    const cutOffDate = formatDate(primaryData.cutOffDate || primaryData.cut_off_date || primaryData.booking_date);
-    const dischargeCountry = primaryData.dischargeCountry || primaryData.discharge_country || "";
-    const exporterAddress = primaryData.exporterAddress || primaryData.exporter || "";
-    const gatewayPort = primaryData.gatewayPort || primaryData.gateway_port || primaryData.port_of_loading || "";
+    const rawCutOff = findClubField("cutOffDate", "cut_off_date", "booking_date");
+    const cutOffDate = formatDate(rawCutOff);
+    const dischargeCountry = findClubField("dischargeCountry", "discharge_country", "destination_country");
+    const exporterAddress = findClubField("exporterAddress", "exporter_address", "exporter");
+    const gatewayPort = findClubField("gatewayPort", "gateway_port", "port_of_loading");
     const aggregatedContainers = getAggregatedContainers(primaryData, isClubActive, clubbedJobsList);
     const allSbNos = [...new Set(
       (primaryData.mergedContainers || primaryData.containers || [])
@@ -249,9 +260,10 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         .filter(Boolean)
     )];
     const shippingBillNo = allSbNos.length > 0 ? allSbNos.join(", ") : (primaryData.shippingBillNo || primaryData.sb_no || "");
-    const portOfDischarge = primaryData.portOfDischarge || primaryData.port_of_discharge || "";
-    const stuffingType = primaryData.stuffingType || (primaryData.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS) / FACTORY");
-    const shippingLineName = primaryData.shippingLineName || primaryData.shipping_line_airline || "";
+    const portOfDischarge = findClubField("portOfDischarge", "port_of_discharge", "destination_port");
+    const rawStuffing = findClubField("stuffingType", "goods_stuffed_at");
+    const stuffingType = (rawStuffing && String(rawStuffing).toLowerCase() === "factory") ? "FACTORY" : "ICD (CFS) / FACTORY";
+    const shippingLineName = findClubField("shippingLineName", "shipping_line_airline", "shipper");
     
     const allFobVals = (primaryData.mergedContainers || [])
       .map(c => Number(c._sourceFobValue || 0))
@@ -309,7 +321,7 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         : (c.shippingBillNo ? `${c.shippingBillNo}<br/><br/>dt ${formatDate(c.sb_date)}` : "");
 
       containersRows += `
-        <tr style="height: 60px;">
+        <tr style="min-height: 40px;">
           <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${i + 1}</td>
           <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${c.containerNo || ""}</td>
           <td style="border: 1px solid black; padding: 5px; text-align: center; font-size: 10px; font-weight: bold; vertical-align: top;">${c.type?.match(/\d+/)?.[0] || "20"}</td>
@@ -417,44 +429,44 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
             <col style="width: 12%;">
           </colgroup>
           <!-- ROW 1: Logo & Header Information -->
-          <tr style="height: 100px;">
+          <tr style="min-height: 105px; height: 105px;">
             <td colspan="4" style="border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle;">
               <img src="${logo}" alt="Logo" style="max-width: 150px; height: auto;" />
             </td>
-            <td colspan="4" style="border: 1px solid black; padding: 5px; vertical-align: bottom; text-align: center;">
-              <div style="font-weight: bold; font-size: 14px; margin-bottom: 15px;">HPCSL CONSIGNMENT NOTE</div>
+            <td colspan="4" style="border: 1px solid black; padding: 5px; vertical-align: middle; text-align: center;">
+              <div style="font-weight: bold; font-size: 14px; letter-spacing: 0.5px;">HPCSL CONSIGNMENT NOTE</div>
             </td>
             <td colspan="2" style="border: 1px solid black; padding: 0; vertical-align: top;">
-              <table style="width: 100%; height: 100%; margin: 0; border: none; border-collapse: collapse; table-layout: fixed;">
-                <tr><td colspan="2" style="border-bottom: 1px solid black; font-weight: bold; font-size: 10px; text-align: center; background: #eee; height: 20px; vertical-align: middle;">HPCSL USE</td></tr>
-                <tr><td colspan="2" style="border-bottom: 1px solid black; font-size: 10px; padding: 4px; vertical-align: middle;">CCN No. & Date :</td></tr>
-                <tr><td colspan="2" style="border-bottom: 1px solid black; font-size: 10px; padding: 4px; vertical-align: middle;">To :</td></tr>
-                <tr><td colspan="2" style="border-bottom: 1px solid black; font-size: 10px; padding: 4px; vertical-align: middle;">Rail Operator (Please Specify)</td></tr>
+              <table style="width: 100%; height: 100%; margin: 0; border: none; border-collapse: collapse; table-layout: fixed; box-sizing: border-box; line-height: 1.1;">
+                <tr><td colspan="2" style="border-bottom: 1px solid black; font-weight: bold; font-size: 9px; text-align: center; background: #eee; height: 18px; padding: 2px 4px; vertical-align: middle;">HPCSL USE</td></tr>
+                <tr><td colspan="2" style="border-bottom: 1px solid black; font-size: 9px; padding: 3px 4px; vertical-align: middle;">CCN No. & Date :</td></tr>
+                <tr><td colspan="2" style="border-bottom: 1px solid black; font-size: 9px; padding: 3px 4px; vertical-align: middle;">To :</td></tr>
+                <tr><td colspan="2" style="border-bottom: 1px solid black; font-size: 9px; padding: 3px 4px; vertical-align: middle;">Rail Operator (Please Specify)</td></tr>
                 <tr>
-                  <td style="border-right: 1px solid black; width: 50%; font-weight: bold; font-size: 10px; text-align: center; vertical-align: middle;">HPCSL</td>
-                  <td style="width: 50%;"></td>
+                  <td style="border-right: 1px solid black; width: 50%; font-weight: bold; font-size: 9px; text-align: center; padding: 3px 0; vertical-align: middle;">HPCSL</td>
+                  <td style="width: 50%; padding: 3px 0;"></td>
                 </tr>
               </table>
             </td>
           </tr>
 
           <!-- ROW 2: Destination and Invoice -->
-          <tr style="height: 50px;">
-            <td colspan="10" style="border: 1px solid black; padding: 5px; vertical-align: top;">
+          <tr>
+            <td colspan="10" style="border: 1px solid black; padding: 6px; vertical-align: top;">
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
-                  <td style="width: 30%; vertical-align: top; padding: 5px;">
-                    <div style="font-weight: bold; font-size: 10px;">To,</div>
-                    <div style="font-weight: bold; font-size: 10px;">The Terminal Manager,</div>
-                    <div style="font-weight: bold; font-size: 10px;">HPCSL, The Thar Dry Port, ICD-Sanand</div>
+                  <td style="width: 32%; vertical-align: top; padding: 2px 5px;">
+                    <div style="font-weight: bold; font-size: 10px; line-height: 1.3;">To,</div>
+                    <div style="font-weight: bold; font-size: 10px; line-height: 1.3;">The Terminal Manager,</div>
+                    <div style="font-weight: bold; font-size: 10px; line-height: 1.3;">HPCSL, The Thar Dry Port, ICD-Sanand</div>
                   </td>
-                  <td style="width: 40%; vertical-align: top; text-align: center; padding: 5px;">
-                     <div style="font-weight: bold; font-size: 12px; margin-bottom: 5px;">Mode By : ${statusDetails.railRoad || "RAIL"}</div>
+                  <td style="width: 28%; vertical-align: top; text-align: center; padding: 2px 5px;">
+                     <div style="font-weight: bold; font-size: 11px;">Mode By : ${statusDetails.railRoad || "RAIL"}</div>
                   </td>
-                  <td style="width: 30%; vertical-align: top; text-align: right; padding: 5px;">
-                    <div style="font-weight: bold; font-size: 11px; padding-bottom: 10px;">${invoiceInfo}</div>
-                    ${exporterRefInfo ? `<div style="font-weight: bold; font-size: 11px; padding-bottom: 10px;">${exporterRefInfo}</div>` : ""}
-                    <div style="font-weight: bold; font-size: 10px;">Cargo : Non Hazardous</div>
+                  <td style="width: 40%; vertical-align: top; text-align: right; padding: 2px 5px;">
+                    <div style="font-weight: bold; font-size: 9.5px; margin-bottom: 4px; word-break: break-word; line-height: 1.3;">${invoiceInfo}</div>
+                    ${exporterRefInfo ? `<div style="font-weight: bold; font-size: 9.5px; margin-bottom: 4px; word-break: break-word; line-height: 1.3;">${exporterRefInfo}</div>` : ""}
+                    <div style="font-weight: bold; font-size: 9.5px; line-height: 1.3;">Cargo : Non Hazardous</div>
                   </td>
                 </tr>
               </table>
@@ -462,75 +474,75 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
           </tr>
 
           <!-- ROW 3: Disclaimer -->
-          <tr style="height: 35px;">
-            <td colspan="10" style="border: 1px solid black; padding: 8px; font-size: 8px; text-align: justify; line-height: 1.4; vertical-align: middle;">
+          <tr>
+            <td colspan="10" style="border: 1px solid black; padding: 6px 8px; font-size: 8px; text-align: justify; line-height: 1.3; vertical-align: middle;">
               Please receive the under mentioned container stuffed at ICD/Factory. We accept the all Transportation and/or provision of Containers of business incidental there to have been under taken by HPCSL-THE THAR DRY PORT on the basis of their standard terms and conditions which have been read by us and understood. No servant or agent of the company has any authority to vary or waive conditions or any part there of.
             </td>
           </tr>
 
           <!-- ROW 4: Consignor and Vessel -->
-          <tr style="height: 50px;">
-            <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
-              <div style="font-size: 10px; margin-bottom: 5px;"><b>Name of Consignor (S/Line) :</b></div>
-              <div style="font-size: 11px; font-weight: bold;">${shippingLineName}</div>
+          <tr>
+            <td colspan="5" style="border: 1px solid black; padding: 6px 8px; vertical-align: top;">
+              <div style="font-size: 10px; margin-bottom: 3px;"><b>Name of Consignor (S/Line) :</b></div>
+              <div style="font-size: 11px; font-weight: bold; word-break: break-word;">${shippingLineName}</div>
             </td>
-            <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
-              <div style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">VESSEL NAME : ${vesselName}</div>
-              <div style="font-size: 11px; font-weight: bold;">BOOKING NO : ${Bookingno}</div>
+            <td colspan="5" style="border: 1px solid black; padding: 6px 8px; vertical-align: top;">
+              <div style="font-size: 11px; font-weight: bold; margin-bottom: 3px; word-break: break-word;">VESSEL NAME : ${vesselName}</div>
+              <div style="font-size: 11px; font-weight: bold; word-break: break-word;">BOOKING NO : ${Bookingno}</div>
             </td>
           </tr>
 
           <!-- ROW 5: Agent and Date -->
-          <tr style="height: 45px;">
-            <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
+          <tr>
+            <td colspan="5" style="border: 1px solid black; padding: 6px 8px; vertical-align: middle;">
               <div style="font-size: 10px;"><b>Agent/CHA :</b> ${agentCha}</div>
             </td>
-            <td colspan="3" style="border: 1px solid black; border-left: none; padding: 8px; vertical-align: top;">
+            <td colspan="3" style="border: 1px solid black; border-left: none; padding: 6px 8px; vertical-align: middle;">
               <div style="font-size: 10px;"><b>Cut-Off Date.:</b> ${cutOffDate}</div>
             </td>
-            <td colspan="2" style="border: 1px solid black; border-left: none; padding: 8px; vertical-align: top;">
-              <div style="font-size: 10px; margin-bottom: 5px;"><b>Country</b></div>
+            <td colspan="2" style="border: 1px solid black; border-left: none; padding: 6px 8px; vertical-align: middle;">
+              <div style="font-size: 10px; margin-bottom: 3px; text-align: center;"><b>Country</b></div>
               <div style="font-size: 10px; text-align: center; width: 100%; font-weight: bold;">${dischargeCountry}</div>
             </td>
           </tr>
 
           <!-- ROW 6: Exporter and Gateway Port -->
-          <tr style="height: 55px;">
-            <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
-              <div style="font-size: 10px; margin-bottom: 5px;"><b>Name and Address of Exporter :</b></div>
-              <div style="font-size: 11px; font-weight: bold;">${exporterAddress}</div>
+          <tr>
+            <td colspan="5" style="border: 1px solid black; padding: 6px 8px; vertical-align: top;">
+              <div style="font-size: 10px; margin-bottom: 3px;"><b>Name and Address of Exporter :</b></div>
+              <div style="font-size: 10.5px; font-weight: bold; word-break: break-word; line-height: 1.3;">${exporterAddress}</div>
             </td>
-            <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: middle; background-color: #FFFF00;">
+            <td colspan="5" style="border: 1px solid black; padding: 6px 8px; vertical-align: middle; background-color: #FFFF00;">
               <span style="font-size: 11px; font-weight: bold;">Gateway Port;</span>
-              <span style="font-size: 24px; font-weight: bold; margin-left: 10px;">${gatewayPort}</span>
+              <span style="font-size: 16px; font-weight: bold; margin-left: 10px;">${gatewayPort}</span>
             </td>
           </tr>
 
           <!-- ROW 7: SB No and Port of Discharge -->
-          <tr style="height: 45px;">
-            <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
-              <div style="font-size: 10px; margin-bottom: 5px;"><b>SHIPPING BILL NO.</b></div>
-              <div style="font-size: 11px; font-weight: bold;">${shippingBillNo}</div>
+          <tr>
+            <td colspan="5" style="border: 1px solid black; padding: 6px 8px; vertical-align: top;">
+              <div style="font-size: 10px; margin-bottom: 3px;"><b>SHIPPING BILL NO.</b></div>
+              <div style="font-size: 10.5px; font-weight: bold; word-break: break-word;">${shippingBillNo}</div>
             </td>
-            <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
-              <div style="font-size: 10px;"><b>Port of Discharge : ${portOfDischarge}</b></div>
+            <td colspan="5" style="border: 1px solid black; padding: 6px 8px; vertical-align: middle;">
+              <div style="font-size: 10px; font-weight: bold;">Port of Discharge : ${portOfDischarge}</div>
             </td>
           </tr>
 
           <!-- ROW 8: Stuffing and FOB -->
-          <tr style="height: 45px;">
-            <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
-              <div style="font-size: 10px; margin-bottom: 5px;"><b>Stuffing (Please Tick) F/S</b></div>
+          <tr>
+            <td colspan="5" style="border: 1px solid black; padding: 6px 8px; vertical-align: top;">
+              <div style="font-size: 10px; margin-bottom: 3px;"><b>Stuffing (Please Tick) F/S</b></div>
               <div style="font-size: 10px; font-weight: bold;">${stuffingType}</div>
             </td>
-            <td colspan="5" style="border: 1px solid black; padding: 8px; vertical-align: top;">
-              <div style="font-size: 10px;"><b>F.O.B./C.I.F. Value : ${fobvalue}</b></div>
+            <td colspan="5" style="border: 1px solid black; padding: 6px 8px; vertical-align: middle;">
+              <div style="font-size: 10px; font-weight: bold;">F.O.B./C.I.F. Value : ${fobvalue}</div>
             </td>
           </tr>
 
           <!-- ROW 9: Payment Type -->
-          <tr style="height: 35px;">
-            <td colspan="10" style="border: 1px solid black; padding: 5px; font-weight: bold; font-size: 9px; vertical-align: middle;">
+          <tr>
+            <td colspan="10" style="border: 1px solid black; padding: 5px 8px; font-weight: bold; font-size: 9px; vertical-align: middle;">
               e:LCL/FCL/ODC:Yes/No.Payment Type:PAID / TO PAY
             </td>
           </tr>
@@ -630,16 +642,34 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         ? `${user.first_name || user.user_first_name || ""} ${user.last_name || user.user_last_name || ""}`.trim()
         : user.username || "System User").toUpperCase();
 
-      const consignorName = data.exporter || "";
-      const vesselName = data.vessel_name || "";
-      const Bookingno = data.booking_no || "";
+      const findClubField = (...fieldKeys) => {
+        for (const key of fieldKeys) {
+          if (data?.[key] && String(data[key]).trim()) return data[key];
+        }
+        if (Array.isArray(fetchedClubbedJobsData)) {
+          for (const child of fetchedClubbedJobsData) {
+            if (!child) continue;
+            for (const key of fieldKeys) {
+              if (child[key] && String(child[key]).trim()) return child[key];
+            }
+          }
+        }
+        return "";
+      };
+
+      const consignorName = findClubField("exporter", "exporterAddress", "consignorName") || "";
+      const vesselName = findClubField("vessel_name", "vesselName") || "";
+      const Bookingno = findClubField("booking_no", "Bookingno") || "";
       const agentCha = "SURAJ FORWARDERS & SHIPPING AGENCIES";
-      const cutOffDate = formatDate(data.cut_off_date || data.booking_date);
-      const dischargeCountry = data.discharge_country || "";
-      const exporterAddress = data.exporter || "";
-      const gatewayPort = data.gateway_port || data.port_of_loading || "";
+      const cutOffDate = formatDate(findClubField("cut_off_date", "cutOffDate", "booking_date"));
+      const dischargeCountry = findClubField("discharge_country", "dischargeCountry", "destination_country") || "";
+      const exporterAddress = findClubField("exporter_address", "exporterAddress", "exporter") || "";
+      const gatewayPort = findClubField("gateway_port", "gatewayPort", "port_of_loading") || "";
       const shippingBillNo = data.sb_no || "";
-      const portOfDischarge = data.port_of_discharge || "";
+      const portOfDischarge = findClubField("port_of_discharge", "portOfDischarge", "destination_port") || "";
+      const shippingLineName = findClubField("shipping_line_airline", "shippingLineName", "shipper") || "";
+      const rawGoodsStuffed = findClubField("goods_stuffed_at", "stuffingType");
+      const stuffingType = (rawGoodsStuffed && String(rawGoodsStuffed).toLowerCase() === "factory") ? "FACTORY" : "ICD (CFS) / FACTORY";
 
       const hsnList = [...new Set(products.map(p => {
         if (p.hsn_code || p.hsnCode || p.hsn) return p.hsn_code || p.hsnCode || p.hsn;
@@ -652,10 +682,8 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
 
       const descriptionOfGoods = products[0]?.description || data.description || "";
 
-      
       setIsClubJob(isClubActive);
       setClubbedJobsData(fetchedClubbedJobsData);
-
 
       setJobData({
         ...data,
@@ -669,8 +697,8 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
         gatewayPort,
         shippingBillNo,
         portOfDischarge,
-        stuffingType: data.goods_stuffed_at?.toString().toLowerCase() === "factory" ? "FACTORY" : "ICD (CFS) / FACTORY",
-        shippingLineName: data.shipping_line_airline || "",
+        stuffingType,
+        shippingLineName,
         fobvalue: data.invoices?.[0]?.freightInsuranceCharges?.fobValue?.amount || "",
         hsnList,
         descriptionOfGoods,

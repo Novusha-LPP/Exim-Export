@@ -118,7 +118,7 @@ const CombinedDashboard = () => {
                 </motion.div>
                 
                 <div className="tv-combined-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
-                    <PulseCard title="TOTAL PENDING JOBS" value={summary.totalPending} />
+                    <PulseCard title="PENDING JOBS" value={summary.pending ?? summary.totalPending} />
                     <PulseCard title="HANDOVER PENDING" value={summary.handover} />
                     <PulseCard title="BILLING PENDING" value={summary.billing} />
                     <PulseCard title="OPERATIONS PENDING" value={summary.ops} />
