@@ -33,5 +33,42 @@ export const loadClubJobData = async (jobData) => {
     }
   }))).filter(Boolean);
 
+  if (isClubActive && primaryJob) {
+    const allJobsPool = [jobData, ...clubbedJobsData].filter(j => j && j.job_no !== primaryJob.job_no);
+    const sharedFields = [
+      "shipping_line_airline",
+      "vessel_name",
+      "booking_no",
+      "cut_off_date",
+      "booking_date",
+      "gateway_port",
+      "port_of_loading",
+      "port_of_discharge",
+      "discharge_port",
+      "discharge_country",
+      "destination_port",
+      "destination_country",
+      "sailing_date",
+      "voyage_no",
+      "forwarder",
+      "exporter_address",
+      "factory_address",
+      "cha",
+      "stuffing_seal_type",
+      "goods_stuffed_at"
+    ];
+
+    for (const field of sharedFields) {
+      if (!primaryJob[field] || String(primaryJob[field]).trim() === "") {
+        for (const sourceJob of allJobsPool) {
+          if (sourceJob[field] && String(sourceJob[field]).trim() !== "") {
+            primaryJob[field] = sourceJob[field];
+            break;
+          }
+        }
+      }
+    }
+  }
+
   return { primaryJob, clubbedJobsData, isClubActive };
 };
