@@ -295,7 +295,7 @@ export const PulseOverviewHover = ({ exporter, year }) => {
     };
     fetchPulse();
     return () => { active = false; };
-  }, [exporter]);
+  }, [exporter, year]);
 
   if (loading || !summary) {
     return (
@@ -338,7 +338,7 @@ export const PulseOverviewHover = ({ exporter, year }) => {
   };
 
   const metrics = [
-    { title: "TOTAL PENDING JOBS", value: summary.totalPending },
+    { title: "PENDING JOBS", value: summary.pending ?? summary.totalPending },
     { title: "HANDOVER PENDING", value: summary.handover },
     { title: "BILLING PENDING", value: summary.billing },
     { title: "OPERATIONS PENDING", value: summary.ops },
