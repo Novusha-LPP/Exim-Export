@@ -1075,6 +1075,9 @@ router.get("/global-search-jobs", async (req, res) => {
             },
             { detailedStatus: { $ne: "Billing Done" } },
           ],
+          consignmentType: { $nin: ["LCL", "AIR", "lcl", "air"] },
+          transportMode: { $not: { $regex: "AIR", $options: "i" } },
+          job_no: { $not: { $regex: "/AIR/", $options: "i" } },
           "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
           $and: [
             {
@@ -1601,6 +1604,9 @@ router.get("/exports/:status?", async (req, res) => {
             },
             { detailedStatus: { $ne: "Billing Done" } },
           ],
+          consignmentType: { $nin: ["LCL", "AIR", "lcl", "air"] },
+          transportMode: { $not: { $regex: "AIR", $options: "i" } },
+          job_no: { $not: { $regex: "/AIR/", $options: "i" } },
           "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
           $and: [
             {
@@ -2439,6 +2445,9 @@ router.get("/filtered-exporters", async (req, res) => {
             },
             { detailedStatus: { $ne: "Billing Done" } },
           ],
+          consignmentType: { $nin: ["LCL", "AIR", "lcl", "air"] },
+          transportMode: { $not: { $regex: "AIR", $options: "i" } },
+          job_no: { $not: { $regex: "/AIR/", $options: "i" } },
           "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
           $and: [
             {

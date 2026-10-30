@@ -489,6 +489,9 @@ export const generateDSRBuffer = async (exporter, onlyPending = false, year = ""
           },
           { detailedStatus: { $ne: "Billing Done" } },
         ],
+        consignmentType: { $nin: ["LCL", "AIR", "lcl", "air"] },
+        transportMode: { $not: { $regex: "AIR", $options: "i" } },
+        job_no: { $not: { $regex: "/AIR/", $options: "i" } },
         "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
         $and: [
           {
@@ -1147,6 +1150,9 @@ export const generateTableDSRBuffer = async (
           },
           { detailedStatus: { $ne: "Billing Done" } },
         ],
+        consignmentType: { $nin: ["LCL", "AIR", "lcl", "air"] },
+        transportMode: { $not: { $regex: "AIR", $options: "i" } },
+        job_no: { $not: { $regex: "/AIR/", $options: "i" } },
         "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
         $and: [
           {
