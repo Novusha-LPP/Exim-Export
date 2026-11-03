@@ -107,7 +107,17 @@ const DrawbackTab = ({
   const saveTimeoutRef = useRef(null);
 
   // Ensure array exists
-  const drawbackDetails = product.drawbackDetails || [getDefaultDrawback(1)];
+  const eximCodeStr = String(product.eximCode || "");
+  const isRosctlCode = eximCodeStr.includes("60") || eximCodeStr.includes("61");
+  const drawbackDetails =
+    Array.isArray(product.drawbackDetails) && product.drawbackDetails.length > 0
+      ? product.drawbackDetails
+      : [
+          {
+            ...getDefaultDrawback(1),
+            showRosctl: isRosctlCode,
+          },
+        ];
 
   // Sync Quantity/Unit from Products & FOB Value from FreightInsuranceCharges
   useEffect(() => {
@@ -123,7 +133,20 @@ const DrawbackTab = ({
       );
 
       let hasChanges = false;
-      const currentDbk = product.drawbackDetails || [];
+      const currentDbk =
+        Array.isArray(product.drawbackDetails) && product.drawbackDetails.length > 0
+          ? product.drawbackDetails
+          : [
+              {
+                ...getDefaultDrawback(1),
+                showRosctl: isRosctlCode,
+              },
+            ];
+
+      if (!Array.isArray(product.drawbackDetails) || product.drawbackDetails.length === 0) {
+        hasChanges = true;
+      }
+
       const updatedDbk = currentDbk.map((item) => {
         const pQty = product.isSqcQuantityManual ? (parseFloat(product.socQuantity) || 0) : (parseFloat(product.socQuantity || product.quantity || 0));
         const pUnit = product.isSqcUnitManual ? (product.socunit || "") : (product.socunit || product.qtyUnit || "");
@@ -133,6 +156,11 @@ const DrawbackTab = ({
 
         let newItem = { ...item };
         let changedLocal = false;
+
+        if (isRosctlCode && !newItem.showRosctl) {
+          newItem.showRosctl = true;
+          changedLocal = true;
+        }
 
         // Sync quantity/unit with SQC values if they differ and NOT manually overridden
         const isQtyDiff = Math.abs((parseFloat(item.quantity) || 0) - pQty) > 0.001;

@@ -9,6 +9,59 @@
  * Product_FOB_INR = C * TotalFOB_INR
  */
 
+export const calculateInvoiceFob = (activeInvoice, invoiceExchangeRate) => {
+  if (!activeInvoice) return { totalFobInr: 0, totalFobInvCurr: 0 };
+  let invToInrRate = parseFloat(invoiceExchangeRate) || 1;
+  const invCurr = String(activeInvoice.currency || "").toUpperCase();
+  if ((invCurr === "JPY" || invCurr === "KRW") && invToInrRate > 5) {
+    invToInrRate = invToInrRate / 100;
+  }
+  const grossInvoiceValue = parseFloat(activeInvoice.invoiceValue || activeInvoice.productValue || 0);
+  const totalValueInr = grossInvoiceValue * invToInrRate;
+  let totalDeductionInr = 0;
+  const charges = activeInvoice.freightInsuranceCharges || {};
+  const invoiceTerms = String(activeInvoice.termsOfInvoice || "").toUpperCase();
+  const deductFreightInsurance =
+    ["CIF", "C&F", "C&I", "CIP", "CPT", "DAP", "DDP", "DPU"].includes(invoiceTerms) ||
+    invoiceTerms.includes("CIF") ||
+    invoiceTerms.includes("C&F");
+
+  ["freight", "insurance", "commission"].forEach((k) => {
+    const row = charges[k] || {};
+    const rowCurr = String(row.currency || activeInvoice.currency || "INR").toUpperCase();
+    const fallbackRate = rowCurr === "INR" ? 1 : invToInrRate;
+    let rowRate = parseFloat(row.exchangeRate) || fallbackRate;
+    if ((rowCurr === "JPY" || rowCurr === "KRW") && rowRate > 5) {
+      rowRate = rowRate / 100;
+    }
+    const ratePercent = parseFloat(row.rate) || 0;
+    let rowAmountInr = 0;
+    if (ratePercent > 0) {
+      rowAmountInr = totalValueInr * (ratePercent / 100);
+    } else {
+      const explicitAmount = parseFloat(row.amount) || 0;
+      rowAmountInr = explicitAmount * rowRate;
+    }
+    if (k === "commission") {
+      const threshold = 0.125 * totalValueInr;
+      if (rowAmountInr > threshold) {
+        totalDeductionInr += rowAmountInr - threshold;
+      }
+    } else if (k === "freight" || k === "insurance") {
+      if (deductFreightInsurance) {
+        totalDeductionInr += rowAmountInr;
+      }
+    }
+  });
+
+  const totalFobInr = Math.max(0, totalValueInr - totalDeductionInr);
+  const totalFobInvCurr = invToInrRate > 0 ? totalFobInr / invToInrRate : totalFobInr;
+  return {
+    totalFobInr: parseFloat(totalFobInr.toFixed(2)),
+    totalFobInvCurr: parseFloat(totalFobInvCurr.toFixed(2)),
+  };
+};
+
 export const calculateProductFobINR = (
   product,
   activeInvoice,
@@ -30,80 +83,7 @@ export const calculateProductFobINR = (
   if (B <= 0 || A <= 0) return 0;
 
   const C = A / B;
-  const charges = activeInvoice.freightInsuranceCharges || {};
-  let invToInrRate = parseFloat(invoiceExchangeRate) || 1;
-
-  // Safeguard: If currency is JPY or KRW and rate > 5, it is the rate per 100 units from Customs notification
-  const invCurr = String(activeInvoice.currency || "").toUpperCase();
-  if ((invCurr === "JPY" || invCurr === "KRW") && invToInrRate > 5) {
-    invToInrRate = invToInrRate / 100;
-  }
-
-  // If Invoice FOB is already computed and stored in charges.fobValue, use it directly
-  const existingFob = charges.fobValue;
-  if (existingFob) {
-    let storedFobInr = parseFloat(existingFob.amountINR) || 0;
-    if (!storedFobInr && existingFob.amount) {
-      const fobCurr = String(existingFob.currency || activeInvoice.currency || "INR").toUpperCase();
-      let fobRate = fobCurr === "INR" ? 1 : (parseFloat(existingFob.exchangeRate) || invToInrRate);
-      if ((fobCurr === "JPY" || fobCurr === "KRW") && fobRate > 5) {
-        fobRate = fobRate / 100;
-      }
-      storedFobInr = parseFloat(existingFob.amount) * fobRate;
-    }
-    if (storedFobInr > 0) {
-      const productFobInr = C * storedFobInr;
-      return parseFloat(productFobInr.toFixed(2));
-    }
-  }
-
-  // The base gross value for evaluating Total FOB is the INVOICE VALUE (matching InvoiceFreightTab.js)
-  const grossInvoiceValue = parseFloat(activeInvoice.invoiceValue || activeInvoice.productValue || 0);
-
-  // Calculate Total FOB natively to avoid relying on InvoiceFreightTab being mounted
-  const totalValueInr = grossInvoiceValue * invToInrRate;
-  let totalDeductionInr = 0;
-
-  const invoiceTerms = String(activeInvoice.termsOfInvoice || "").toUpperCase();
-  const deductFreightInsurance = ["CIF", "C&F", "C&I", "CIP", "CPT", "DAP", "DDP", "DPU"].includes(invoiceTerms) || invoiceTerms.includes("CIF") || invoiceTerms.includes("C&F");
-
-  // Note: Discount is NOT deducted from Invoice FOB, so it is not deducted here (matching InvoiceFreightTab.js)
-  ["freight", "insurance", "commission"].forEach(k => {
-    const row = charges[k] || {};
-
-    const rowCurr = String(row.currency || activeInvoice.currency || "INR").toUpperCase();
-    const fallbackRate = rowCurr === "INR" ? 1 : invToInrRate;
-    let rowRate = parseFloat(row.exchangeRate) || fallbackRate;
-
-    // Safeguard: If row currency is JPY or KRW and rowRate > 5, normalize by dividing by 100
-    if ((rowCurr === "JPY" || rowCurr === "KRW") && rowRate > 5) {
-      rowRate = rowRate / 100;
-    }
-
-    const ratePercent = parseFloat(row.rate) || 0;
-    let rowAmountInr = 0;
-
-    if (ratePercent > 0) {
-      rowAmountInr = totalValueInr * (ratePercent / 100);
-    } else {
-      const explicitAmount = parseFloat(row.amount) || 0;
-      rowAmountInr = explicitAmount * rowRate;
-    }
-
-    if (k === "commission") {
-      const threshold = 0.125 * totalValueInr;
-      if (rowAmountInr > threshold) {
-        totalDeductionInr += (rowAmountInr - threshold);
-      }
-    } else if (k === "freight" || k === "insurance") {
-      if (deductFreightInsurance) {
-        totalDeductionInr += rowAmountInr;
-      }
-    }
-  });
-
-  const totalFobInr = totalValueInr - totalDeductionInr;
-
+  const { totalFobInr } = calculateInvoiceFob(activeInvoice, invoiceExchangeRate);
   const productFobInr = C * totalFobInr;
   return parseFloat(productFobInr.toFixed(2));
 };
@@ -112,10 +92,12 @@ export const calculateDbkAmount = (fob, qty, rate, cap) => {
   const a = (fob * rate) / 100;
   const b = qty * cap;
   let calcAmt = 0;
-  if (cap > 0) {
+  if (rate > 0 && cap > 0) {
     calcAmt = Math.min(a, b);
-  } else {
+  } else if (rate > 0) {
     calcAmt = a;
+  } else if (cap > 0) {
+    calcAmt = b;
   }
   if (calcAmt < 50) return "0.00";
   return calcAmt.toFixed(2);
@@ -129,10 +111,19 @@ export const calculateRosctlAmount = (fob, qty, slRate, ctlRate, slCap, ctlCap) 
 };
 
 export const calculateRodtepAmount = (fob, qty, rate, cap) => {
-  const a = (fob * rate) / 100;
-  const b = qty * cap;
-  if (cap > 0) return Math.min(a, b).toFixed(2);
-  return a.toFixed(2);
+  const rateAmount = fob * (rate / 100);
+  let capAmount = Infinity;
+  if (cap > 0) {
+    capAmount = qty * cap;
+  }
+  if (rateAmount === 0 && capAmount === Infinity) {
+    return 0;
+  }
+  const finalAmount = Math.min(
+    rateAmount,
+    capAmount === Infinity ? rateAmount : capAmount
+  );
+  return parseFloat(finalAmount.toFixed(2));
 };
 
 export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
@@ -151,7 +142,7 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
       if (Array.isArray(newDbkDetails)) {
         newDbkDetails = newDbkDetails.map(item => {
           let newItem = { ...item };
-          const qty = item.manualQuantity ? (item.quantity || 0) : pQty;
+          const qty = item.manualQuantity ? (parseFloat(item.quantity) || 0) : pQty;
           const unit = item.manualUnit ? (item.unit || "") : pUnit;
 
           newItem.quantity = qty;
@@ -193,21 +184,29 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
 
       // Re-calculate RoDTEP product total
       let newRodtepInfo = product.rodtepInfo;
-      if (newRodtepInfo && newRodtepInfo.rate) {
+      if (newRodtepInfo) {
         newRodtepInfo = { ...newRodtepInfo };
-        newRodtepInfo.quantity = pQty;
-        newRodtepInfo.unit = pUnit;
+        const rodRate = parseFloat(newRodtepInfo.ratePercent ?? newRodtepInfo.rate ?? 0);
+        const rodCap = parseFloat(newRodtepInfo.capValuePerUnits ?? newRodtepInfo.cap ?? 0);
+        const rodQty = parseFloat(newRodtepInfo.quantity ?? pQty ?? 0);
+
+        newRodtepInfo.quantity = rodQty;
+        if (!newRodtepInfo.unit) newRodtepInfo.unit = pUnit;
         if (!newRodtepInfo.isCapUnitManual) {
           newRodtepInfo.capUnit = pUnit;
         }
         newRodtepInfo.fobValue = fobAmountInr.toFixed(2);
 
-        newRodtepInfo.amountINR = calculateRodtepAmount(
-          fobAmountInr,
-          pQty,
-          parseFloat(newRodtepInfo.rate || 0),
-          parseFloat(newRodtepInfo.cap || 0)
-        );
+        if (newRodtepInfo.claim === "No" || newRodtepInfo.claim === "Not Applicable") {
+          newRodtepInfo.amountINR = 0;
+        } else {
+          newRodtepInfo.amountINR = calculateRodtepAmount(
+            fobAmountInr,
+            rodQty,
+            rodRate,
+            rodCap
+          );
+        }
       }
 
       // Re-calculate PMV if method is percentage
@@ -245,15 +244,43 @@ export const syncAllProductsDrawbackAndRodtep = (invoices, exchange_rate) => {
         };
       }
 
+      // Sync IGST fields if taxableBasis is set to FOB
+      let newIgst = product.igstCompensationCess;
+      if (newIgst && newIgst.taxableBasis === "fob") {
+        const igstRate = parseFloat(newIgst.igstRate) || 0;
+        const newTaxable = fobAmountInr;
+        newIgst = {
+          ...newIgst,
+          taxableValueINR: newTaxable,
+          igstAmountINR: !newIgst.isIgstManual
+            ? parseFloat(((newTaxable * igstRate) / 100).toFixed(2))
+            : newIgst.igstAmountINR,
+        };
+      }
+
       return {
         ...product,
         pmvInfo: newPmvInfo,
         drawbackDetails: newDbkDetails,
         rosctlInfo: newRosctlInfo,
-        rodtepInfo: newRodtepInfo
+        rodtepInfo: newRodtepInfo,
+        igstCompensationCess: newIgst,
       };
     });
 
-    return { ...inv, products: updatedProducts };
+    const { totalFobInr, totalFobInvCurr } = calculateInvoiceFob(inv, exchange_rate);
+    const existingFob = inv.freightInsuranceCharges?.fobValue || {};
+    const updatedCharges = {
+      ...(inv.freightInsuranceCharges || {}),
+      fobValue: {
+        ...existingFob,
+        amount: totalFobInvCurr,
+        amountINR: totalFobInr,
+        currency: existingFob.currency || inv.currency || "INR",
+        exchangeRate: existingFob.exchangeRate || exchange_rate || 1,
+      },
+    };
+
+    return { ...inv, freightInsuranceCharges: updatedCharges, products: updatedProducts };
   });
 };

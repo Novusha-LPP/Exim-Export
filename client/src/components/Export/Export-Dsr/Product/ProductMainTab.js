@@ -2,7 +2,7 @@ import { unitCodes, currencyList } from "../../../../utils/masterList";
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import SearchableDropdown from "../../../common/SearchableDropdown";
 import RITCSearchableDropdown from "../../../common/RITCSearchableDropdown";
-import { calculateProductFobINR } from "../../../../utils/fobCalculations";
+import { calculateProductFobINR, syncAllProductsDrawbackAndRodtep } from "../../../../utils/fobCalculations";
 
 function toUpper(val) {
   return (typeof val === "string" ? val : "").toUpperCase();
@@ -162,7 +162,11 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
           ...updatedInvoices[selectedInvoiceIndex],
           products: updatedProducts,
         };
-        formik.setFieldValue("invoices", updatedInvoices);
+        const synced = syncAllProductsDrawbackAndRodtep(
+          updatedInvoices,
+          Number(formik.values.exchange_rate) || 1
+        );
+        formik.setFieldValue("invoices", synced);
       }
     },
     [formik, invoices, selectedInvoiceIndex],
@@ -248,8 +252,8 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
   const syncProductRODTEP = useCallback((prod) => {
     if (prod.rodtepInfo?.claim !== "Yes") return prod;
 
-    const rate = parseFloat(prod.rodtepInfo?.ratePercent) || 0;
-    const cap = parseFloat(prod.rodtepInfo?.capValuePerUnits) || 0;
+    const rate = parseFloat(prod.rodtepInfo?.ratePercent ?? prod.rodtepInfo?.rate ?? 0);
+    const cap = parseFloat(prod.rodtepInfo?.capValuePerUnits ?? prod.rodtepInfo?.cap ?? 0);
     const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
 
     const fobINR = calculateProductFobINR(
@@ -259,9 +263,10 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
     );
     const rateAmount = fobINR * (rate / 100);
 
+    const rQty = parseFloat(prod.rodtepInfo?.quantity) || parseFloat(prod.socQuantity) || parseFloat(prod.quantity) || 0;
     let capAmount = Infinity;
     if (cap > 0) {
-      capAmount = (parseFloat(prod.rodtepInfo?.quantity) || 0) * cap;
+      capAmount = rQty * cap;
     }
 
     let finalAmount = 0;
@@ -275,6 +280,8 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
     }
 
     if (!prod.rodtepInfo) prod.rodtepInfo = {};
+    prod.rodtepInfo.fobValue = fobINR.toFixed(2);
+    prod.rodtepInfo.quantity = rQty;
     prod.rodtepInfo.amountINR = parseFloat(finalAmount.toFixed(2));
     return prod;
   }, [formik.values.exchange_rate, activeInvoice]);
@@ -570,6 +577,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       }
 
       next[idx + 1] = syncProductIGST(next[idx + 1]);
+      next[idx + 1] = syncProductRODTEP(next[idx + 1]);
 
       const resequenced = next.map((p, i) => ({
         ...p,
@@ -577,7 +585,7 @@ const ProductMainTab = ({ formik, selectedInvoiceIndex }) => {
       }));
       setProducts(resequenced);
     },
-    [products, setProducts, syncProductIGST],
+    [products, setProducts, syncProductIGST, syncProductRODTEP],
   );
 
 

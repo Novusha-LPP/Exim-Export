@@ -1784,6 +1784,7 @@ const LogisysEditableHeader = ({
             }>
               <ExportChecklistGenerator
                 jobNo={formik.values.job_no}
+                formData={formik.values}
                 renderAsIcon={false}
               >
                 <MenuItem
