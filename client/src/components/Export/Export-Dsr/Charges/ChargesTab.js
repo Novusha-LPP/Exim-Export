@@ -30,7 +30,7 @@ const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable =
   const jobNo = jobData.job_no || jobData.jobNumber || "";
   const jobYear = jobData.year || "";
   const shippingLine = jobData.shipping_line_airline || "";
-  const exporterName = jobData.exporter || "";
+  const exporterName = jobData.exporter || jobData.shipper || jobData.importer || jobData.consignees?.[0]?.consignee_name || "";
   const invoices = jobData.invoices || [];
   const firstInvoice = invoices[0] || {};
 

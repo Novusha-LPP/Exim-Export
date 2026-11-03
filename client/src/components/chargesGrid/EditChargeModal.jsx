@@ -546,8 +546,8 @@ const EditChargeModal = ({
         updated[index][section].partyName = shippingLineAirline;
       }
 
-      // Auto-populate Payable To if type is 'Exporter' in Cost section
-      if (section === 'cost' && field === 'partyType' && (value === 'Exporter' || value === 'EXPORTER') && exporterName) {
+      // Auto-populate Payable To if type is 'Exporter', 'Importer', or 'Customer' in Cost section
+      if (section === 'cost' && field === 'partyType' && ['EXPORTER', 'IMPORTER', 'CUSTOMER'].includes((value || '').toUpperCase()) && exporterName) {
         updated[index][section].partyName = exporterName;
       }
 
@@ -555,8 +555,10 @@ const EditChargeModal = ({
       if (field === 'partyName') {
         setActiveDropdown({ index, section });
       } else if (field === 'partyType') {
-        // Clear party selected when type changes
-        updated[index][section].partyName = '';
+        // Clear party selected when type changes, unless auto-populated
+        if (!['Exporter', 'EXPORTER', 'Importer', 'IMPORTER', 'Customer', 'CUSTOMER', 'Others'].includes(value)) {
+          updated[index][section].partyName = '';
+        }
         updated[index][section].isTds = false;
         updated[index][section].tdsPercent = 0;
         setActiveDropdown({ index: null, section: null });
@@ -1089,7 +1091,7 @@ const EditChargeModal = ({
                                 <div className="ep-row">
                                   <span className="ep-label">RECEIVABLE TYPE</span>
                                   <select className="ep-select" value={row.revenue?.partyType || 'Customer'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'revenue')}>
-                                    <option>Customer</option><option>Agent</option><option>Carrier</option><option>Vendor</option><option>Transporter</option><option>Forwarder</option><option>Others</option>
+                                    <option>Customer</option><option>Exporter</option><option>Importer</option><option>Agent</option><option>Carrier</option><option>Vendor</option><option>Transporter</option><option>Forwarder</option><option>Others</option>
                                   </select>
                                 </div>
                                 <div className="ep-row">
@@ -1125,7 +1127,7 @@ const EditChargeModal = ({
                                             const pType = (row.revenue?.partyType || 'Customer').toUpperCase();
                                             let list = [];
                                             if (pType === 'AGENT' || pType === 'CARRIER') list = shippingLines;
-                                            else if (pType === 'CUSTOMER') list = organizations;
+                                            else if (pType === 'CUSTOMER' || pType === 'EXPORTER' || pType === 'IMPORTER') list = organizations;
                                             else if (pType === 'VENDOR') list = suppliers;
                                             else if (pType === 'TRANSPORTER') list = transporters;
                                             else if (pType === 'FORWARDER') list = forwarders;
@@ -1282,7 +1284,7 @@ const EditChargeModal = ({
                                   <div className="ep-row">
                                     <span className="ep-label">PAYABLE TYPE</span>
                                     <select className="form-input" value={row.cost?.partyType || 'Others'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
-                                      <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option><option>Empty Yard</option><option>Forwarder</option><option>General Org</option>
+                                      <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Importer</option><option>Customer</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option><option>Empty Yard</option><option>Forwarder</option><option>General Org</option>
                                     </select>
                                   </div>
                                   <div className="ep-row">
@@ -1320,7 +1322,7 @@ const EditChargeModal = ({
                                             if (pType === 'AGENT') list = shippingLines;
                                             else if (pType === 'VENDOR') list = suppliers;
                                             else if (pType === 'TRANSPORTER') list = transporters;
-                                            else if (pType === 'EXPORTER') list = organizations;
+                                            else if (pType === 'EXPORTER' || pType === 'IMPORTER' || pType === 'CUSTOMER') list = organizations;
                                             else if (pType === 'CFS') list = cfsList;
                                             else if (pType === 'TERMINAL') list = terminalCodes;
                                             else if (pType === 'EMPTY YARD' || pType === 'EMPTY_YARD') list = emptyYardList;
