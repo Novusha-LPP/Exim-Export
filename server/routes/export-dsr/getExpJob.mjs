@@ -253,6 +253,8 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         "voyage_no",
         "sailing_date",
         "forwarder",
+        "exporter",
+        "exporter_address",
         "goods_stuffed_at",
         "stuffing_seal_type",
         "factory_address"
