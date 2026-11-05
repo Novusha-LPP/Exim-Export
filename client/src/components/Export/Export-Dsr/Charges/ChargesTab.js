@@ -34,9 +34,10 @@ const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable =
     return () => { isMounted = false; };
   }, [parentClubJobNo]);
 
-  // If this job is a child club job, use the parent club job's ID and details for Charges
-  const effectiveParentId = parentClubJobDoc?._id ||
-    job?._id ||
+  // Each job (parent or child) manages its own charges using its own ID.
+  // When viewing a club parent job, the backend GET /charges automatically aggregates
+  // charges from all child jobs as well!
+  const effectiveParentId = job?._id ||
     job?.id ||
     formik?.values?._id ||
     formik?.values?.id ||
@@ -53,14 +54,14 @@ const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable =
         (jobData?.job_no || jobData?.jobNumber || "").toUpperCase().includes("FF-") ||
         (jobData?.job_no || jobData?.jobNumber || "").toUpperCase().includes("/FF/")
       );
-  const jobNo = parentClubJobDoc?.job_no || jobData.job_no || jobData.jobNumber || "";
-  const jobYear = parentClubJobDoc?.year || jobData.year || "";
-  const shippingLine = parentClubJobDoc?.shipping_line_airline || jobData.shipping_line_airline || "";
-  const exporterName = parentClubJobDoc?.exporter || parentClubJobDoc?.shipper || jobData.exporter || jobData.shipper || jobData.importer || jobData.consignees?.[0]?.consignee_name || "";
-  const invoices = (parentClubJobDoc?.invoices && parentClubJobDoc.invoices.length > 0) ? parentClubJobDoc.invoices : (jobData.invoices || []);
+  const jobNo = jobData.job_no || jobData.jobNumber || "";
+  const jobYear = jobData.year || "";
+  const shippingLine = jobData.shipping_line_airline || "";
+  const exporterName = jobData.exporter || jobData.shipper || jobData.importer || jobData.consignees?.[0]?.consignee_name || "";
+  const invoices = jobData.invoices || [];
   const firstInvoice = invoices[0] || {};
 
-  const containerCount = parentClubJobDoc?.containers?.length || jobData.containers?.length || 0;
+  const containerCount = jobData.containers?.length || 0;
   const invoiceCount = invoices.length || 0;
 
   if (!effectiveParentId) {
@@ -76,11 +77,11 @@ const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable =
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {parentClubJobNo && (
           <div style={{
-            background: '#e0f2fe',
-            border: '1px solid #7dd3fc',
+            background: '#f0fdf4',
+            border: '1px solid #86efac',
             borderRadius: '6px',
             padding: '10px 14px',
-            color: '#0369a1',
+            color: '#166534',
             fontSize: '12px',
             fontWeight: 600,
             display: 'flex',
@@ -88,7 +89,7 @@ const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable =
             justifyContent: 'space-between'
           }}>
             <span>
-              ℹ️ Club Job Shipment: Charges and billing for this shipment are consolidated under Parent Job <strong>{parentClubJobNo}</strong>.
+              ℹ️ Club Job Member: You can add/manage charges directly for this job. All charges will also be visible and consolidated under Parent Job <strong>{parentClubJobNo}</strong>.
             </span>
           </div>
         )}

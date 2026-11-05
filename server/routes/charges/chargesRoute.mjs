@@ -316,7 +316,35 @@ router.get('/charges', async (req, res) => {
         const record = await model.findById(parentId);
         if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
 
-        res.json({ success: true, data: record.charges || [] });
+        let allCharges = [...(record.charges || [])].map(c => {
+            const plain = c.toObject ? c.toObject() : { ...c };
+            return {
+                ...plain,
+                sourceJobNo: record.job_no || record.jobNumber || '',
+                sourceJobId: record._id
+            };
+        });
+
+        // If this is a club parent job, also aggregate charges from all member child jobs
+        if (record.is_club_job_parent && Array.isArray(record.clubbed_jobs) && record.clubbed_jobs.length > 0) {
+            const childJobNos = record.clubbed_jobs.filter(j => j && j !== record.job_no);
+            if (childJobNos.length > 0) {
+                const childJobs = await ExJobModel.find({ job_no: { $in: childJobNos } }).lean();
+                for (const child of childJobs) {
+                    if (Array.isArray(child.charges)) {
+                        for (const cc of child.charges) {
+                            allCharges.push({
+                                ...cc,
+                                sourceJobNo: child.job_no,
+                                sourceJobId: child._id
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        res.json({ success: true, data: allCharges });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
