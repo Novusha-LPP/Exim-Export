@@ -315,30 +315,132 @@ async function syncClubFields(job) {
 
     const parentJobNo = job.is_club_job_parent ? job.job_no : job.parent_club_job;
 
-    // Find all sibling jobs in the same club (including parent if current is child)
-    const siblingJobs = await ExJobModel.find({
+    // Fetch parent job
+    const parentJob = job.is_club_job_parent ? job : await ExJobModel.findOne({ job_no: parentJobNo });
+    if (!parentJob) return;
+
+    // Find all sibling / child jobs in this club
+    const childJobs = await ExJobModel.find({
       $or: [
-        { job_no: parentJobNo },
-        { parent_club_job: parentJobNo }
+        { parent_club_job: parentJobNo },
+        { job_no: { $in: (parentJob.clubbed_jobs || []).filter(j => j !== parentJobNo) } }
       ],
-      job_no: { $ne: job.job_no }
+      job_no: { $ne: parentJob.job_no }
     });
 
-    if (siblingJobs.length === 0) return;
+    if (childJobs.length === 0) return;
 
-    const op0Status = job.operations?.[0]?.statusDetails?.[0] || {};
+    // Fields to sync from Parent to all Child jobs:
+    // 1. Port & Location Details
+    const portLocationFields = [
+      "discharge_port",
+      "discharge_country",
+      "destination_port",
+      "destination_country",
+      "shipping_line_airline",
+      "vessel_name",
+      "voyage_no",
+      "booking_no",
+      "booking_date",
+      "sailing_date",
+      "egm_no",
+      "egm_date",
+      "mbl_no",
+      "mbl_date",
+      "hbl_no",
+      "hbl_date",
+      "forwarder",
+      "cut_off_date",
+      "pickup_loc",
+      "drop_loc",
+      "booking_copy",
+      "pre_carriage_by",
+      "place_of_receipt",
+      "haulier",
+      "gateway_port",
+      "state_of_origin",
+      "port_of_loading",
+      "port_of_discharge",
+      "final_destination",
+      "shipped_on_board_date",
+      "arrival_date",
+      "final_delivery_date"
+    ];
 
-    const updates = {
-      send_for_billing: job.send_for_billing,
-      send_for_billing_date: job.send_for_billing_date,
-      vgm_done: job.vgm_done,
-      vgm_date: job.vgm_date,
-      form13_done: job.form13_done,
-      form13_date: job.form13_date,
-    };
+    const parentOp0 = parentJob.operations?.[0] || {};
+    const parentOp0Status = parentOp0.statusDetails?.[0] || {};
 
-    // Update each sibling
-    for (const sibling of siblingJobs) {
+    const parentContainers = Array.isArray(parentJob.containers) ? parentJob.containers : [];
+
+    for (const sibling of childJobs) {
+      // 1. SYNC PORT & LOCATION FIELDS
+      for (const field of portLocationFields) {
+        if (parentJob[field] !== undefined) {
+          sibling[field] = parentJob[field];
+        }
+      }
+
+      // 2. SYNC PHYSICAL CONTAINER DETAILS (containerNo up to isoCode, tare, seals, weighment)
+      // Child retains its own pkgsStuffed, grossWeight, and vgmWtInvoice
+      if (parentContainers.length > 0) {
+        const existingChildContainers = Array.isArray(sibling.containers) ? sibling.containers : [];
+        const syncedChildContainers = [];
+
+        for (let i = 0; i < parentContainers.length; i++) {
+          const parentC = parentContainers[i];
+          const existingC = existingChildContainers[i] || {};
+
+          // Preserve child's specific cargo packages & gross weight
+          const childPkgs = (existingC.pkgsStuffed !== undefined && existingC.pkgsStuffed !== null && existingC.pkgsStuffed !== 0)
+            ? existingC.pkgsStuffed
+            : (i === 0 ? Number(sibling.total_no_of_pkgs || 0) : 0);
+
+          const childGw = (existingC.grossWeight !== undefined && existingC.grossWeight !== null && existingC.grossWeight !== 0)
+            ? existingC.grossWeight
+            : (i === 0 ? Number(sibling.gross_weight_kg || 0) : 0);
+
+          const childTare = Number(parentC.tareWeightKgs || existingC.tareWeightKgs || 0);
+          const childVgm = (existingC.vgmWtInvoice && existingC.vgmWtInvoice !== 0)
+            ? existingC.vgmWtInvoice
+            : parseFloat((childGw + childTare).toFixed(3));
+
+          syncedChildContainers.push({
+            ...existingC,
+            serialNumber: i + 1,
+            containerNo: parentC.containerNo || "",
+            type: parentC.type || "",
+            isoCode: parentC.isoCode || "",
+            sealNo: parentC.sealNo || "",
+            customSealNo: parentC.customSealNo || "",
+            shippingLineSealNo: parentC.shippingLineSealNo || "",
+            sealDate: parentC.sealDate || "",
+            sealType: parentC.sealType || "RFID",
+            tareWeightKgs: parentC.tareWeightKgs || 0,
+            maxGrossWeightKgs: parentC.maxGrossWeightKgs || 0,
+            maxPayloadKgs: parentC.maxPayloadKgs || 0,
+            images: parentC.images || existingC.images || [],
+            weighBridgeName: parentC.weighBridgeName || "",
+            weighmentTransporterName: parentC.weighmentTransporterName || "",
+            weighmentRegNo: parentC.weighmentRegNo || "",
+            weighmentDateTime: parentC.weighmentDateTime || "",
+            weighmentVehicleNo: parentC.weighmentVehicleNo || "",
+            weighmentTareWeight: parentC.weighmentTareWeight || 0,
+            weighmentAddress: parentC.weighmentAddress || "",
+            weighmentImages: parentC.weighmentImages || [],
+            pkgsStuffed: childPkgs,
+            grossWeight: childGw,
+            vgmWtInvoice: childVgm
+          });
+        }
+
+        sibling.containers = syncedChildContainers;
+        sibling.no_of_containers = String(parentContainers.length);
+        sibling.markModified("containers");
+      }
+
+      // 3. SYNC OPERATIONS DETAILS
+      // Shared fields synced from parent: Gate Pass, Gate Pass Copy, Handover Doc, Handover Copy, Forwarder, Operational Lock, Rail Out, Rail Reached, Manual VGM Upload, CMA Forwarding Note Upload, Assessment Copy, Billing Details, send_for_billing, vgm_done, form13_done.
+      // EXCLUDED (kept unique per child shipping bill): Gate-In/Carting, RMS Status, Goods Registration, Goods Report, LEO, LEO Copy, ICD/Port.
       if (!sibling.operations) {
         sibling.operations = [{ statusDetails: [{}] }];
       }
@@ -354,68 +456,67 @@ async function syncClubFields(job) {
 
       const sibOp0 = sibling.operations[0].statusDetails[0];
 
-      // Sync operational dates
-      sibOp0.handoverForwardingNoteDate = op0Status.handoverForwardingNoteDate || "";
-      sibOp0.containerPlacementDate = op0Status.containerPlacementDate || "";
-      sibOp0.gateInDate = op0Status.gateInDate || "";
+      // Sync Gate Pass & Gate Pass Copy
+      sibOp0.eGatePassCopyDate = parentOp0Status.eGatePassCopyDate || "";
+      sibOp0.eGatePassUpload = parentOp0Status.eGatePassUpload || [];
 
-      // Copy rail out/road out and reached dates only if the source is the parent job
-      if (job.is_club_job_parent) {
-        sibOp0.handoverConcorTharSanganaRailRoadDate = op0Status.handoverConcorTharSanganaRailRoadDate || "";
-        sibOp0.railOutReachedDate = op0Status.railOutReachedDate || "";
-      }
+      // Sync Handover Doc & Handover Copy
+      sibOp0.handoverForwardingNoteDate = parentOp0Status.handoverForwardingNoteDate || "";
+      sibOp0.handoverImageUpload = parentOp0Status.handoverImageUpload || [];
 
-      // Sync operational uploads
-      sibOp0.handoverImageUpload = op0Status.handoverImageUpload || [];
-      sibOp0.manualVgmUpload = op0Status.manualVgmUpload || [];
-      sibOp0.cmaForwardingNoteUpload = op0Status.cmaForwardingNoteUpload || [];
-      sibOp0.assessmentCopy = op0Status.assessmentCopy || [];
+      // Sync Forwarder & Container Placement
+      sibOp0.forwarderName = parentOp0Status.forwarderName || "";
+      sibOp0.containerPlacementDate = parentOp0Status.containerPlacementDate || "";
 
-      // Sync billing details
-      if (op0Status.billingDocsSentDt) {
-        sibOp0.billingDocsSentDt = op0Status.billingDocsSentDt;
+      // Sync Rail Out & Rail Reached
+      sibOp0.handoverConcorTharSanganaRailRoadDate = parentOp0Status.handoverConcorTharSanganaRailRoadDate || "";
+      sibOp0.railOutReachedDate = parentOp0Status.railOutReachedDate || "";
+      sibOp0.railRoad = parentOp0Status.railRoad || "";
+      sibOp0.concorPrivate = parentOp0Status.concorPrivate || "";
+      sibOp0.privateTransporterName = parentOp0Status.privateTransporterName || "";
+
+      // Sync Document Uploads
+      sibOp0.manualVgmUpload = parentOp0Status.manualVgmUpload || [];
+      sibOp0.cmaForwardingNoteUpload = parentOp0Status.cmaForwardingNoteUpload || [];
+      sibOp0.assessmentCopy = parentOp0Status.assessmentCopy || [];
+
+      // Sync Operational Lock
+      sibling.operational_lock = parentJob.operational_lock || false;
+
+      // Sync Billing Details
+      if (parentOp0Status.billingDocsSentDt) {
+        sibOp0.billingDocsSentDt = parentOp0Status.billingDocsSentDt;
       }
-      if (op0Status.billingDocsSentUpload && op0Status.billingDocsSentUpload.length > 0) {
-        sibOp0.billingDocsSentUpload = op0Status.billingDocsSentUpload;
+      if (parentOp0Status.billingDocsSentUpload && parentOp0Status.billingDocsSentUpload.length > 0) {
+        sibOp0.billingDocsSentUpload = parentOp0Status.billingDocsSentUpload;
       }
-      if (op0Status.billing_details) {
+      if (parentOp0Status.billing_details) {
         if (!sibOp0.billing_details) {
           sibOp0.billing_details = {};
         }
-        if (op0Status.billing_details.agency_bill_date) {
-          sibOp0.billing_details.agency_bill_date = op0Status.billing_details.agency_bill_date;
-        }
-        if (op0Status.billing_details.agency_bill_no) {
-          sibOp0.billing_details.agency_bill_no = op0Status.billing_details.agency_bill_no;
-        }
-        if (op0Status.billing_details.reimbursement_bill_date) {
-          sibOp0.billing_details.reimbursement_bill_date = op0Status.billing_details.reimbursement_bill_date;
-        }
-        if (op0Status.billing_details.reimbursement_bill_no) {
-          sibOp0.billing_details.reimbursement_bill_no = op0Status.billing_details.reimbursement_bill_no;
-        }
+        sibOp0.billing_details.agency_bill_date = parentOp0Status.billing_details.agency_bill_date || "";
+        sibOp0.billing_details.agency_bill_no = parentOp0Status.billing_details.agency_bill_no || "";
+        sibOp0.billing_details.reimbursement_bill_date = parentOp0Status.billing_details.reimbursement_bill_date || "";
+        sibOp0.billing_details.reimbursement_bill_no = parentOp0Status.billing_details.reimbursement_bill_no || "";
       }
 
-      // Sync top level fields
-      sibling.send_for_billing = updates.send_for_billing;
-      sibling.send_for_billing_date = updates.send_for_billing_date;
-      sibling.vgm_done = updates.vgm_done;
-      sibling.vgm_date = updates.vgm_date;
-      sibling.form13_done = updates.form13_done;
-      sibling.form13_date = updates.form13_date;
-      if (job.detailedStatus) {
-        sibling.detailedStatus = job.detailedStatus;
-      }
-      if (job.status) {
-        sibling.status = job.status;
-      }
+      // Sync Top-level Status & Checklist Flags
+      sibling.send_for_billing = parentJob.send_for_billing;
+      sibling.send_for_billing_date = parentJob.send_for_billing_date;
+      sibling.vgm_done = parentJob.vgm_done;
+      sibling.vgm_date = parentJob.vgm_date;
+      sibling.form13_done = parentJob.form13_done;
+      sibling.form13_date = parentJob.form13_date;
+
       const hasSiblingBillDates = Boolean(
         sibOp0.billing_details?.agency_bill_date ||
         sibOp0.billing_details?.reimbursement_bill_date
       );
-      if (hasSiblingBillDates || job.detailedStatus === "Billing Done") {
+      if (hasSiblingBillDates || parentJob.detailedStatus === "Billing Done") {
         sibling.detailedStatus = "Billing Done";
         sibling.status = "Completed";
+      } else if (parentJob.detailedStatus) {
+        sibling.detailedStatus = parentJob.detailedStatus;
       }
 
       sibling.markModified("operations");
@@ -436,11 +537,13 @@ async function syncClubFields(job) {
         vgm_date: sibling.vgm_date,
         form13_done: sibling.form13_done,
         form13_date: sibling.form13_date,
+        "operations.0.statusDetails.0.eGatePassCopyDate": sibOp0.eGatePassCopyDate,
+        "operations.0.statusDetails.0.eGatePassUpload": sibOp0.eGatePassUpload,
         "operations.0.statusDetails.0.handoverForwardingNoteDate": sibOp0.handoverForwardingNoteDate,
         "operations.0.statusDetails.0.handoverConcorTharSanganaRailRoadDate": sibOp0.handoverConcorTharSanganaRailRoadDate,
         "operations.0.statusDetails.0.railOutReachedDate": sibOp0.railOutReachedDate,
         "operations.0.statusDetails.0.containerPlacementDate": sibOp0.containerPlacementDate,
-        "operations.0.statusDetails.0.gateInDate": sibOp0.gateInDate,
+        "operations.0.statusDetails.0.forwarderName": sibOp0.forwarderName,
         "operations.0.statusDetails.0.handoverImageUpload": sibOp0.handoverImageUpload,
         "operations.0.statusDetails.0.manualVgmUpload": sibOp0.manualVgmUpload,
         "operations.0.statusDetails.0.cmaForwardingNoteUpload": sibOp0.cmaForwardingNoteUpload,
@@ -3412,19 +3515,17 @@ router.get("/:job_no(.*)", async (req, res, next) => {
         ? exportJob.containers
         : (parentOp.containerDetails || []);
 
-      // Filter out any leaked child containers from parent containers array
+      // Keep parent job's own containers; do not filter them out just because child jobs share the physical container
       const parentOwnContainers = rawParentContainers.filter(c => {
-        const cId = c._id ? String(c._id) : "";
-        if (cId && childContainerIds.has(cId)) return false;
-        const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
-        const pkgs = Number(c.pkgsStuffed || 0);
-        const weight = Number(c.grossWeight || 0);
-        const sig = `${cNo}_${pkgs}_${weight}`;
-        if (cNo && childContainerSignatures.has(sig)) return false;
+        if (c._sourceJobNo && String(c._sourceJobNo).toUpperCase() !== String(exportJob.job_no).toUpperCase()) {
+          return false;
+        }
         return true;
       });
 
-      const parentMerged = parentOwnContainers.map(c => ({
+      const finalParentContainers = parentOwnContainers.length > 0 ? parentOwnContainers : rawParentContainers;
+
+      const parentMerged = finalParentContainers.map(c => ({
         ...c,
         pkgsStuffed: (c.pkgsStuffed !== undefined && c.pkgsStuffed !== null && c.pkgsStuffed !== 0) ? c.pkgsStuffed : Number(exportJob.total_no_of_pkgs || 0),
         grossWeight: (c.grossWeight !== undefined && c.grossWeight !== null && c.grossWeight !== 0) ? c.grossWeight : Number(exportJob.gross_weight_kg || 0),
@@ -3443,7 +3544,7 @@ router.get("/:job_no(.*)", async (req, res, next) => {
       mergedContainers.unshift(...parentMerged);
 
       jobData.mergedContainers = mergedContainers;
-      jobData.containers = parentOwnContainers;
+      jobData.containers = finalParentContainers;
 
       // Keep parent job's own invoices as plain objects (do NOT merge child jobs' invoices into parent job)
       jobData.invoices = (exportJob.invoices || []).map(inv => {
@@ -3906,32 +4007,16 @@ router.put("/:job_no(.*)", auditMiddleware("Job"), async (req, res, next) => {
 
       // If updating a club parent job, prevent saving child jobs' containers into the parent job document
       if (existingJob.is_club_job_parent && Array.isArray(updateData.containers)) {
-        const childJobs = await ExJobModel.find({ job_no: { $in: existingJob.clubbed_jobs, $ne: existingJob.job_no } }).lean();
-        const childContainerIds = new Set();
-        const childContainerSignatures = new Set();
-        for (const j of childJobs) {
-          for (const c of (j.containers || [])) {
-            if (c._id) childContainerIds.add(String(c._id));
-            const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
-            const pkgs = Number(c.pkgsStuffed || 0);
-            const weight = Number(c.grossWeight || 0);
-            if (cNo) childContainerSignatures.add(`${cNo}_${pkgs}_${weight}`);
-          }
-        }
-
         let parentOnlyContainers = updateData.containers.filter((c) => {
           if (c._sourceJobNo && String(c._sourceJobNo).toUpperCase() !== String(job_no).toUpperCase()) {
             return false;
           }
-          const cId = c._id ? String(c._id) : "";
-          if (cId && childContainerIds.has(cId)) return false;
-          const cNo = String(c.containerNo || c.container_number || "").trim().toUpperCase();
-          const pkgs = Number(c.pkgsStuffed || 0);
-          const weight = Number(c.grossWeight || 0);
-          const sig = `${cNo}_${pkgs}_${weight}`;
-          if (cNo && childContainerSignatures.has(sig)) return false;
           return true;
         });
+
+        if (parentOnlyContainers.length === 0 && updateData.containers.length > 0) {
+          parentOnlyContainers = updateData.containers;
+        }
 
         const seenContNos = new Set();
         parentOnlyContainers = parentOnlyContainers.filter((c) => {

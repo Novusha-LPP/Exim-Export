@@ -130,6 +130,32 @@ router.post("/create-club-job", auditMiddleware("Job"), async (req, res) => {
       parentJob.clubbed_jobs = selected_job_nos;
       parentJob.tally_club_ref_no = tallyRefNo;
       parentJob.parent_club_job = undefined;
+
+      const parentHasContainers = Array.isArray(parentJob.containers) && parentJob.containers.some(c => c.containerNo);
+      let clubContainersToPropagate = parentHasContainers ? parentJob.containers.filter(c => c.containerNo) : [];
+
+      if (!parentHasContainers) {
+        // Check if any child job has containers that can be used for the club
+        const existingChildWithContainers = await ExJobModel.findOne({
+          job_no: { $in: childJobsToUpdate },
+          'containers.containerNo': { $exists: true, $ne: '' }
+        }).lean();
+
+        if (existingChildWithContainers && Array.isArray(existingChildWithContainers.containers) && existingChildWithContainers.containers.length > 0) {
+          const validChildConts = existingChildWithContainers.containers.filter(c => c.containerNo);
+          if (validChildConts.length > 0) {
+            parentJob.containers = validChildConts.map((c, idx) => ({
+              ...c,
+              serialNumber: idx + 1,
+              pkgsStuffed: Number(parentJob.total_no_of_pkgs || c.pkgsStuffed || 0),
+              grossWeight: Number(parentJob.gross_weight_kg || c.grossWeight || 0),
+              vgmWtInvoice: Number(parentJob.gross_weight_kg || 0) + Number(c.tareWeightKgs || 0)
+            }));
+            clubContainersToPropagate = parentJob.containers;
+          }
+        }
+      }
+
       await parentJob.save();
 
       // Update active child jobs
@@ -142,6 +168,28 @@ router.post("/create-club-job", auditMiddleware("Job"), async (req, res) => {
           } 
         }
       );
+
+      // If parent has containers, propagate them to any child jobs that do not have containers yet
+      if (clubContainersToPropagate.length > 0) {
+        const children = await ExJobModel.find({ job_no: { $in: childJobsToUpdate } });
+        for (const child of children) {
+          const childHasCont = Array.isArray(child.containers) && child.containers.some(c => c.containerNo);
+          if (!childHasCont) {
+            child.containers = clubContainersToPropagate.map((c, idx) => {
+              const plain = c.toObject ? c.toObject() : { ...c };
+              delete plain._id;
+              return {
+                ...plain,
+                serialNumber: idx + 1,
+                pkgsStuffed: Number(child.total_no_of_pkgs || 0),
+                grossWeight: Number(child.gross_weight_kg || 0),
+                vgmWtInvoice: Number(child.gross_weight_kg || 0) + Number(c.tareWeightKgs || 0)
+              };
+            });
+            await child.save();
+          }
+        }
+      }
     }
 
     res.status(200).json({ 
