@@ -6177,6 +6177,7 @@ const ExportJobsTable = () => {
             if (updates.goodsReportDate) newStatus.goodsReportDate = updates.goodsReportDate;
             if (updates.leoDate) newStatus.leoDate = updates.leoDate;
             if (updates.rms) newStatus.rms = updates.rms;
+            if (updates.pcinNo) newStatus.pcinNo = updates.pcinNo;
 
             const newOperations = [...operations];
             newOperations[0] = {

@@ -1427,6 +1427,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
                 hoToConsoleDate2: formatDate(safeValue(s.hoToConsoleDate2)),
                 containerPlacementDate: formatDate(safeValue(s.containerPlacementDate)),
                 gateInDate: formatDate(safeValue(s.gateInDate)),
+                pcinNo: safeValue(s.pcinNo || s.pcin || s.cinNo),
                 railOutReachedDate: formatDate(safeValue(s.railOutReachedDate)),
               };
             }),

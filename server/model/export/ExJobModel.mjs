@@ -1585,6 +1585,7 @@ const statusDetailsSchema = new Schema(
         eGatePassCopyDate: { type: String, trim: true },
         eGatePassUpload: [String],
         icdPort: { type: String, trim: true },
+        pcinNo: { type: String, trim: true },
         handoverForwardingNoteDate: { type: String, trim: true },
         forwardingNoteUpload: [String],
         handoverImageUpload: [String],

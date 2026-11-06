@@ -153,6 +153,9 @@ function SBTrackDialog({ open, onClose, sbNo, sbDate, customHouse, onUpdateStatu
 
                         drawback_scroll_no: status.custScrollNo && !["N.A.", "N/A", "NA"].includes(status.custScrollNo.trim().toUpperCase()) ? status.custScrollNo : null,
                         drawback_scroll_date: extractDate(status.scrollDate),
+                        pcinNo: (fetchedData.sbDetailsModel?.[0]?.cinNo && !["N.A.", "N/A", "NA"].includes(fetchedData.sbDetailsModel[0].cinNo.trim().toUpperCase()))
+                            ? fetchedData.sbDetailsModel[0].cinNo.trim()
+                            : null,
                     };
 
                     if (rmsVal) {
