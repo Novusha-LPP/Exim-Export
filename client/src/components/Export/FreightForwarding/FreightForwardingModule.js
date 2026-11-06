@@ -846,6 +846,7 @@ function FreightForwardingModule() {
     }
     return {
       search: "",
+      month: "",
       shipment_type: "",
       status: "",
     };
@@ -932,7 +933,7 @@ function FreightForwardingModule() {
       fetchEnquiries(activeTab, filters);
     }, 250);
     return () => clearTimeout(timer);
-  }, [activeTab, filters.search, filters.shipment_type, filters.status]);
+  }, [activeTab, filters.search, filters.month, filters.shipment_type, filters.status]);
 
   useEffect(() => {
     localStorage.setItem("ff_active_tab", activeTab);
@@ -942,12 +943,55 @@ function FreightForwardingModule() {
     localStorage.setItem("ff_filters", JSON.stringify(filters));
   }, [filters]);
 
+  const matchMonthFilter = (rowDate, selectedMonth) => {
+    if (!selectedMonth) return true;
+    if (!rowDate) return false;
+    let d = null;
+    if (rowDate instanceof Date) {
+      d = rowDate;
+    } else if (typeof rowDate === "string") {
+      const clean = rowDate.trim();
+      if (/^\d{1,2}[-/.]\d{1,2}[-/.]\d{4}$/.test(clean)) {
+        const parts = clean.split(/[-/.]/);
+        d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      } else if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(clean)) {
+        d = new Date(clean);
+      } else {
+        d = new Date(clean);
+      }
+    }
+    if (!d || isNaN(d.getTime())) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const checkDate = new Date(d);
+    checkDate.setHours(0, 0, 0, 0);
+
+    if (selectedMonth === "today") return checkDate.getTime() === today.getTime();
+    if (selectedMonth === "yesterday") {
+      const yest = new Date(today);
+      yest.setDate(yest.getDate() - 1);
+      return checkDate.getTime() === yest.getTime();
+    }
+    if (selectedMonth === "weekly") {
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return checkDate.getTime() >= weekAgo.getTime() && checkDate.getTime() <= today.getTime() + 86400000;
+    }
+
+    const monthNum = parseInt(selectedMonth, 10);
+    if (!isNaN(monthNum)) return d.getMonth() + 1 === monthNum;
+    return true;
+  };
+
   const fetchEnquiries = async (tabToFetch = activeTab, currentFilters = filters) => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_STRING}/freight-enquiries`, {
         params: {
           tab: tabToFetch,
           search: currentFilters.search?.trim() || "",
+          month: currentFilters.month || "",
           shipment_type: currentFilters.shipment_type || "",
           status: currentFilters.status || "",
         }
@@ -975,15 +1019,47 @@ function FreightForwardingModule() {
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
       // 2. Additional Filters
-      const needle = filters.search.trim().toUpperCase();
+      const needle = (filters.search || "").trim().toUpperCase();
+      const containerStr = (row.containers || [])
+        .map((c) => c?.container_number || c?.container_no || (typeof c === "string" ? c : ""))
+        .concat([row.container_numbers, row.container_no, row.no_of_containers])
+        .filter(Boolean)
+        .join(" ");
+
       const matchSearch =
         !needle ||
-        [row.enquiry_no, row.success_no, row.rejected_no, row.organization_name, row.port_of_loading, row.port_of_destination]
+        [
+          row.enquiry_no,
+          row.success_no,
+          row.rejected_no,
+          row.source_job_no,
+          row.job_no,
+          row.organization_name,
+          row.contact_person,
+          row.shipper_name,
+          row.shipper,
+          row.exporter,
+          row.consignee_name,
+          row.consignee,
+          row.importer,
+          containerStr,
+          row.port_of_loading,
+          row.port_of_destination,
+          row.hbl_no,
+          row.mbl_no,
+          row.booking_no,
+          row.sb_no,
+          row.vessel_name,
+          row.shipping_line_airline,
+          row.sales_person,
+        ]
           .filter(Boolean)
-          .some((field) => field.toUpperCase().includes(needle));
+          .some((field) => String(field).toUpperCase().includes(needle));
+
+      const matchMonth = matchMonthFilter(row.enquiry_date || row.createdAt || row.booking_date, filters.month);
       const matchShipment = !filters.shipment_type || row.shipment_type === filters.shipment_type;
       const matchStatus = !filters.status || row.status === filters.status;
-      return matchSearch && matchShipment && matchStatus;
+      return matchSearch && matchMonth && matchShipment && matchStatus;
     });
   }, [rows, filters]);
 
@@ -1262,7 +1338,7 @@ function FreightForwardingModule() {
                 <input
                   value={filters.search}
                   onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-                  placeholder="Search by Enquiry No, Job No, Org, Port..."
+                  placeholder="Search Enquiry, Job, Container No, Consignee, Exporter, Port, BL..."
                   style={{
                     height: "32px",
                     padding: "0 10px",
@@ -1274,10 +1350,40 @@ function FreightForwardingModule() {
                     backgroundColor: filters.search ? "#eff6ff" : "#fff",
                     fontWeight: filters.search ? "600" : "normal",
                     flex: 1,
-                    maxWidth: "320px",
+                    maxWidth: "350px",
                     boxSizing: "border-box",
                   }}
                 />
+                <select
+                  value={filters.month || ""}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, month: e.target.value }))}
+                  style={{
+                    height: "32px",
+                    padding: "0 10px",
+                    fontSize: "12px",
+                    border: filters.month ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                    borderRadius: "4px",
+                    backgroundColor: filters.month ? "#eff6ff" : "#fff",
+                    color: filters.month ? "#1d4ed8" : "#333",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <option value="">All Months</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="weekly">Weekly</option>
+                  {[
+                    { v: "1", l: "January" }, { v: "2", l: "February" }, { v: "3", l: "March" },
+                    { v: "4", l: "April" }, { v: "5", l: "May" }, { v: "6", l: "June" },
+                    { v: "7", l: "July" }, { v: "8", l: "August" }, { v: "9", l: "September" },
+                    { v: "10", l: "October" }, { v: "11", l: "November" }, { v: "12", l: "December" }
+                  ].map((m) => (
+                    <option key={m.v} value={m.v}>{m.l}</option>
+                  ))}
+                </select>
                 <select
                   value={filters.shipment_type}
                   onChange={(e) => setFilters((prev) => ({ ...prev, shipment_type: e.target.value }))}
@@ -1323,9 +1429,9 @@ function FreightForwardingModule() {
                   <option value="Closed">Closed</option>
                 </select>
 
-                {(filters.search || filters.shipment_type || filters.status) && (
+                {(filters.search || filters.month || filters.shipment_type || filters.status) && (
                   <button
-                    onClick={() => setFilters({ search: "", shipment_type: "", status: "" })}
+                    onClick={() => setFilters({ search: "", month: "", shipment_type: "", status: "" })}
                     style={{
                       height: "32px",
                       padding: "0 12px",

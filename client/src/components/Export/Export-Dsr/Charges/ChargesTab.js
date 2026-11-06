@@ -1,21 +1,48 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import ChargesGrid from "../../../chargesGrid/index.jsx";
 import { FieldArray, FormikProvider } from "formik";
 import FileUpload from "../../../gallery/FileUpload.js";
 import ImagePreview from "../../../gallery/ImagePreview.js";
 import DateInput from "../../../common/DateInput.js";
+import axios from "axios";
 
 const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable = true, isFreightForwarding: isFreightForwardingProp }) => {
-  const [chargesCount, setChargesCount] = React.useState(0);
-  // Try every known location where the job _id could live
-  const parentId =
-    job?._id ||
+  const [chargesCount, setChargesCount] = useState(0);
+  const [parentClubJobDoc, setParentClubJobDoc] = useState(null);
+
+  const jobData = formik?.values || job || {};
+  const parentClubJobNo = jobData.parent_club_job || job?.parent_club_job;
+
+  useEffect(() => {
+    let isMounted = true;
+    if (parentClubJobNo) {
+      axios.get(`${import.meta.env.VITE_API_STRING}/${encodeURIComponent(parentClubJobNo)}`)
+        .then(res => {
+          if (isMounted) {
+            const doc = res.data?.data || res.data;
+            if (doc && doc._id) {
+              setParentClubJobDoc(doc);
+            }
+          }
+        })
+        .catch(err => {
+          console.warn("Failed to fetch parent club job for charges:", err);
+        });
+    } else {
+      setParentClubJobDoc(null);
+    }
+    return () => { isMounted = false; };
+  }, [parentClubJobNo]);
+
+  // Each job (parent or child) manages its own charges using its own ID.
+  // When viewing a club parent job, the backend GET /charges automatically aggregates
+  // charges from all child jobs as well!
+  const effectiveParentId = job?._id ||
     job?.id ||
     formik?.values?._id ||
     formik?.values?.id ||
     null;
 
-  const jobData = formik?.values || job || {};
   const isFreightForwarding = isFreightForwardingProp !== undefined
     ? Boolean(isFreightForwardingProp)
     : Boolean(
@@ -30,14 +57,14 @@ const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable =
   const jobNo = jobData.job_no || jobData.jobNumber || "";
   const jobYear = jobData.year || "";
   const shippingLine = jobData.shipping_line_airline || "";
-  const exporterName = jobData.exporter || "";
+  const exporterName = jobData.exporter || jobData.shipper || jobData.importer || jobData.consignees?.[0]?.consignee_name || "";
   const invoices = jobData.invoices || [];
   const firstInvoice = invoices[0] || {};
 
   const containerCount = jobData.containers?.length || 0;
-  const invoiceCount = jobData.invoices?.length || 0;
+  const invoiceCount = invoices.length || 0;
 
-  if (!parentId) {
+  if (!effectiveParentId) {
     return (
       <div style={{ padding: 24, color: "#6b7280", fontSize: 13 }}>
         Loading charges… (waiting for job data)
@@ -48,13 +75,31 @@ const ChargesTab = ({ job, formik, isEditable = true, isBillingDetailsEditable =
   return (
     <FormikProvider value={formik}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {parentClubJobNo && (
+          <div style={{
+            background: '#f0fdf4',
+            border: '1px solid #86efac',
+            borderRadius: '6px',
+            padding: '10px 14px',
+            color: '#166534',
+            fontSize: '12px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <span>
+              ℹ️ Club Job Member: You can add/manage charges directly for this job. All charges will also be visible and consolidated under Parent Job <strong>{parentClubJobNo}</strong>.
+            </span>
+          </div>
+        )}
         <ChargesGrid
-          parentId={parentId}
+          parentId={effectiveParentId}
           parentModule="ExportJob"
           jobNumber={jobNo}
           jobDisplayNumber={jobNo}
           jobYear={jobYear}
-          jobDate={jobData.job_date || jobData.jobDate || ""}
+          jobDate={parentClubJobDoc?.job_date || jobData.job_date || jobData.jobDate || ""}
           shippingLineAirline={shippingLine}
           exporterName={exporterName}
           invoiceNumber={firstInvoice.invoiceNumber || ""}

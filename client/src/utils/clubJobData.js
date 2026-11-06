@@ -51,6 +51,7 @@ export const loadClubJobData = async (jobData) => {
       "sailing_date",
       "voyage_no",
       "forwarder",
+      "exporter",
       "exporter_address",
       "factory_address",
       "cha",

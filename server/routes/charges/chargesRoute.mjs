@@ -10,7 +10,9 @@ import Directory from '../../model/Directorties/Directory.js';
 import Transporter from '../../model/Directorties/Transporter.js';
 import TerminalCode from '../../model/Directorties/TerminalCode.js';
 import EmptyYardDirectory from '../../model/Directorties/EmptyYardDirectory.js';
+import CfsDirectory from '../../model/Directorties/CfsDirectory.js';
 import ForwarderModel from '../../model/export/ForwarderModel.mjs';
+import importDbConnection from '../../model/importDB.js';
 
 const router = express.Router();
 
@@ -167,36 +169,66 @@ router.get('/get-suppliers', async (req, res) => {
 
 router.get('/organization', async (req, res) => {
     try {
-        const items = await Directory.find({ 
-            "generalInfo.entityType": { $in: ["Exporter", "Importer"] } 
-        }).sort({ organization: 1 });
-        
-        const mapped = items.map(i => ({
+        // 1. Fetch from Export Directory
+        const exportItems = await Directory.find({}).sort({ organization: 1 }).lean();
+        const mappedExport = exportItems.map(i => ({
             name: i.organization,
             city: i.branchInfo?.[0]?.city || i.address?.city || '',
             branches: i.branchInfo?.map(b => ({ ...b, branch_no: b.branchCode, branchName: b.branchName, city: b.city, gst: b.gstNo })) || [],
             pan: i.registrationDetails?.panNo || '',
-            tds_percent: i.accountCreditInfo?.tds_percent || 0
+            tds_percent: i.accountCreditInfo?.tds_percent || 0,
+            source: 'Export Directory'
         }));
-        res.json({ success: true, organizations: mapped });
+
+        // 2. Fetch from Import organisations collection
+        let mappedImport = [];
+        if (importDbConnection && importDbConnection.readyState === 1) {
+            try {
+                const importItems = await importDbConnection.db.collection('organisations').find({}).sort({ name: 1 }).toArray();
+                mappedImport = importItems.map(i => ({
+                    name: i.name,
+                    city: i.branches?.[0]?.city || '',
+                    branches: i.branches?.map(b => ({ ...b, branch_no: b.branchName, branchName: b.branchName, city: b.city, gst: b.gstin || b.gstNo || b.gst })) || [],
+                    pan: i.panNo || '',
+                    tds_percent: i.tds_percent || 0,
+                    source: 'Import Organisation'
+                }));
+            } catch (impErr) {
+                console.error("Error fetching import organisations:", impErr);
+            }
+        }
+
+        // 3. Merge both sources (Export directory takes precedence for duplicates)
+        const seenNames = new Set();
+        const organizations = [];
+
+        for (const org of [...mappedExport, ...mappedImport]) {
+            const norm = (org.name || '').trim().toUpperCase();
+            if (!norm) continue;
+            if (!seenNames.has(norm)) {
+                seenNames.add(norm);
+                organizations.push(org);
+            }
+        }
+
+        res.json({ success: true, organizations });
     } catch (error) {
+        console.error("Error in /organization route:", error);
         res.status(500).json({ success: false, organizations: [] });
     }
 });
 
 router.get('/get-cfs-list', async (req, res) => {
     try {
-        const items = await Directory.find({ 
-            "generalInfo.entityType": { $in: ["CFS", "Warehouse"] } 
-        }).sort({ organization: 1 });
-        
-        const mapped = items.map(i => ({
-            name: i.organization,
-            city: i.branchInfo?.[0]?.city || i.address?.city || '',
-            branches: i.branchInfo?.map(b => ({ ...b, branch_no: b.branchCode, branchName: b.branchName, city: b.city, gst: b.gstNo })) || [],
-            pan: i.registrationDetails?.panNo || '',
-            tds_percent: i.accountCreditInfo?.tds_percent || 0
-        }));
+        const items = await CfsDirectory.find().sort({ name: 1 });
+        const mapped = items.map(i => {
+            const obj = i.toObject();
+            return {
+                ...obj,
+                name: obj.name,
+                branches: obj.branches || []
+            };
+        });
         res.json(mapped);
     } catch (error) {
         res.status(500).json([]);
@@ -284,7 +316,35 @@ router.get('/charges', async (req, res) => {
         const record = await model.findById(parentId);
         if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
 
-        res.json({ success: true, data: record.charges || [] });
+        let allCharges = [...(record.charges || [])].map(c => {
+            const plain = c.toObject ? c.toObject() : { ...c };
+            return {
+                ...plain,
+                sourceJobNo: record.job_no || record.jobNumber || '',
+                sourceJobId: record._id
+            };
+        });
+
+        // If this is a club parent job, also aggregate charges from all member child jobs
+        if (record.is_club_job_parent && Array.isArray(record.clubbed_jobs) && record.clubbed_jobs.length > 0) {
+            const childJobNos = record.clubbed_jobs.filter(j => j && j !== record.job_no);
+            if (childJobNos.length > 0) {
+                const childJobs = await ExJobModel.find({ job_no: { $in: childJobNos } }).lean();
+                for (const child of childJobs) {
+                    if (Array.isArray(child.charges)) {
+                        for (const cc of child.charges) {
+                            allCharges.push({
+                                ...cc,
+                                sourceJobNo: child.job_no,
+                                sourceJobId: child._id
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        res.json({ success: true, data: allCharges });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

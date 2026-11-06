@@ -173,6 +173,11 @@ const ChargesTable = ({
                           {ch.chargeType}
                         </span>
                       )}
+                      {ch.sourceJobNo && (
+                        <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', background: '#f3e8ff', color: '#6b21a8', fontWeight: '600', border: '1px solid #d8b4fe' }}>
+                          Job: {ch.sourceJobNo}
+                        </span>
+                      )}
                       {ch.isPbMandatory && <span style={{ fontSize: '8px', color: '#d32f2f', fontWeight: 'bold', border: '1px solid #d32f2f', padding: '0 4px', borderRadius: '2px' }}>MANDATORY</span>}
                       {ch.purchase_book_no && (
                         <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', background: '#e3f2fd', color: '#1565c0', border: '1px solid #bbdefb', display: 'flex', alignItems: 'center', gap: '4px' }}>

@@ -1210,29 +1210,32 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
         jobCanceledDate: formatDate(safeValue(data.jobCanceledDate)),
         isLocked: safeValue(data.isLocked, false),
         cancellationReason: safeValue(data.cancellationReason),
-        invoices: safeValue(data.invoices, []).map((inv) => ({
-          ...inv,
-          invoiceDate: formatDate(safeValue(inv.invoiceDate)),
-          products: (inv.products || []).map((prod) => ({
-            ...prod,
-            epcgDetails: safeValue(prod.epcgDetails, {
-              isEpcgItem: false,
-              epcgItems: [],
-              epcg_reg_obj: [getDefaultRegItem()],
-            }),
-            deecDetails: safeValue(prod.deecDetails, {
-              isDeecItem: false,
-              deecItems: [],
-              deec_reg_obj: [getDefaultRegItem()],
-            }),
-            drawbackDetails: safeValue(prod.drawbackDetails, []),
-            areDetails: safeValue(prod.areDetails, []),
-            rodtepInfo: {
-              ...prod.rodtepInfo,
-              isCapUnitManual: prod.rodtepInfo?.isCapUnitManual || false,
-            },
+        invoices: syncAllProductsDrawbackAndRodtep(
+          safeValue(data.invoices, []).map((inv) => ({
+            ...inv,
+            invoiceDate: formatDate(safeValue(inv.invoiceDate)),
+            products: (inv.products || []).map((prod) => ({
+              ...prod,
+              epcgDetails: safeValue(prod.epcgDetails, {
+                isEpcgItem: false,
+                epcgItems: [],
+                epcg_reg_obj: [getDefaultRegItem()],
+              }),
+              deecDetails: safeValue(prod.deecDetails, {
+                isDeecItem: false,
+                deecItems: [],
+                deec_reg_obj: [getDefaultRegItem()],
+              }),
+              drawbackDetails: safeValue(prod.drawbackDetails, []),
+              areDetails: safeValue(prod.areDetails, []),
+              rodtepInfo: {
+                ...prod.rodtepInfo,
+                isCapUnitManual: prod.rodtepInfo?.isCapUnitManual || false,
+              },
+            })),
           })),
-        })),
+          Number(data.exchange_rate) || 1
+        ),
         buyerThirdPartyInfo: safeValue(data.buyerThirdPartyInfo, {}),
         otherInfo: safeValue(data.otherInfo, {}),
         buyer_name: safeValue(data.buyer_name),
@@ -1424,6 +1427,7 @@ function useExportJobDetails(params, setFileSnackbar, navigate) {
                 hoToConsoleDate2: formatDate(safeValue(s.hoToConsoleDate2)),
                 containerPlacementDate: formatDate(safeValue(s.containerPlacementDate)),
                 gateInDate: formatDate(safeValue(s.gateInDate)),
+                pcinNo: safeValue(s.pcinNo || s.pcin || s.cinNo),
                 railOutReachedDate: formatDate(safeValue(s.railOutReachedDate)),
               };
             }),

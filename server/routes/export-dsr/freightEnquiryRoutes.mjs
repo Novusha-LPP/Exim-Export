@@ -260,7 +260,9 @@ router.get("/freight-enquiries", async (req, res) => {
           chargeable_weight: 1,
           container_size: 1,
           goods_stuffed: 1,
-          dimensions: 1
+          dimensions: 1,
+          containers: 1,
+          container_nos: 1
         }
       ).lean();
       const jobMap = {};
@@ -359,6 +361,9 @@ router.get("/freight-enquiries", async (req, res) => {
             if (job.container_size) e.container_size = job.container_size;
             if (job.goods_stuffed) e.goods_stuffed = job.goods_stuffed;
             if (job.dimensions && job.dimensions.length > 0) e.dimensions = job.dimensions;
+            if (job.containers && job.containers.length > 0 && (!e.containers || e.containers.length === 0)) {
+              e.containers = job.containers;
+            }
             if (job.bl_details) {
               e.bl_details = {
                 ...e.bl_details,
@@ -470,34 +475,92 @@ router.get("/freight-enquiries", async (req, res) => {
     const needle = (req.query.search || "").trim().toUpperCase();
     const reqShipmentType = (req.query.shipment_type || "").trim();
     const reqStatus = (req.query.status || "").trim();
+    const reqMonth = (req.query.month || "").trim();
+
+    const matchMonthHelper = (dateVal, monthFilter) => {
+      if (!monthFilter) return true;
+      if (!dateVal) return false;
+      let d = null;
+      if (dateVal instanceof Date) {
+        d = dateVal;
+      } else if (typeof dateVal === "string") {
+        const clean = dateVal.trim();
+        if (/^\d{1,2}[-/.]\d{1,2}[-/.]\d{4}$/.test(clean)) {
+          const parts = clean.split(/[-/.]/);
+          d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        } else if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(clean)) {
+          d = new Date(clean);
+        } else {
+          d = new Date(clean);
+        }
+      }
+      if (!d || isNaN(d.getTime())) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const checkDate = new Date(d);
+      checkDate.setHours(0, 0, 0, 0);
+
+      if (monthFilter === "today") return checkDate.getTime() === today.getTime();
+      if (monthFilter === "yesterday") {
+        const yest = new Date(today);
+        yest.setDate(yest.getDate() - 1);
+        return checkDate.getTime() === yest.getTime();
+      }
+      if (monthFilter === "weekly") {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return checkDate.getTime() >= weekAgo.getTime() && checkDate.getTime() <= today.getTime() + 86400000;
+      }
+      const mNum = parseInt(monthFilter, 10);
+      if (!isNaN(mNum)) return d.getMonth() + 1 === mNum;
+      return true;
+    };
 
     const matchesFilter = (e) => {
+      const containerStr = (e.containers || [])
+        .map((c) => c?.container_number || c?.container_no || (typeof c === "string" ? c : ""))
+        .concat([e.container_numbers, e.container_no, e.no_of_containers])
+        .filter(Boolean)
+        .join(" ");
+
       const matchSearch =
         !needle ||
         [
           e.enquiry_no,
           e.success_no,
           e.rejected_no,
+          e.source_job_no,
+          e.job_no,
           e.organization_name,
+          e.contact_person,
+          e.shipper_name,
+          e.shipper,
+          e.exporter,
+          e.consignee_name,
+          e.consignee,
+          e.importer,
+          containerStr,
           e.port_of_loading,
           e.port_of_destination,
-          e.shipper_name,
-          e.consignee_name,
           e.hbl_no,
           e.mbl_no,
           e.booking_no,
           e.sb_no,
+          e.vessel_name,
+          e.shipping_line_airline,
+          e.sales_person,
         ]
           .filter(Boolean)
           .some((val) => String(val).toUpperCase().includes(needle));
 
+      const matchMonth = matchMonthHelper(e.enquiry_date || e.createdAt || e.booking_date, reqMonth);
       const matchShipment = !reqShipmentType || e.shipment_type === reqShipmentType;
       const matchStatus = !reqStatus || e.status === reqStatus;
 
-      return matchSearch && matchShipment && matchStatus;
+      return matchSearch && matchMonth && matchShipment && matchStatus;
     };
 
-    const filteredDataList = (needle || reqShipmentType || reqStatus)
+    const filteredDataList = (needle || reqShipmentType || reqStatus || reqMonth)
       ? dataList.filter(matchesFilter)
       : dataList;
 

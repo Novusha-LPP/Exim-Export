@@ -337,6 +337,16 @@ export async function runSbTrackJob(force = false) {
                         }
                     }
                 }
+            // ?? sbDetailsModel (PCIN / CIN No) ????????????????????????
+                const sbDetails = icegateData.sbDetailsModel || [];
+                if (sbDetails.length > 0) {
+                    const cin = sbDetails[0].cinNo;
+                    if (isValidVal(cin)) {
+                        const trimmedCin = cin.trim();
+                        updates["operations.0.statusDetails.0.pcinNo"] = trimmedCin;
+                        changeLog.push(`pcinNo: (empty) ? ${trimmedCin}`);
+                    }
+                }
             }
 
             await ExJobModel.findByIdAndUpdate(job._id, { $set: updates });

@@ -249,7 +249,18 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
     const rawCutOff = findClubField("cutOffDate", "cut_off_date", "booking_date");
     const cutOffDate = formatDate(rawCutOff);
     const dischargeCountry = findClubField("dischargeCountry", "discharge_country", "destination_country");
-    const exporterAddress = findClubField("exporterAddress", "exporter_address", "exporter");
+    const exporterName = findClubField("exporter", "exporter_name");
+    const rawExporterAddress = findClubField("exporter_address", "exporterAddress", "factory_address", "factoryAddress");
+    let exporterAddress = "";
+    if (exporterName && rawExporterAddress) {
+      if (rawExporterAddress.toLowerCase().includes(exporterName.toLowerCase())) {
+        exporterAddress = rawExporterAddress;
+      } else {
+        exporterAddress = `${exporterName}<br/>${rawExporterAddress}`;
+      }
+    } else {
+      exporterAddress = exporterName || rawExporterAddress || "";
+    }
     const gatewayPort = findClubField("gatewayPort", "gateway_port", "port_of_loading");
     const aggregatedContainers = getAggregatedContainers(primaryData, isClubActive, clubbedJobsList);
     const allSbNos = [...new Set(
@@ -663,7 +674,18 @@ const ForwardingNoteTharGenerator = ({ jobNo, children }) => {
       const agentCha = "SURAJ FORWARDERS & SHIPPING AGENCIES";
       const cutOffDate = formatDate(findClubField("cut_off_date", "cutOffDate", "booking_date"));
       const dischargeCountry = findClubField("discharge_country", "dischargeCountry", "destination_country") || "";
-      const exporterAddress = findClubField("exporter_address", "exporterAddress", "exporter") || "";
+      const exporterName = findClubField("exporter", "exporter_name") || "";
+      const rawExporterAddress = findClubField("exporter_address", "exporterAddress", "factory_address", "factoryAddress") || "";
+      let exporterAddress = "";
+      if (exporterName && rawExporterAddress) {
+        if (rawExporterAddress.toLowerCase().includes(exporterName.toLowerCase())) {
+          exporterAddress = rawExporterAddress;
+        } else {
+          exporterAddress = `${exporterName}\n${rawExporterAddress}`;
+        }
+      } else {
+        exporterAddress = exporterName || rawExporterAddress || "";
+      }
       const gatewayPort = findClubField("gateway_port", "gatewayPort", "port_of_loading") || "";
       const shippingBillNo = data.sb_no || "";
       const portOfDischarge = findClubField("port_of_discharge", "portOfDischarge", "destination_port") || "";

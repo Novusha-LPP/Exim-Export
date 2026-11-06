@@ -255,6 +255,8 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         "voyage_no",
         "sailing_date",
         "forwarder",
+        "exporter",
+        "exporter_address",
         "goods_stuffed_at",
         "stuffing_seal_type",
         "factory_address"
@@ -327,12 +329,16 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
         ? jobData.containers
         : (parentOp.containerDetails || []);
 
-      // Remove only exact duplicate shipment entries; the same physical container can have a distinct parent SB.
+      // Keep parent job's own containers; do not filter them out just because child jobs share the physical container
       const parentOwnContainers = rawParentContainers.filter(c => {
-        return !childContainerSignatures.has(getContainerSignature(c, jobData));
+        if (c._sourceJobNo && String(c._sourceJobNo).toUpperCase() !== String(jobData.job_no).toUpperCase()) {
+          return false;
+        }
+        return true;
       });
+      const finalParentContainers = parentOwnContainers.length > 0 ? parentOwnContainers : rawParentContainers;
 
-      const parentMerged = parentOwnContainers.map(c => ({
+      const parentMerged = finalParentContainers.map(c => ({
         ...c,
         pkgsStuffed: (c.pkgsStuffed !== undefined && c.pkgsStuffed !== null && c.pkgsStuffed !== 0) ? c.pkgsStuffed : Number(jobData.total_no_of_pkgs || 0),
         grossWeight: (c.grossWeight !== undefined && c.grossWeight !== null && c.grossWeight !== 0) ? c.grossWeight : Number(jobData.gross_weight_kg || 0),
@@ -351,7 +357,7 @@ router.get("/api/get-export-job/:jobNo(.*)", async (req, res) => {
       mergedContainers.unshift(...parentMerged);
 
       jobData.mergedContainers = mergedContainers;
-      jobData.containers = parentOwnContainers;
+      jobData.containers = finalParentContainers;
 
       // Keep parent job's own invoices as plain objects (do NOT merge child jobs' invoices into parent job)
       jobData.invoices = (jobData.invoices || []).map(inv => {

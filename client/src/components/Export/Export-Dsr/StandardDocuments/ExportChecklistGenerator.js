@@ -4,7 +4,7 @@ import "jspdf-autotable";
 import axios from "axios";
 import { IconButton, Button } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
-import { calculateProductFobINR } from "../../../../utils/fobCalculations.js";
+import { calculateProductFobINR, syncAllProductsDrawbackAndRodtep } from "../../../../utils/fobCalculations.js";
 
 const CUSTOM_HOUSE_CODE_MAP = {
   "AHMEDABAD AIR CARGO": "INAMD4",
@@ -94,6 +94,7 @@ const ExportChecklistGenerator = ({
   renderAsIcon = false,
   children,
   onTrackSuccess,
+  formData = null,
 }) => {
   // ==================== CONSTANTS ====================
   const PAGE_CONFIG = {
@@ -1756,12 +1757,39 @@ const extractPrimaryJobNo = (input) => {
     if (e) e.stopPropagation();
     try {
       const targetJobNo = extractPrimaryJobNo(jobNo);
-      const encodedJobNo = encodeURIComponent(targetJobNo);
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}?excludeChildJobs=true`,
-      );
+      let exportJob = null;
 
-      const exportJob = response.data;
+      try {
+        const encodedJobNo = encodeURIComponent(targetJobNo);
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_STRING}/get-export-job/${encodedJobNo}?excludeChildJobs=true`,
+        );
+        exportJob = response.data;
+      } catch (err) {
+        console.warn("Could not fetch export job from API, using formData if available:", err);
+      }
+
+      if (formData && (!formData.job_no || extractPrimaryJobNo(formData.job_no) === targetJobNo)) {
+        exportJob = {
+          ...(exportJob || {}),
+          ...formData,
+          invoices: formData.invoices || exportJob?.invoices || [],
+          exchange_rate: formData.exchange_rate || exportJob?.exchange_rate,
+        };
+      }
+
+      if (!exportJob) {
+        throw new Error("Job details not found");
+      }
+
+      // Automatically synchronize all products Drawback, RoDTEP, RoSCTL, PMV, and FOB values
+      if (exportJob.invoices && Array.isArray(exportJob.invoices)) {
+        exportJob.invoices = syncAllProductsDrawbackAndRodtep(
+          exportJob.invoices,
+          Number(exportJob.exchange_rate) || 1,
+        );
+      }
+
       const currentDate = formatDate(new Date());
 
       // ==================== CURRENCY RATES (FOR INR + FOREIGN DISPLAY) ====================
@@ -2390,8 +2418,8 @@ const extractPrimaryJobNo = (input) => {
                 dbkSlNo: dbk.dbkSrNo || "",
                 dbkRate: dbk.dbkRate?.toString() || "",
                 dbkQtyUnit: `${dbk.quantity || ""} / ${dbk.unit || ""}`,
-                dbkAmount: dbk.dbkAmount?.toFixed(2) || "0.00",
-                dbkSPE: (dbk.dbkCap || 0).toFixed(1),
+                dbkAmount: (parseFloat(dbk.dbkAmount) || 0).toFixed(2),
+                dbkSPE: (parseFloat(dbk.dbkCap) || 0).toFixed(1),
               });
             });
           });
@@ -2415,7 +2443,7 @@ const extractPrimaryJobNo = (input) => {
                   slCap: dbk.slCap || "0",
                   ctlRate: dbk.ctlRate || "0",
                   ctlCap: dbk.ctlCap || "0",
-                  amount: dbk.rosctlAmount || "0.00",
+                  amount: (parseFloat(dbk.rosctlAmount) || 0).toFixed(2),
                 });
               }
             });
@@ -2615,7 +2643,7 @@ const extractPrimaryJobNo = (input) => {
           exportJob.invoices?.forEach((invoice, invIndex) => {
             invoice.products?.forEach((product, prodIndex) => {
               const amount = parseFloat(product.rodtepInfo?.amountINR) || 0;
-              if (amount > 0) {
+              if (amount > 0 || product.rodtepInfo?.claim === "Yes") {
                 rodtepRows.push({
                   invItemSr: `${invIndex + 1}/${product.serialNumber || (prodIndex + 1)}`,
                   claimStatus:
@@ -2624,7 +2652,7 @@ const extractPrimaryJobNo = (input) => {
                   rate: product.rodtepInfo?.ratePercent || "",
                   capValue: getRodtepCapValue(product.rodtepInfo),
                   noOfUnits: "1",
-                  rodtepAmount: product.rodtepInfo?.amountINR || "",
+                  rodtepAmount: (parseFloat(product.rodtepInfo?.amountINR) || 0).toFixed(2),
                 });
               }
             });

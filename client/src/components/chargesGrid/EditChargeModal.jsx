@@ -174,14 +174,14 @@ const EditChargeModal = ({
 
   useEffect(() => {
     const fetchMasterData = async () => {
-        try {
-          const apiBase = import.meta.env.VITE_API_STRING || "/api";
-          axios.get(`${apiBase}/cashflow/team-members`).then(res => {
-            if (res.data?.success && Array.isArray(res.data.data)) {
-              setCashflowTeamMembers(res.data.data);
-            }
-          }).catch(() => {});
-        } catch (_) {}
+      try {
+        const apiBase = import.meta.env.VITE_API_STRING || "/api";
+        axios.get(`${apiBase}/cashflow/team-members`).then(res => {
+          if (res.data?.success && Array.isArray(res.data.data)) {
+            setCashflowTeamMembers(res.data.data);
+          }
+        }).catch(() => { });
+      } catch (_) { }
       try {
         const [slRes, supRes, orgRes, cfsRes, transRes, termRes, genOrgRes, fwdRes, vbRes, cfsVbRes, eyRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_STRING}/get-shipping-lines`),
@@ -463,9 +463,9 @@ const EditChargeModal = ({
     if (pDir === 'TERMINAL' || pDir === 'CFS' || pDir === 'EMPTY YARD' || pDir === 'EMPTY_YARD') return true;
     const norm = normalize(partyName);
     return (emptyYardList || []).some(t => normalize(t.name || t.organization) === norm) ||
-           (terminalCodes || []).some(t => normalize(t.name || t.organization) === norm) ||
-           (cfsList || []).some(t => normalize(t.name || t.organization) === norm) ||
-           (createdVirtualTerminals || []).some(t => normalize(t) === norm);
+      (terminalCodes || []).some(t => normalize(t.name || t.organization) === norm) ||
+      (cfsList || []).some(t => normalize(t.name || t.organization) === norm) ||
+      (createdVirtualTerminals || []).some(t => normalize(t) === norm);
   };
 
   const extractFileName = (url) => {
@@ -546,8 +546,9 @@ const EditChargeModal = ({
         updated[index][section].partyName = shippingLineAirline;
       }
 
-      // Auto-populate Payable To if type is 'Exporter' in Cost section
-      if (section === 'cost' && field === 'partyType' && (value === 'Exporter' || value === 'EXPORTER') && exporterName) {
+      // Auto-populate Payable To if type is 'Exporter', 'Importer', or 'Customer' in Cost section
+      // Auto-populate Payable To if type is 'Exporter', 'Importer', or 'Customer' in Cost section
+      if (section === 'cost' && field === 'partyType' && ['EXPORTER', 'IMPORTER', 'CUSTOMER'].includes((value || '').toUpperCase()) && exporterName) {
         updated[index][section].partyName = exporterName;
       }
 
@@ -555,8 +556,10 @@ const EditChargeModal = ({
       if (field === 'partyName') {
         setActiveDropdown({ index, section });
       } else if (field === 'partyType') {
-        // Clear party selected when type changes
-        updated[index][section].partyName = '';
+        // Clear party selected when type changes, unless auto-populated
+        if (!['Exporter', 'EXPORTER', 'Importer', 'IMPORTER', 'Customer', 'CUSTOMER', 'Others'].includes(value)) {
+          updated[index][section].partyName = '';
+        }
         updated[index][section].isTds = false;
         updated[index][section].tdsPercent = 0;
         setActiveDropdown({ index: null, section: null });
@@ -1089,7 +1092,7 @@ const EditChargeModal = ({
                                 <div className="ep-row">
                                   <span className="ep-label">RECEIVABLE TYPE</span>
                                   <select className="ep-select" value={row.revenue?.partyType || 'Customer'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'revenue')}>
-                                    <option>Customer</option><option>Agent</option><option>Carrier</option><option>Vendor</option><option>Transporter</option><option>Forwarder</option><option>Others</option>
+                                    <option>Customer</option><option>Exporter</option><option>Importer</option><option>Agent</option><option>Carrier</option><option>Vendor</option><option>Transporter</option><option>Forwarder</option><option>Others</option>
                                   </select>
                                 </div>
                                 <div className="ep-row">
@@ -1122,27 +1125,27 @@ const EditChargeModal = ({
                                     {activeDropdown.index === i && activeDropdown.section === 'revenue' && (row.revenue?.partyName?.length >= 1 || activeDropdown.clicked) && (
                                       <ul className="ep-dropdown-list" ref={dropdownRef}>
                                         {(() => {
-                                            const pType = (row.revenue?.partyType || 'Customer').toUpperCase();
-                                            let list = [];
-                                            if (pType === 'AGENT' || pType === 'CARRIER') list = shippingLines;
-                                            else if (pType === 'CUSTOMER') list = organizations;
-                                            else if (pType === 'VENDOR') list = suppliers;
-                                            else if (pType === 'TRANSPORTER') list = transporters;
-                                            else if (pType === 'FORWARDER') list = forwarders;
-                                            else if (pType === 'EMPTY YARD' || pType === 'EMPTY_YARD') list = emptyYardList;
-                                            else list = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...emptyYardList, ...generalOrgList, ...forwarders];
+                                          const pType = (row.revenue?.partyType || 'Customer').toUpperCase();
+                                          let list = [];
+                                          if (pType === 'AGENT' || pType === 'CARRIER') list = shippingLines;
+                                          else if (pType === 'CUSTOMER' || pType === 'EXPORTER' || pType === 'IMPORTER') list = organizations;
+                                          else if (pType === 'VENDOR') list = suppliers;
+                                          else if (pType === 'TRANSPORTER') list = transporters;
+                                          else if (pType === 'FORWARDER') list = forwarders;
+                                          else if (pType === 'EMPTY YARD' || pType === 'EMPTY_YARD') list = emptyYardList;
+                                          else list = [...shippingLines, ...suppliers, ...organizations, ...cfsList, ...transporters, ...terminalCodes, ...emptyYardList, ...generalOrgList, ...forwarders];
 
-                                            const filtered = list.filter(item => partyMatchesSearch(item, row.revenue?.partyName)).slice(0, 30);
-                                            if (filtered.length === 0) {
-                                              return <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>;
-                                            }
-                                            return filtered.map((item, idx) => (
-                                              <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
-                                                <span className="ep-item-name">{item.name || item.organization}</span>
-                                                <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
-                                              </li>
-                                            ));
-                                          })()}
+                                          const filtered = list.filter(item => partyMatchesSearch(item, row.revenue?.partyName)).slice(0, 30);
+                                          if (filtered.length === 0) {
+                                            return <li className="ep-dropdown-item"><span className="ep-item-sub">NO RESULTS FOUND</span></li>;
+                                          }
+                                          return filtered.map((item, idx) => (
+                                            <li key={idx} className="ep-dropdown-item" onClick={() => handleSelectParty(i, 'revenue', item)}>
+                                              <span className="ep-item-name">{item.name || item.organization}</span>
+                                              <span className="ep-item-sub">{getPartySourceLabel(item)}</span>
+                                            </li>
+                                          ));
+                                        })()}
                                       </ul>
                                     )}
                                   </div>
@@ -1282,7 +1285,7 @@ const EditChargeModal = ({
                                   <div className="ep-row">
                                     <span className="ep-label">PAYABLE TYPE</span>
                                     <select className="form-input" value={row.cost?.partyType || 'Others'} onChange={e => handleFieldChange(i, 'partyType', e.target.value, 'cost')}>
-                                      <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option><option>Empty Yard</option><option>Forwarder</option><option>General Org</option>
+                                      <option>Vendor</option><option>Transporter</option><option>Exporter</option><option>Importer</option><option>Customer</option><option>Others</option><option>Agent</option><option>CFS</option><option>Terminal</option><option>Empty Yard</option><option>Forwarder</option><option>General Org</option>
                                     </select>
                                   </div>
                                   <div className="ep-row">
@@ -1314,13 +1317,13 @@ const EditChargeModal = ({
                                       </div>
                                       {activeDropdown.index === i && activeDropdown.section === 'cost' && (row.cost?.partyName?.length >= 1 || activeDropdown.clicked) && (
                                         <ul className="ep-dropdown-list" ref={dropdownRef}>
-                                        {(() => {
+                                          {(() => {
                                             const pType = (row.cost?.partyType || 'Others').toUpperCase();
                                             let list = [];
                                             if (pType === 'AGENT') list = shippingLines;
                                             else if (pType === 'VENDOR') list = suppliers;
                                             else if (pType === 'TRANSPORTER') list = transporters;
-                                            else if (pType === 'EXPORTER') list = organizations;
+                                            else if (pType === 'EXPORTER' || pType === 'IMPORTER' || pType === 'CUSTOMER') list = organizations;
                                             else if (pType === 'CFS') list = cfsList;
                                             else if (pType === 'TERMINAL') list = terminalCodes;
                                             else if (pType === 'EMPTY YARD' || pType === 'EMPTY_YARD') list = emptyYardList;
@@ -1339,7 +1342,7 @@ const EditChargeModal = ({
                                               </li>
                                             ));
                                           })()}
-                                      </ul>
+                                        </ul>
                                       )}
                                     </div>
                                   </div>
@@ -1386,14 +1389,14 @@ const EditChargeModal = ({
                                     : 'TERMINAL';
                                   const isCfsSource = sourceType === 'CFS';
                                   const allAvailableNames = [...new Set([
-                                     ...(isCfsSource ? createdVirtualCfs : createdVirtualTerminals),
-                                     ...(row.cost?.virtualBalanceTerminal ? [row.cost.virtualBalanceTerminal] : [])
-                                   ])].filter(Boolean);
+                                    ...(isCfsSource ? createdVirtualCfs : createdVirtualTerminals),
+                                    ...(row.cost?.virtualBalanceTerminal ? [row.cost.virtualBalanceTerminal] : [])
+                                  ])].filter(Boolean);
 
-                                    return (
-                                      <>
-                                        {showVirtualBalanceSource && (
-                                          <div className="ep-row" style={{ position: 'relative', zIndex: 10 }}>
+                                  return (
+                                    <>
+                                      {showVirtualBalanceSource && (
+                                        <div className="ep-row" style={{ position: 'relative', zIndex: 10 }}>
                                           <span className="ep-label" style={{ fontWeight: 'bold', color: '#0284c7' }}>Virtual Balance Source</span>
                                           <select
                                             className="form-input"
@@ -1408,23 +1411,23 @@ const EditChargeModal = ({
                                             <option value="CFS">CFS-SFSA</option>
                                           </select>
                                         </div>
-                                        )}
-                                        <div className="ep-row" style={{ position: 'relative', zIndex: 10 }}>
-                                          <span className="ep-label" style={{ fontWeight: 'bold', color: '#0284c7' }}>{isCfsSource ? 'CFS-SFSA' : 'Empty-Yards'} Balance</span>
-                                          <select
-                                            className="form-input"
-                                            style={{ borderColor: '#38bdf8', backgroundColor: '#f0f9ff', fontWeight: '500' }}
-                                            value={row.cost?.virtualBalanceTerminal || ''}
-                                            onChange={e => handleFieldChange(i, 'virtualBalanceTerminal', e.target.value, 'cost')}
-                                          >
-                                            <option value="">Select {isCfsSource ? 'CFS-SFSA' : 'Empty Yard'}</option>
-                                            {allAvailableNames.map((name, nameIndex) => (
-                                              <option key={nameIndex} value={name}>{name}</option>
-                                            ))}
-                                          </select>
-                                        </div>
-                                      </>
-                                    );
+                                      )}
+                                      <div className="ep-row" style={{ position: 'relative', zIndex: 10 }}>
+                                        <span className="ep-label" style={{ fontWeight: 'bold', color: '#0284c7' }}>{isCfsSource ? 'CFS-SFSA' : 'Empty-Yards'} Balance</span>
+                                        <select
+                                          className="form-input"
+                                          style={{ borderColor: '#38bdf8', backgroundColor: '#f0f9ff', fontWeight: '500' }}
+                                          value={row.cost?.virtualBalanceTerminal || ''}
+                                          onChange={e => handleFieldChange(i, 'virtualBalanceTerminal', e.target.value, 'cost')}
+                                        >
+                                          <option value="">Select {isCfsSource ? 'CFS-SFSA' : 'Empty Yard'}</option>
+                                          {allAvailableNames.map((name, nameIndex) => (
+                                            <option key={nameIndex} value={name}>{name}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </>
+                                  );
                                   return null;
                                 })()}
 

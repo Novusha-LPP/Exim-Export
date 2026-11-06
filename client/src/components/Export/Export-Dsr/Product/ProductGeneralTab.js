@@ -1238,10 +1238,15 @@ function ProductRow({
 
   // Calculate RoDTEP amount when relevant values change
   useEffect(() => {
-    if (product.rodtepInfo?.claim !== "Yes") return;
+    if (product.rodtepInfo?.claim !== "Yes") {
+      if (parseFloat(product.rodtepInfo?.amountINR) > 0) {
+        handleProductChange(index, "rodtepInfo.amountINR", 0);
+      }
+      return;
+    }
 
-    const rate = parseFloat(product.rodtepInfo?.ratePercent) || 0;
-    const cap = parseFloat(product.rodtepInfo?.capValuePerUnits) || 0;
+    const rate = parseFloat(product.rodtepInfo?.ratePercent ?? product.rodtepInfo?.rate ?? 0);
+    const cap = parseFloat(product.rodtepInfo?.capValuePerUnits ?? product.rodtepInfo?.cap ?? 0);
     const invoiceExchangeRate = Number(formik.values.exchange_rate) || 1;
 
     const fobINR = calculateProductFobINR(
@@ -1251,10 +1256,10 @@ function ProductRow({
     );
     const rateAmount = fobINR * (rate / 100);
 
+    const rQty = parseFloat(product.rodtepInfo?.quantity) || parseFloat(product.socQuantity) || parseFloat(product.quantity) || 0;
     let capAmount = Infinity;
     if (cap > 0) {
-      // Use RoDTEP specific quantity for calculation as it allows manual override
-      capAmount = (parseFloat(product.rodtepInfo?.quantity) || 0) * cap;
+      capAmount = rQty * cap;
     }
 
     let finalAmount = 0;
@@ -1272,6 +1277,13 @@ function ProductRow({
         index,
         "rodtepInfo.amountINR",
         parseFloat(finalAmount.toFixed(2)),
+      );
+    }
+    if (product.rodtepInfo?.fobValue !== fobINR.toFixed(2)) {
+      handleProductChange(
+        index,
+        "rodtepInfo.fobValue",
+        fobINR.toFixed(2),
       );
     }
   }, [
@@ -1305,7 +1317,11 @@ function ProductRow({
       if ((invCurr === "JPY" || invCurr === "KRW") && invoiceExchangeRate > 5) {
         invoiceExchangeRate = invoiceExchangeRate / 100;
       }
-      const autoTaxableValue = parseFloat(((parseFloat(product.amount) || 0) * invoiceExchangeRate).toFixed(2));
+      const isFobTaxable = product.igstCompensationCess?.taxableBasis === "fob";
+      const fobINR = calculateProductFobINR(product, invoice, invoiceExchangeRate);
+      const autoTaxableValue = isFobTaxable
+        ? fobINR
+        : parseFloat(((parseFloat(product.amount) || 0) * invoiceExchangeRate).toFixed(2));
       const isTaxableManual = !!product.igstCompensationCess?.isTaxableValueManual;
       
       // Use the manual value from state if present, otherwise use the auto-calculated one
@@ -1348,7 +1364,12 @@ function ProductRow({
     product.igstCompensationCess?.igstRate,
     product.igstCompensationCess?.isIgstManual,
     product.igstCompensationCess?.isTaxableValueManual,
-    product.igstCompensationCess?.taxableValueINR, // Added this as a dependency!
+    product.igstCompensationCess?.taxableBasis,
+    product.igstCompensationCess?.taxableValueINR,
+    invoice?.freightInsuranceCharges,
+    invoice?.invoiceValue,
+    invoice?.productValue,
+    invoice?.currency,
   ]);
 
   return (
@@ -1924,33 +1945,110 @@ function ProductRow({
               <label style={styles.label}>Taxable Value (INR)</label>
               {product.igstCompensationCess?.igstPaymentStatus ===
                 "Export Against Payment" && (
-                  <label
-                    style={{
-                      fontSize: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      cursor: "pointer",
-                      color: "#16408f",
-                      fontWeight: 600,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      style={{ cursor: "pointer", marginRight: 4 }}
-                      checked={
-                        product.igstCompensationCess?.isTaxableValueManual ||
-                        false
-                      }
-                      onChange={(e) =>
-                        handleProductChange(
-                          index,
-                          "igstCompensationCess.isTaxableValueManual",
-                          e.target.checked,
-                        )
-                      }
-                    />
-                    MANUAL
-                  </label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <label
+                      style={{
+                        fontSize: 10,
+                        display: "flex",
+                        alignItems: "center",
+                        cursor: "pointer",
+                        color:
+                          product.igstCompensationCess?.taxableBasis === "fob"
+                            ? "#0284c7"
+                            : "#16408f",
+                        fontWeight: 600,
+                      }}
+                      title="Use FOB value of this product for Taxable Value"
+                    >
+                      <input
+                        type="radio"
+                        name={`taxableBasisRadio_${selectedInvoiceIndex}_${index}`}
+                        style={{ cursor: "pointer", marginRight: 3 }}
+                        checked={
+                          product.igstCompensationCess?.taxableBasis === "fob"
+                        }
+                        onClick={() => {
+                          const currentlyFob =
+                            product.igstCompensationCess?.taxableBasis === "fob";
+                          const invoiceExchangeRate =
+                            Number(formik.values.exchange_rate) || 1;
+                          const invCurr = String(
+                            invoice?.currency || ""
+                          ).toUpperCase();
+                          const effRate =
+                            (invCurr === "JPY" || invCurr === "KRW") &&
+                            invoiceExchangeRate > 5
+                              ? invoiceExchangeRate / 100
+                              : invoiceExchangeRate;
+                          const fobVal = calculateProductFobINR(
+                            product,
+                            invoice,
+                            effRate
+                          );
+                          const invVal = parseFloat(
+                            (
+                              (parseFloat(product.amount) || 0) * effRate
+                            ).toFixed(2)
+                          );
+                          const newBasis = currentlyFob ? "invoice" : "fob";
+                          const newTaxable = currentlyFob ? invVal : fobVal;
+                          const igstRate =
+                            parseFloat(
+                              product.igstCompensationCess?.igstRate
+                            ) || 0;
+                          const newIgstAmt =
+                            !product.igstCompensationCess?.isIgstManual
+                              ? parseFloat(
+                                  ((newTaxable * igstRate) / 100).toFixed(2)
+                                )
+                              : product.igstCompensationCess?.igstAmountINR;
+
+                          handleProductChange(index, "igstCompensationCess", {
+                            ...product.igstCompensationCess,
+                            taxableBasis: newBasis,
+                            isTaxableValueManual: false,
+                            taxableValueINR: newTaxable,
+                            igstAmountINR: newIgstAmt,
+                          });
+                        }}
+                        onChange={() => {}}
+                      />
+                      FOB
+                    </label>
+                    <label
+                      style={{
+                        fontSize: 10,
+                        display: "flex",
+                        alignItems: "center",
+                        cursor: "pointer",
+                        color: "#16408f",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        style={{ cursor: "pointer", marginRight: 4 }}
+                        checked={
+                          product.igstCompensationCess?.isTaxableValueManual ||
+                          false
+                        }
+                        onChange={(e) => {
+                          const isManual = e.target.checked;
+                          handleProductChange(index, "igstCompensationCess", {
+                            ...product.igstCompensationCess,
+                            isTaxableValueManual: isManual,
+                            taxableBasis: isManual
+                              ? "manual"
+                              : product.igstCompensationCess?.taxableBasis ===
+                                "fob"
+                              ? "fob"
+                              : "invoice",
+                          });
+                        }}
+                      />
+                      MANUAL
+                    </label>
+                  </div>
                 )}
             </div>
             <input
@@ -2011,44 +2109,125 @@ function ProductRow({
               <label style={styles.label}>IGST Amt (INR)</label>
               {product.igstCompensationCess?.igstPaymentStatus ===
                 "Export Against Payment" && (
-                  <label
-                    style={{
-                      fontSize: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      cursor: "pointer",
-                      color: "#16408f",
-                      fontWeight: 600,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      style={{ cursor: "pointer", marginRight: 4 }}
-                      checked={
-                        product.igstCompensationCess?.isIgstManual || false
-                      }
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        let newIgstInfo = {
-                          ...product.igstCompensationCess,
-                          isIgstManual: checked
-                        };
-                        
-                        if (!checked) {
-                          const taxableVal = parseFloat(product.igstCompensationCess?.taxableValueINR) || 0;
-                          const rate = parseFloat(product.igstCompensationCess?.igstRate) || 0;
-                          newIgstInfo.igstAmountINR = parseFloat(((taxableVal * rate) / 100).toFixed(2));
-                        }
-                        
-                        handleProductChange(
-                          index,
-                          "igstCompensationCess",
-                          newIgstInfo
-                        );
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <label
+                      style={{
+                        fontSize: 10,
+                        display: "flex",
+                        alignItems: "center",
+                        cursor: "pointer",
+                        color:
+                          product.igstCompensationCess?.igstBasis === "fob" ||
+                          product.igstCompensationCess?.taxableBasis === "fob"
+                            ? "#0284c7"
+                            : "#16408f",
+                        fontWeight: 600,
                       }}
-                    />
-                    MANUAL
-                  </label>
+                      title="Calculate IGST Amount using Product FOB Value"
+                    >
+                      <input
+                        type="radio"
+                        name={`igstBasisRadio_${selectedInvoiceIndex}_${index}`}
+                        style={{ cursor: "pointer", marginRight: 3 }}
+                        checked={
+                          product.igstCompensationCess?.igstBasis === "fob" ||
+                          product.igstCompensationCess?.taxableBasis === "fob"
+                        }
+                        onClick={() => {
+                          const currentlyFob =
+                            product.igstCompensationCess?.igstBasis === "fob" ||
+                            product.igstCompensationCess?.taxableBasis === "fob";
+                          const invoiceExchangeRate =
+                            Number(formik.values.exchange_rate) || 1;
+                          const invCurr = String(
+                            invoice?.currency || ""
+                          ).toUpperCase();
+                          const effRate =
+                            (invCurr === "JPY" || invCurr === "KRW") &&
+                            invoiceExchangeRate > 5
+                              ? invoiceExchangeRate / 100
+                              : invoiceExchangeRate;
+                          const fobVal = calculateProductFobINR(
+                            product,
+                            invoice,
+                            effRate
+                          );
+                          const invVal = parseFloat(
+                            (
+                              (parseFloat(product.amount) || 0) * effRate
+                            ).toFixed(2)
+                          );
+                          const newBasis = currentlyFob ? "invoice" : "fob";
+                          const taxableVal = currentlyFob ? invVal : fobVal;
+                          const igstRate =
+                            parseFloat(
+                              product.igstCompensationCess?.igstRate
+                            ) || 0;
+                          const newIgstAmt = parseFloat(
+                            ((taxableVal * igstRate) / 100).toFixed(2)
+                          );
+
+                          handleProductChange(index, "igstCompensationCess", {
+                            ...product.igstCompensationCess,
+                            taxableBasis: newBasis,
+                            igstBasis: newBasis,
+                            isTaxableValueManual: false,
+                            isIgstManual: false,
+                            taxableValueINR: taxableVal,
+                            igstAmountINR: newIgstAmt,
+                          });
+                        }}
+                        onChange={() => {}}
+                      />
+                      FOB
+                    </label>
+                    <label
+                      style={{
+                        fontSize: 10,
+                        display: "flex",
+                        alignItems: "center",
+                        cursor: "pointer",
+                        color: "#16408f",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        style={{ cursor: "pointer", marginRight: 4 }}
+                        checked={
+                          product.igstCompensationCess?.isIgstManual || false
+                        }
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          let newIgstInfo = {
+                            ...product.igstCompensationCess,
+                            isIgstManual: checked,
+                          };
+
+                          if (!checked) {
+                            const taxableVal =
+                              parseFloat(
+                                product.igstCompensationCess?.taxableValueINR
+                              ) || 0;
+                            const rate =
+                              parseFloat(
+                                product.igstCompensationCess?.igstRate
+                              ) || 0;
+                            newIgstInfo.igstAmountINR = parseFloat(
+                              ((taxableVal * rate) / 100).toFixed(2)
+                            );
+                          }
+
+                          handleProductChange(
+                            index,
+                            "igstCompensationCess",
+                            newIgstInfo
+                          );
+                        }}
+                      />
+                      MANUAL
+                    </label>
+                  </div>
                 )}
             </div>
             <input
@@ -2444,6 +2623,12 @@ const ProductGeneralTab = ({
         const parts = code.split(" - ");
         const prefix = parts[0] ? parts[0].trim().padStart(2, "0") : "";
 
+        const isDbkScheme = ["19", "43", "60", "61"].includes(prefix);
+        const isRosctlScheme = ["60", "61"].includes(prefix);
+        const isDeecScheme = ["03", "50"].includes(prefix);
+        const isEpcgScheme = ["43", "50", "61"].includes(prefix);
+        const isAreScheme = ["21"].includes(prefix);
+
         const emptyDeecDetails = {
           isDeecItem: false,
           itemSnoPartE: "",
@@ -2475,15 +2660,31 @@ const ProductGeneralTab = ({
 
         const emptyAreDetails = [];
 
-        if (prefix === "03") {
+        if (isDbkScheme) {
+          // Keep existing Drawback details! If switching to 60 or 61 (DRAWBACK AND ROSCTL), ensure showRosctl is true on items
+          const currentProd = (formik.values.invoices || [])[selectedInvoiceIndex]?.products?.[index] || {};
+          const existingDbk = currentProd.drawbackDetails;
+          if (Array.isArray(existingDbk) && existingDbk.length > 0) {
+            if (isRosctlScheme) {
+              const updatedDbk = existingDbk.map(item => ({
+                ...item,
+                showRosctl: true,
+              }));
+              formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, updatedDbk);
+              formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo.claim`, "Yes");
+            }
+          }
+          if (!isDeecScheme) {
+            formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
+          }
+          if (!isEpcgScheme) {
+            formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
+          }
+          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
+        } else if (prefix === "03") {
           // ADVANCE LICENCE (DEEC)
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
-          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
-          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
-        } else if (prefix === "19" || prefix === "60") {
-          // DRAWBACK (DBK) / DRAWBACK AND ROSCTL
-          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
         } else if (prefix === "21") {
@@ -2492,17 +2693,13 @@ const ProductGeneralTab = ({
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
-        } else if (prefix === "43" || prefix === "61") {
-          // DRAWBACK & EPCG
-          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
-          formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
         } else if (prefix === "50") {
           // EPCG & ADVANCE LICENCE (DEEC & EPCG)
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].rosctlInfo`, emptyRosctlInfo);
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].areDetails`, emptyAreDetails);
-        } else {
-          // NFEI / Default
+        } else if (parts.length > 1 || code.includes("NFEI") || prefix === "00" || prefix === "99") {
+          // Only clear on full non-scheme selection, never during keystroke typing
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].deecDetails`, emptyDeecDetails);
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].epcgDetails`, emptyEpcgDetails);
           formik.setFieldValue(`invoices[${selectedInvoiceIndex}].products[${index}].drawbackDetails`, emptyDrawbackDetails);

@@ -2,6 +2,7 @@
 import React, { useRef, useCallback, useEffect, useState } from "react";
 import DateInput from "../../../common/DateInput.js";
 import { currencyList } from "../../../../utils/masterList";
+import { syncAllProductsDrawbackAndRodtep } from "../../../../utils/fobCalculations";
 import "../../../../styles/InvoiceMainTab.scss";
 const styles = {
   page: {
@@ -384,7 +385,11 @@ const InvoiceMainTab = ({ formik }) => {
     }
 
     updatedInvoices[index] = updatedInvoice;
-    formik.setFieldValue("invoices", updatedInvoices);
+    const syncedInvoices = syncAllProductsDrawbackAndRodtep(
+      updatedInvoices,
+      Number(formik.values.exchange_rate) || 1
+    );
+    formik.setFieldValue("invoices", syncedInvoices);
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
@@ -398,6 +403,13 @@ const InvoiceMainTab = ({ formik }) => {
       return;
     }
     formik.setFieldValue(field, value);
+    if (field === "exchange_rate") {
+      const synced = syncAllProductsDrawbackAndRodtep(
+        formik.values.invoices,
+        Number(value) || 1
+      );
+      formik.setFieldValue("invoices", synced);
+    }
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       autoSave(formik.values);

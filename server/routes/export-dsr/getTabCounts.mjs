@@ -762,6 +762,9 @@ router.get("/api/export-jobs-tab-counts", async (req, res) => {
                 { $or: [{ status: { $regex: "^pending$", $options: "i" } }, { status: { $exists: false } }, { status: null }, { status: "" }] },
                 { detailedStatus: { $ne: "Billing Done" } }
               ],
+              consignmentType: { $nin: ["LCL", "AIR", "lcl", "air"] },
+              transportMode: { $not: { $regex: "AIR", $options: "i" } },
+              job_no: { $not: { $regex: "/AIR/", $options: "i" } },
               "operations.statusDetails.handoverForwardingNoteDate": { $type: "string", $ne: "" },
               $and: [
                 {

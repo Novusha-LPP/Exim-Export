@@ -81,6 +81,7 @@ const getDefaultItem = (section) => {
       eGatePassCopyDate: "",
       eGatePassUpload: [],
       icdPort: "",
+      pcinNo: "",
       handoverForwardingNoteDate: "",
       handoverImageUpload: [],
       forwarderName: "",
@@ -1356,6 +1357,12 @@ const StatusSection = ({
       type: "text",
       width: 1,
       readOnly: true,
+    },
+    {
+      field: "pcinNo",
+      label: "PCIN Number",
+      type: "text",
+      width: 1,
     },
   ].filter((f) => !f.hidden);
 

@@ -734,6 +734,16 @@ const ExportJobsTable = () => {
       });
     }
 
+    if (activeTab === "Rail Out Pending") {
+      baseJobs = baseJobs.filter(job => {
+        const isAir = String(job.transportMode || "").toUpperCase() === "AIR" ||
+          String(job.job_no || "").toUpperCase().includes("/AIR/") ||
+          String(job.consignmentType || "").toUpperCase() === "AIR";
+        const isLCL = String(job.consignmentType || "").toUpperCase() === "LCL";
+        return !isAir && !isLCL;
+      });
+    }
+
     // Map to find parents by job_no
     const parentMap = {};
     baseJobs.forEach(job => {
@@ -5390,6 +5400,7 @@ const ExportJobsTable = () => {
             if (updates.goodsReportDate) newStatus.goodsReportDate = updates.goodsReportDate;
             if (updates.leoDate) newStatus.leoDate = updates.leoDate;
             if (updates.rms) newStatus.rms = updates.rms;
+            if (updates.pcinNo) newStatus.pcinNo = updates.pcinNo;
 
             const newOperations = [...operations];
             newOperations[0] = {

@@ -356,6 +356,15 @@ router.post(
       delete sourceData.parent_club_job;
       delete sourceData.tally_club_ref_no;
 
+      // Ensure copied containers get their own new subdocument _ids
+      if (Array.isArray(sourceData.containers)) {
+        sourceData.containers = sourceData.containers.map(c => {
+          const newC = { ...c };
+          delete newC._id;
+          return newC;
+        });
+      }
+
       // Remove branch-specific metadata and custom house configurations to avoid leakage
       delete sourceData.cha_branch_code;
       delete sourceData.exporter_branch_name;
